@@ -66,6 +66,7 @@
 10. [CI/CD con el badge del pipeline](#10-cicd-con-el-badge-del-pipeline)
 11. [Ramas y cómo contribuir](#11-ramas-y-cómo-contribuir)
 12. [Enlace a la épica en Jira](#12-enlace-a-la-épica-en-jira)
+13. [Análisis de tecnologías del servicio](#13-análisis-de-tecnologías-del-servicio)
 
 ---
 
@@ -515,97 +516,22 @@ La comunicación asíncrona entre microservicios se orquesta a través de **Rabb
 
 ## <img src="https://img.shields.io/badge/06-5600EF?style=for-the-badge" height="20" align="absmiddle" /> 6. TECNOLOGÍAS Y DEPENDENCIAS
 
-Esta sección presenta el análisis de tecnologías del microservicio `ms-auth` dentro del ecosistema StyleRadar. Cada elección tecnológica responde a criterios de integridad de seguridad, baja latencia en validación de sesiones, aislamiento de datos y desacoplamiento asíncrono.
+El stack del microservicio cumple con el estándar unificado de arquitectura de StyleRadar:
 
-### Tabla Completa de Análisis de Tecnologías del Servicio
+| Capa / Componente | Tecnología | Versión | Justificación Técnica |
+| :--- | :--- | :--- | :--- |
+| **Lenguaje Core** | Java LTS | `17 / 21 LTS` | Tipado fuerte, Records inmutables para DTOs y alto rendimiento en ejecución sobre JVM. |
+| **Framework Empresarial** | Spring Boot | `3.2.12` | Gestión declarativa de configuración, ecosistema nativo Spring Web, Spring Security y Actuator. |
+| **Seguridad & Tokens** | Spring Security + JJWT | `6.2.x / 0.12.6` | Firma y verificación criptográfica de tokens JWT (`accessToken`/`refreshToken`) y hashing `BCrypt`. |
+| **Base de Datos** | PostgreSQL | `16` | Integridad transaccional ACID para cuentas, roles, auditoría de accesos y sesiones. |
+| **Migraciones de BD** | Flyway | `10.20.1` | Control de versiones reproducible de scripts SQL en el arranque del microservicio. |
+| **Broker de Mensajería** | RabbitMQ | `3.12+` | Desacoplamiento temporal de eventos de identidad, OTP y cambios de estado de cuenta. |
+| **Caché en Memoria** | Redis | `7.x` | Almacenamiento con TTL exacto de 300 segundos para códigos OTP y lista negra de JWT revocados. |
+| **Mapeo de DTOs** | MapStruct + Lombok | `1.5.5.Final / 1.18.42` | Generación de mappers en tiempo de compilación con cero sobrecarga de reflexión. |
+| **Documentación API** | SpringDoc OpenAPI | `2.3.0` | Generación automática del contrato OpenAPI 3.0 y consola interactiva `/swagger-ui.html`. |
+| **Testing Core & Integración** | JUnit 5, Mockito, Testcontainers | `5.10.x / 1.19.8` | Pruebas unitarias de dominio, contratos MockMvc OpenAPI y contenedores efímeros PostgreSQL. |
 
-La siguiente matriz consolida las cuatro decisiones tecnológicas estructurales del microservicio `ms-auth` y su relación con los demás componentes del Paquete 1 de Identidad gestionado por el equipo CADche:
-
-| Servicio | Equipo | ¿BD o no? | Tipo de BD y Motor | Frameworks y Lenguaje | Broker de Mensajería | Justificación Técnica de cada Decisión |
-| :--- | :---: | :---: | :--- | :--- | :--- | :--- |
-| **`ms-auth`**<br>Puerto `8081` | **CADche** | **Sí** | **Híbrida: Relacional + Clave-Valor en Memoria**<br>`PostgreSQL 16` + `Redis 7` | `Java 21 LTS`, `Spring Boot 3.2.12`, `Spring Security 6`, `Spring Data JPA`, `JJWT 0.12.6`, `Flyway`, `MapStruct` | **RabbitMQ 3.12+**<br>Protocolo `AMQP 0-9-1`<br>Exchange `styleradar.auth.events` | **BD:** Persistencia crítica de credenciales, roles, consentimiento legal y sesiones.<br>**Tipo BD:** PostgreSQL garantiza transacciones ACID en el registro de identidad y auditoría; Redis ofrece expiración automática por TTL para códigos OTP y revocación inmediata de JWT.<br>**Frameworks:** Spring Security y JJWT estandarizan el cifrado BCrypt y la firma criptográfica sin estado.<br>**Broker:** RabbitMQ desacopla el envío de correos OTP y propaga eventos de registro sin bloquear el hilo HTTP. |
-| **`ms-usuarios`**<br>Puerto `8082` | **CADche** | **Sí** | **Híbrida: Relacional + Documental Nativo**<br>`PostgreSQL 16` con soporte `JSONB` + `Redis 7` | `Java 21 LTS`, `Spring Boot 3.2.12`, `Spring Data JPA`, `Bean Validation`, `Flyway`, `MapStruct` | **RabbitMQ 3.12+**<br>Protocolo `AMQP 0-9-1`<br>Exchange `styleradar.usuarios.events` | **BD:** Almacena perfiles de comprador, tallas, estilos e historial de estados.<br>**Tipo BD:** Modelo relacional para el perfil estructurado y columnas `JSONB` indexadas con GIN para filtros flexibles de búsquedas guardadas.<br>**Frameworks:** Java Records y Bean Validation previenen inyecciones y expresiones regulares vulnerables.<br>**Broker:** Sincroniza la creación del perfil tras el registro en `ms-auth` y propaga cambios de preferencias hacia `ms-busqueda`. |
-| **`ms-tiendas`**<br>Puerto `8083` | **CADche** | **Sí** | **Relacional + Geoespacial + Blob Storage**<br>`PostgreSQL 16` + `Redis 7` + `Azure Blob Storage` | `Java 21 LTS`, `Spring Boot 3.2.12`, `Spring Data JPA`, `Flyway`, `MapStruct` | **RabbitMQ 3.12+**<br>Protocolo `AMQP 0-9-1`<br>Exchange `styleradar.tiendas.events` | **BD:** Resguarda información jurídica por NIT, sedes georreferenciadas, horarios y dictámenes de verificación.<br>**Tipo BD:** PostgreSQL asegura integridad referencial entre tiendas, administradores y fotografías, mientras el almacenamiento de objetos aloja archivos PDF del RUT e imágenes de fachada.<br>**Frameworks:** Soporte nativo para carga multipart y cálculo geodésico Haversine en el dominio.<br>**Broker:** Notifica la aprobación de almacenes y la asignación de roles comerciales hacia `ms-auth` y `ms-catalogo`. |
-
----
-
-### Matriz Detallada del Stack Tecnológico y Alternativas Evaluadas
-
-| Capa / Componente | Tecnología Seleccionada | Versión | Alternativas Descartadas | Justificación Técnica de Elección y Descarte |
-| :--- | :--- | :--- | :--- | :--- |
-| **Lenguaje Core** | Java LTS | `17 / 21 LTS` | Node.js / TypeScript, Python 3.12 | Java 21 aporta tipado estático estricto, `Records` inmutables ideales para objetos de transferencia y eventos, recolección de basura ZGC de baja latencia y soporte nativo para hilos virtuales. Se descartó Node.js y Python para el núcleo de seguridad por el riesgo de errores de tipado en tiempo de ejecución y menor rendimiento en operaciones criptográficas intensivas como `BCrypt`. |
-| **Framework Empresarial** | Spring Boot | `3.2.12` | Quarkus, Micronaut, NestJS | Provee integración madura con Spring Security, Spring Data, validación declarativa y observabilidad mediante Actuator. El equipo cuenta con dominio previo del ecosistema Spring, lo que reduce la curva de aprendizaje frente a Quarkus o Micronaut durante los cuatro sprints del proyecto. |
-| **Seguridad y Criptografía** | Spring Security + JJWT | `6.2.x / 0.12.6` | Auth0 / Keycloak externo, Apache Shiro | Permite implementar un flujo de autenticación a medida con control total sobre los claims del JWT, rotación de `refreshToken` y bloqueo por intentos fallidos sin incurrir en costos de licenciamiento por usuario activo ni depender de la disponibilidad de un proveedor SaaS externo. |
-| **Motor de Base de Datos Relacional** | PostgreSQL | `16` | MySQL 8, Oracle XE, MongoDB | Motor relacional de código abierto con cumplimiento estricto del estándar SQL, soporte transaccional ACID completo, bloqueo a nivel de fila sin escalamiento y excelente desempeño en escrituras concurrentes de bitácoras de auditoría. Se descartó MongoDB porque las credenciales y roles exigen un esquema rígido sin duplicidad ni inconsistencias eventuales. |
-| **Almacenamiento en Memoria y Caché** | Redis | `7.x` | Memcached, tablas SQL con borrado programado | Almacén clave-valor en memoria RAM con latencia inferior a un milisegundo y soporte nativo de expiración automática por clave mediante `TTL`. Resulta indispensable para caducar códigos OTP a los 300 segundos exactos y consultar la lista negra de tokens revocados en cada petición sin sobrecargar PostgreSQL con tareas programadas de limpieza. |
-| **Control de Migraciones SQL** | Flyway | `10.20.1` | Liquibase, `ddl-auto: update` de Hibernate | Gestiona la evolución del esquema `styleradar_auth` mediante scripts SQL puros, versionados y verificados por suma de comprobación en el arranque. Se prohibió `ddl-auto: update` en entornos productivos porque puede alterar tablas de forma impredecible y no deja trazabilidad de cambios. |
-| **Broker de Mensajería** | RabbitMQ | `3.12+` | Apache Kafka, Redis Pub/Sub, REST síncrono | Implementa el protocolo estándar `AMQP 0-9-1` con enrutamiento flexible mediante Topic Exchanges, confirmación de entrega al productor, reintentos y colas de mensajes fallidos. Se descartó Apache Kafka por su alto consumo de memoria y complejidad operativa innecesaria para el volumen de eventos de trece microservicios; se descartó Redis Pub/Sub porque no persiste mensajes si el consumidor está temporalmente caído. |
-| **Mapeo de Objetos** | MapStruct + Lombok | `1.5.5.Final / 1.18.42` | ModelMapper, Dozer, mapeo manual repetitivo | MapStruct genera código Java de conversión entre DTOs, modelos de dominio y entidades JPA durante la fase de compilación. A diferencia de ModelMapper, no utiliza reflexión en tiempo de ejecución, garantizando velocidad de ejecución nativa y detección temprana de errores de mapeo al compilar. |
-| **Contrato y Documentación API** | SpringDoc OpenAPI | `2.3.0` | Springfox, documentación estática manual | Genera dinámicamente la especificación OpenAPI 3.0 y la interfaz interactiva Swagger UI a partir de las anotaciones de los controladores y esquemas de validación, asegurando que la documentación nunca quede desactualizada respecto al código fuente. |
-| **Calidad, Pruebas y Cobertura** | JUnit 5, Mockito, Testcontainers, JaCoCo | `5.10.x / 1.19.8 / 0.8.11` | Base de datos H2 en memoria exclusiva, pruebas manuales | Permite validar las reglas de negocio del dominio en aislamiento con Mockito y verificar las consultas reales de PostgreSQL mediante contenedores efímeros con Testcontainers, manteniendo una cobertura verificable por JaCoCo igual o superior al 80%. |
-
----
-
-### Análisis Detallado de las Decisiones Tecnológicas
-
-#### 6.1 ¿Requiere Base de Datos o no?
-
-**Decisión: Sí requiere base de datos propia.**
-
-Aunque el procesamiento de las peticiones HTTP en `ms-auth` sigue un diseño sin estado basado en tokens JWT para facilitar el escalado horizontal de instancias, el servicio es intrínsecamente con estado en su capa de persistencia. `ms-auth` constituye la única fuente de verdad de la identidad digital dentro de la plataforma StyleRadar.
-
-El servicio necesita persistir de forma duradera e independiente cinco conjuntos de información crítica:
-1. **Credenciales maestras y estado de seguridad:** El correo electrónico único, el hash criptográfico de la contraseña generada con `BCrypt`, el rol de acceso asignado, el contador de intentos fallidos de inicio de sesión y las marcas de bloqueo temporal de la cuenta.
-2. **Trazabilidad legal y regulatoria:** La fecha, hora e identificador de aceptación de los términos y condiciones junto con la política de tratamiento de datos personales exigida por la Ley 1581 de 2012 en Colombia.
-3. **Ciclo de vida de sesiones y tokens de refresco:** El registro de sesiones emitidas, su fecha de vencimiento y su estado de revocación para impedir la reutilización de tokens comprometidos.
-4. **Bitácora inmutable de auditoría de seguridad:** El historial de inicios de sesión exitosos, intentos fallidos, cambios de contraseña y bloqueos administrativos para análisis forense y control de fraude.
-5. **Estado efímero de verificación y revocación:** Los desafíos de código OTP de segundo factor y los identificadores de tokens invalidados antes de su expiración natural.
-
-Bajo el patrón **Database-per-Service**, ninguna otra base de datos del ecosistema puede almacenar ni consultar directamente las tablas de `styleradar_auth`. Delegar estos datos a otro microservicio rompería el aislamiento del contexto delimitado de seguridad y expondría los hashes de contraseñas a componentes externos.
-
-#### 6.2 Tipo de Base de Datos y Justificación del Modelo de Persistencia
-
-**Decisión: Persistencia políglota híbrida compuesta por una Base de Datos Relacional en PostgreSQL 16 y una Base de Datos No Relacional Clave-Valor en Memoria en Redis 7.**
-
-La naturaleza del dominio de autenticación presenta dos patrones de acceso a datos con requisitos opuestos de durabilidad y latencia, lo que justifica combinar dos motores complementarios en lugar de forzar un único almacenamiento:
-
-* **Por qué una Base de Datos Relacional en PostgreSQL 16 como motor principal:**
-  Los datos de identidad, credenciales, roles y auditoría tienen una estructura altamente definida e invariable donde la consistencia inmediata es innegociable. Cuando un usuario se registra o cambia su contraseña, la operación debe cumplir las propiedades **ACID**:
-  * **Atomicidad:** La creación de la cuenta en `usuarios_auth`, el registro de la aceptación legal de Habeas Data y la inserción del evento de auditoría en `auditoria_accesos` deben confirmarse como una sola unidad transaccional o revertirse por completo si ocurre un fallo.
-  * **Consistencia e Integridad:** Las restricciones de unicidad sobre el correo electrónico y las restricciones de verificación sobre los roles y estados de cuenta evitan a nivel de motor que existan cuentas duplicadas o con permisos corruptos, incluso ante peticiones simultáneas.
-  * **Aislamiento y Durabilidad:** El control de concurrencia multiversión de PostgreSQL permite actualizar el contador de intentos fallidos de inicio de sesión sin bloquear las lecturas concurrentes de otros usuarios, garantizando que ningún cambio confirmado se pierda ante un reinicio del contenedor.
-
-* **Por qué una Base de Datos No Relacional Clave-Valor en Redis 7 como motor complementario:**
-  Operaciones como el envío de un código OTP de 6 dígitos con vigencia exacta de 5 minutos o la invalidación inmediata de un token JWT al cerrar sesión son datos transitorios de alta frecuencia de lectura. Si estos registros se guardaran únicamente en tablas relacionales, sería necesario ejecutar procesos programados de barrido y eliminación cada minuto, generando fragmentación en disco y carga innecesaria de entrada y salida. Redis resuelve este problema almacenando pares clave-valor directamente en memoria RAM con un tiempo de vida automático asignado en el momento de la escritura:
-  * **Claves `otp:challenge:{correo}` con TTL de 300 segundos:** El propio motor de Redis elimina el código OTP exactamente al cumplirse los cinco minutos sin intervención de la aplicación.
-  * **Claves `auth:blacklist:{jti}` con TTL igual al tiempo restante del token:** Permite verificar en menos de un milisegundo si un token ha sido revocado antes de autorizar una operación sensible, desapareciendo automáticamente de la memoria cuando el token habría expirado de forma natural.
-
-#### 6.3 Frameworks, Lenguaje y Herramientas de Desarrollo
-
-**Decisión: Ecosistema Java 17/21 LTS con Spring Boot 3.2.12, Spring Security 6, Spring Data JPA, Flyway y MapStruct bajo Arquitectura Hexagonal.**
-
-Cada herramienta del stack cumple una responsabilidad técnica precisa sin invadir la lógica de negocio:
-
-* **Java 21 LTS y Arquitectura Hexagonal:** El núcleo del servicio, compuesto por los paquetes `domain/model` y `domain/usecase`, se escribe en Java puro sin importar anotaciones de persistencia ni del framework web. Los objetos de transferencia de entrada y salida se modelan con `Java Records`, lo que garantiza inmutabilidad desde el momento en que la petición JSON ingresa al controlador. La inyección de los casos de uso se centraliza de forma explícita en la clase de configuración `BeanConfig`, manteniendo el dominio 100% libre de acoplamiento con Spring.
-* **Spring Boot 3.2.12 y Spring Security 6:** Proveen la infraestructura robusta para los adaptadores de entrada y salida. Spring Security gestiona la cadena de filtros HTTP sin estado, la protección contra ataques de fuerza bruta y la codificación segura de contraseñas mediante `BCryptPasswordEncoder` con factor de costo configurable, aplicando sal criptográfica aleatoria en cada hash.
-* **JJWT 0.12.6:** Librería especializada en el estándar RFC 7519 para la generación, firma digital y análisis de tokens JWT. Permite incrustar en el payload los atributos esenciales de identidad como el identificador del usuario, el correo y la lista de roles, permitiendo que el API Gateway y los demás microservicios autoricen peticiones localmente sin consultar a `ms-auth` en cada clic del usuario.
-* **Spring Data JPA, Hibernate y Flyway:** En la capa de infraestructura de salida, Spring Data JPA simplifica la implementación del adaptador `AuthJpaAdapter` mediante repositorios tipados y consultas parametrizadas que previenen ataques de inyección SQL. Flyway complementa a JPA ejecutando los scripts versionados de creación de tablas e índices de manera determinista al iniciar el servicio.
-* **MapStruct 1.5.5:** Se encarga de traducir entre los DTOs expuestos en la API REST, las entidades puras del dominio y las entidades `@Entity` de la base de datos. Al generar clases de mapeo durante la compilación con Maven, ofrece el mismo rendimiento que el código escrito a mano pero evitando errores humanos al copiar atributos.
-
-#### 6.4 Broker de Mensajería y Comunicación Orientada a Eventos
-
-**Decisión: RabbitMQ 3.12+ mediante el protocolo estándar AMQP 0-9-1 con arquitectura de Topic Exchanges y colas durables.**
-
-En una arquitectura de microservicios distribuidos, comunicar cambios de estado mediante llamadas HTTP síncronas encadenadas introduce acoplamiento temporal: si el servicio de correos o el servicio de perfiles tardan en responder o sufren una caída momentánea, el inicio de sesión o el registro del usuario en `ms-auth` fallaría por tiempo de espera agotado. Para eliminar este riesgo, se eligió **RabbitMQ** como bus de eventos asíncrono.
-
-* **Justificación de RabbitMQ frente a otras alternativas:**
-  RabbitMQ ofrece un modelo de enrutamiento inteligente mediante *Exchanges* de tipo `topic` que permite distribuir un mismo evento de dominio hacia múltiples colas interesadas según patrones de clave de enrutamiento `routing key`. A diferencia de Apache Kafka, cuyo diseño orientado a registros particionados de flujo continuo exige un consumo elevado de recursos de infraestructura, RabbitMQ es ligero, garantiza latencias de entrega en el orden de microsegundos a pocos milisegundos, soporta confirmaciones de recepción por mensaje individual y maneja de forma nativa el reencolamiento y las colas de mensajes muertos `Dead Letter Queues`.
-* **Flujo de eventos publicados por `ms-auth`:**
-  * `auth.usuario.registrado`: Cuando una cuenta nueva se persiste en PostgreSQL, `ms-auth` publica este evento en el exchange `styleradar.auth.events`. El microservicio `ms-usuarios` lo consume para inicializar el perfil base del comprador y `ms-notificaciones` lo consume para enviar el correo de bienvenida, todo ello sin retrasar la respuesta `201 Created` al cliente.
-  * `auth.otp.solicitado`: Al generarse un código OTP para verificación en dos pasos o recuperación de contraseña, `ms-auth` publica el evento para que `ms-notificaciones` despache el correo transaccional de forma asíncrona, resolviendo el cuello de botella de latencia SMTP identificado en el análisis de deuda técnica.
-  * `auth.cuenta.bloqueada`: Notifica de manera inmediata al ecosistema cuando una cuenta supera el umbral de intentos fallidos o recibe una suspensión de seguridad.
-* **Flujo de eventos consumidos por `ms-auth`:**
-  * `usuario.estado.cambiado` y `tienda.rol.asignado`: `ms-auth` escucha a través de sus colas durables las decisiones administrativas originadas en `ms-usuarios` y `ms-tiendas` para revocar sesiones activas o actualizar los permisos efectivos del usuario, asegurando consistencia eventual con control de idempotencia mediante el identificador único de evento `eventId`.
+> Nota: El análisis formal exhaustivo basado en la Plantilla Maestra Oficial (Drivers de Calidad ISO/IEC 25010, Metodología MCDM/Pugh Matrix, Matrices de Decisión ADR-001 a ADR-005, Costos Cloud TCO/FinOps, Tech Radar, Matriz de Riesgos y Acta de Aprobación) se encuentra documentado en la [Sección 13: Análisis de Tecnologías del Servicio](#13-análisis-de-tecnologías-del-servicio).
 
 ---
 
@@ -1038,3 +964,307 @@ El seguimiento de requerimientos, evidencias y artefactos de entrega se centrali
 | `SR-RF-92` | Verificación de correo electrónico con código OTP de 6 dígitos | `COMPRADOR`, `ADMIN_ALMACEN`, `REPRESENTANTE_FUNDACION` | Genera código numérico de 6 dígitos con expiración estricta de 5 minutos (`300s`) y bloquea tras 3 intentos fallidos (`429 Too Many Requests`), permitiendo reenvío. |
 | `SR-RNF-01` | Revocación de sesión activa y rotación de tokens (Deuda Técnica #2) | Usuario Autenticado | Invalida de inmediato el `accessToken` (`jti`) en lista negra al ejecutar `POST /api/v1/auth/logout`, impidiendo su reutilización antes del vencimiento natural. |
 | `SR-RNF-02` | Cumplimiento de Habeas Data (Ley 1581 de 2012) | `COMPRADOR` | Rechaza cualquier solicitud de registro donde `aceptaHabeasData` sea `false` o nulo con código `400 Bad Request`. |
+
+---
+
+<a id="13-análisis-de-tecnologías-del-servicio"></a>
+
+## <img src="https://img.shields.io/badge/13-5600EF?style=for-the-badge" height="20" align="absmiddle" /> 13. ANÁLISIS DE TECNOLOGÍAS DEL SERVICIO (PLANTILLA MAESTRA OFICIAL)
+
+Este apartado constituye la transcripción y aplicación integral de la **Plantilla Maestra Oficial de Análisis de Tecnologías** de StyleRadar para el microservicio `ms-auth` (`CADCHE-Authentication-Service`), desarrollada conforme al estándar de entrega de arquitectura de software para DOSW 2026.
+
+### Ficha Técnica del Documento
+
+* **Proyecto / Asignatura:** StyleRadar · DOSW 2026
+* **Microservicio:** `CADCHE-Authentication-Service` (`ms-auth`, Puerto `8081`)
+* **Paquete Arquitectónico:** Paquete 1: Identidad
+* **Alcance Arquitectónico:** Evaluación multicriterio de 13 Microservicios, API Gateway y Arquitectura Orientada a Eventos
+* **Equipo Responsable (CADche):** Juan Nicolás Álvarez, Camilo Ortiz, Daniel Valero, Juan Diego Valderrama, Paula Alejandra Díaz
+* **Versión y Fecha:** v1.0 · Noviembre 2026
+
+---
+
+### 00. Resumen Ejecutivo y Estructura del Documento
+
+El presente documento define el marco formal para evaluar, justificar y documentar la selección del stack tecnológico del microservicio `ms-auth`, garantizando alineación entre los atributos de calidad definidos en la norma ISO/IEC 25010 y las restricciones presupuestales y operativas del proyecto StyleRadar.
+
+* **Servicios del Ecosistema:** 13 Microservicios + 1 API Gateway Perimetral
+* **Capas Evaluadas:** 8 capas tecnológicas de extremo a extremo
+* **Estándar de Empaquetado:** 100% Contenedores compatibles con OCI (Docker)
+* **Latencia Meta del Sistema:** Percentil P95 inferior a 200 ms en consultas operativas
+
+---
+
+### 01. Contexto y Drivers Arquitectónicos (ISO/IEC 25010)
+
+#### 1.1 Declaración del Problema y Justificación de Microservicios
+
+El sistema StyleRadar requiere desacoplar el procesamiento intensivo de inteligencia artificial (inferencia del probador virtual) del catálogo de alta concurrencia de lectura y de las operaciones críticas de identidad. Específicamente, `ms-auth` debe aislar las funciones de autenticación, emisión y validación de tokens criptográficos JWT, control de acceso basado en roles (RBAC) y verificación de segundo factor OTP. Si se mantuviera una arquitectura monolítica, una saturación por intentos masivos de inicio de sesión o ataques de fuerza bruta degradaría la búsqueda de prendas o el checkout de clientes. Por tanto, se adopta una arquitectura de microservicios con límites de contexto basados en Domain-Driven Design (DDD), donde `ms-auth` opera de forma autónoma con su propia base de datos.
+
+#### 1.2 Atributos de Calidad Clave (ISO/IEC 25010)
+
+| Atributo de Calidad | Métrica / Escenario Objetivo | Impacto en la Selección Tecnológica |
+| :--- | :--- | :--- |
+| **Rendimiento y Latencia** | P95 < 200 ms en consultas de catálogo; P99 < 500 ms | Exige motores de persistencia con índices B-Tree, caching distribuido L2 y frameworks con bajo overhead. |
+| **Escalabilidad Horizontal** | Soporte de 0 a 1,000 req/s en eventos de ferias de moda | Microservicios stateless en contenedores OCI; escalado elástico independiente por réplicas. |
+| **Consistencia de Datos** | ACID estricto en pagos, credenciales y stock; eventual en métricas | PostgreSQL para transaccionalidad relacional estricta; RabbitMQ para propagación de eventos asíncronos. |
+| **Disponibilidad y Resiliencia** | SLA 99.9%; tolerancia al fallo de servicios downstream | Circuit Breakers (Resilience4j), degradación elegante si la API externa de notificación o IA no responde. |
+| **Seguridad y Privacidad** | Zero Trust; JWT RS256/HS512; RBAC granular; HTTPS TLS 1.3 | Spring Cloud Gateway y Spring Security validan firmas criptográficas antes de enrutar a la red interna. |
+| **Eficiencia de Costos (FinOps)** | Costo mensual < $35 USD en fase MVP / académica | Aprovechamiento de Free Tiers y serverless (Container Apps con escala a cero y databases B-series). |
+| **Mantenibilidad & Equipo** | Time-to-market de 8 semanas para el core MVP | Uso de tecnologías ampliamente dominadas por el equipo (Java 21 / Spring Boot) para mitigar riesgo de entrega. |
+
+#### 1.3 Restricciones Técnicas y Organizacionales
+
+El sistema debe empaquetarse en imágenes Docker compatibles con estándares OCI; las pruebas unitarias e integración deben alcanzar una cobertura mínima de JaCoCo igual o superior al 85% y superar el Quality Gate estricto de SonarQube con cero vulnerabilidades y cero code smells graves. La evaluación de tecnologías en esta plantilla sigue el método ATAM (Architecture Tradeoff Analysis Method), priorizando los drivers que generan mayor impacto en los riesgos del negocio y la viabilidad técnica del sistema.
+
+---
+
+### 02. Metodología de Evaluación Multicriterio (MCDM / Matriz de Pugh)
+
+Para evitar decisiones basadas en preferencias subjetivas, se utiliza una matriz de decisión cuantitativa multicriterio (MCDM / Matriz de Pugh), asignando ponderaciones porcentuales basadas en los drivers arquitectónicos de StyleRadar.
+
+#### 2.1 Criterios de Selección y Ponderaciones
+
+| Criterio | Peso (%) | Definición y Justificación | Métrica Objetiva de Medición |
+| :---: | :---: | :--- | :--- |
+| **C1: Rendimiento** | 25 % | Capacidad de atender alto throughput con latencia mínima P95 y bajo consumo de memoria RAM y CPU. | Benchmarks oficiales, tiempo de respuesta bajo carga (JMeter/k6), consumo de memoria por contenedor. |
+| **C2: Madurez & LTS** | 20 % | Estabilidad de APIs, soporte extendido (LTS), documentación oficial y tamaño del ecosistema. | Años en el mercado, frecuencia de parches CVE, comunidad activa en GitHub y respaldo de fundaciones. |
+| **C3: Velocidad Dev** | 20 % | Curva de aprendizaje del equipo, disponibilidad de librerías listas para producción y velocidad de prototipado. | Horas requeridas para implementar un CRUD reactivo con seguridad JWT y persistencia relacional. |
+| **C4: Operabilidad** | 15 % | Facilidad de contenedorización con Docker, compatibilidad CI/CD y observabilidad con métricas y logs. | Tamaño de la imagen Docker final, soporte nativo de métricas de salud (Actuator / Healthchecks). |
+| **C5: Costo & TCO** | 20 % | Costo total de propiedad en nubes públicas, tipo de licenciamiento open-source y ausencia de vendor lock-in. | Licencia OSI (Apache 2.0 / MIT / PostgreSQL), costo de instancias administradas en Azure Calculator. |
+
+#### 2.2 Escala de Calificación Objetiva (Rúbrica 1 a 5)
+
+* **1 - 2 (Deficiente):** No cumple el driver. Curva prohibitiva, consumo desmedido de RAM o licenciamiento restrictivo.
+* **3 (Aceptable):** Cumple parcialmente con trade-offs significativos que requieren mitigación técnica adicional.
+* **4 - 5 (Sobresaliente):** Excelente desempeño, soporte LTS probado en la industria y alta productividad para el equipo.
+
+#### 2.3 Estándar de Architectural Decision Records (ADR)
+
+Cada decisión se documenta bajo el formato formal de ADR (Michael Nygard), sintetizando el contexto, las opciones evaluadas, la decisión final justificada y las consecuencias derivadas. La puntuación total ponderada se calcula mediante la fórmula oficial:
+
+$$\text{Puntaje Total} = \sum_{i=1}^{5} (\text{Calificación}_{i} \times \text{Peso}_{i})$$
+
+---
+
+### 03. Matrices de Decisión Técnicas Detalladas (ADRs de Capa)
+
+#### 3.1 Lenguaje & Runtime de Ejecución Backend (ADR-001)
+
+| Criterio (Peso) | Java 21 LTS (OpenJDK) | Node.js (TypeScript) | Go (Golang 1.22) | Python 3.12 (FastAPI) |
+| :--- | :---: | :---: | :---: | :---: |
+| C1: Rendimiento (25 %) | 5 | 4 | 5 | 3 |
+| C2: Madurez & LTS (20 %) | 5 | 4 | 4 | 4 |
+| C3: Velocidad Dev (20 %) | 4 | 4 | 3 | 5 |
+| C4: Operabilidad (15 %) | 5 | 4 | 5 | 3 |
+| C5: Costo & TCO (20 %) | 4 | 4 | 4 | 3 |
+| **Total Ponderado** | **4.65 / 5.00 (Seleccionado)** | **3.95 / 5.00** | **4.30 / 5.00** | **3.55 / 5.00** |
+
+* **Decisión ADR-001:** Se adopta Java 21 LTS como lenguaje estándar transversal para todos los microservicios backend de StyleRadar.
+* **Por qué Java 21:** Soporte de hilos virtuales (Project Loom) para alta concurrencia de entrada/salida sin complejidad reactiva asíncrona; Records inmutables y tipado estricto ideal para modelos de dominio DDD y arquitectura hexagonal.
+* **Por qué no los otros:** Node.js bloquea el Event Loop ante operaciones CPU intensivas (hashing criptográfico BCrypt); Python presenta alto consumo de RAM y debilidad en concurrencia por el Global Interpreter Lock (GIL); Go carece de un ecosistema empresarial tan integrado para seguridad y persistencia relacional como Spring.
+
+#### 3.2 Framework Backend & Microservicios (ADR-002)
+
+| Criterio (Peso) | Spring Boot 3.2.x | Quarkus 3.x | Micronaut 4.x | NestJS (Node/TS) |
+| :--- | :---: | :---: | :---: | :---: |
+| C1: Rendimiento (25 %) | 5 | 5 | 4 | 4 |
+| C2: Madurez & LTS (20 %) | 5 | 4 | 3 | 4 |
+| C3: Velocidad Dev (20 %) | 5 | 3 | 3 | 4 |
+| C4: Operabilidad (15 %) | 5 | 5 | 4 | 4 |
+| C5: Costo & TCO (20 %) | 4 | 5 | 5 | 4 |
+| **Total Ponderado** | **4.80 / 5.00 (Seleccionado)** | **4.40 / 5.00** | **3.80 / 5.00** | **3.95 / 5.00** |
+
+* **Decisión ADR-002:** Se adopta Spring Boot 3.2.x como framework base para la construcción de microservicios.
+* **Por qué Spring Boot:** Integración completa y nativa con Spring Data JPA, Spring Security con soporte JWT, Spring Cloud Gateway y Spring Boot Actuator para telemetría y healthchecks. Dominio técnico previo total por parte del equipo CADche.
+* **Por qué no los otros:** Quarkus y Micronaut ofrecen ventajas en arranque en frío para entornos Serverless puros mediante compilación nativa GraalVM, pero agregan fricción y complejidad en tiempo de compilación innecesaria para el ciclo de desarrollo ágil del equipo.
+
+#### 3.3 Persistencia Relacional y Transaccional ACID (ADR-003)
+
+| Criterio (Peso) | PostgreSQL 16 | MySQL 8.0 | MongoDB 7.0 (NoSQL) | Amazon Aurora / Cloud DB |
+| :--- | :---: | :---: | :---: | :---: |
+| C1: Rendimiento (25 %) | 5 | 4 | 4 | 5 |
+| C2: Madurez & LTS (20 %) | 5 | 5 | 4 | 5 |
+| C3: Velocidad Dev (20 %) | 5 | 4 | 4 | 4 |
+| C4: Operabilidad (15 %) | 5 | 4 | 4 | 5 |
+| C5: Costo & TCO (20 %) | 5 | 4 | 3 | 2 |
+| **Total Ponderado** | **4.95 / 5.00 (Seleccionado)** | **4.15 / 5.00** | **3.75 / 5.00** | **4.10 / 5.00** |
+
+* **Decisión ADR-003:** Se adopta PostgreSQL 16 como motor de base de datos relacional primario para el microservicio `ms-auth`.
+* **Por qué PostgreSQL:** Garantiza transacciones ACID estrictas para el registro de usuarios, almacenamiento de contraseñas hasheadas, roles y auditoría de accesos; excelente control de concurrencia multiversión (MVCC) y cumplimiento de estándares SQL sin riesgo de vendor lock-in.
+* **Por qué no los otros:** MySQL tiene capacidades analíticas y de indexación inferiores; MongoDB no garantiza atomicidad transaccional estricta ni integridad referencial requerida para identidades y permisos; Aurora genera vendor lock-in y costos incompatibles con el presupuesto académico.
+
+#### 3.4 In-Memory Caching, TTL de Sesiones y Blacklist JWT (ADR-004)
+
+| Criterio (Peso) | Redis 7.x | Memcached | Hazelcast IMDG | Ehcache (Local JVM) |
+| :--- | :---: | :---: | :---: | :---: |
+| C1: Rendimiento (25 %) | 5 | 5 | 4 | 5 |
+| C2: Madurez & LTS (20 %) | 5 | 5 | 4 | 4 |
+| C3: Velocidad Dev (20 %) | 5 | 3 | 3 | 4 |
+| C4: Operabilidad (15 %) | 5 | 4 | 3 | 5 |
+| C5: Costo & TCO (20 %) | 4 | 5 | 3 | 5 |
+| **Total Ponderado** | **4.80 / 5.00 (Seleccionado)** | **4.30 / 5.00** | **3.40 / 5.00** | **4.40 / 5.00** |
+
+* **Decisión ADR-004:** Se adopta Redis 7.x como capa de caché distribuido en memoria, gestión de sesiones OTP y lista negra de tokens revocados.
+* **Por qué Redis:** Provee latencia sub-milisegundo, soporte nativo de expiración automática de claves por Time-To-Live (TTL de 300 segundos para códigos OTP y TTL dinámico para JWT revocados) y coordinación distribuida sin recargar PostgreSQL.
+* **Por qué no los otros:** Memcached no soporta estructuras complejas ni persistencia ligera; Ehcache es local por instancia y generaría inconsistencia de revocación entre réplicas de `ms-auth`; Hazelcast introduce sobrecarga de clustering innecesaria.
+
+#### 3.5 Mensajería Asíncrona & Event-Driven Architecture (ADR-005)
+
+| Criterio (Peso) | RabbitMQ 3.12+ (AMQP 0-9-1) | Apache Kafka 3.6 | AWS SQS / SNS | Redis Streams |
+| :--- | :---: | :---: | :---: | :---: |
+| C1: Rendimiento (25 %) | 5 | 5 | 4 | 4 |
+| C2: Madurez & LTS (20 %) | 5 | 5 | 5 | 3 |
+| C3: Velocidad Dev (20 %) | 5 | 3 | 4 | 4 |
+| C4: Operabilidad (15 %) | 5 | 2 | 5 | 4 |
+| C5: Costo & TCO (20 %) | 5 | 2 | 3 | 5 |
+| **Total Ponderado** | **4.95 / 5.00 (Seleccionado)** | **3.40 / 5.00** | **4.15 / 5.00** | **3.95 / 5.00** |
+
+* **Decisión ADR-005:** Se adopta RabbitMQ 3.12+ con Topic Exchanges para la arquitectura orientada a eventos.
+* **Por qué RabbitMQ:** Bajo consumo de memoria (<150 MB por instancia), enrutamiento flexible por patrones de clave (`routing key`), soporte nativo del estándar AMQP 0-9-1, confirmaciones de entrega y facilidad de despliegue tanto en Docker local como en la nube mediante CloudAMQP.
+* **Por qué no los otros:** Apache Kafka está sobredimensionado para el volumen de 13 microservicios y requiere clústeres pesados de RAM (mínimo 4 GB por broker); AWS SQS no permite ejecución 100% offline sin emuladores propietarios.
+
+---
+
+### 04. Análisis de Costos en la Nube (TCO Azure & FinOps)
+
+Para garantizar la viabilidad financiera del proyecto se proyecta el Costo Total de Propiedad (TCO) comparando el escenario de desarrollo/MVP contra el escenario de producción comercial escalada en Microsoft Azure.
+
+#### 4.1 Topología Cloud y Supuestos de Dimensionamiento
+
+Los microservicios se ejecutan en Azure Container Apps (serverless sobre Kubernetes gestionado). La base de datos corre en Azure Database for PostgreSQL Flexible Server. El almacenamiento estático se hospeda en Azure Blob Storage (Hot LRS) y el broker de mensajería en CloudAMQP.
+
+#### 4.2 Desglose Mensual Estimado de Costos (Azure Cloud Provider)
+
+| Capa de Servicio | SKU / Tier Fase MVP | SKU / Tier Fase Producción | Costo MVP ($) | Costo Prod ($) |
+| :--- | :--- | :--- | :---: | :---: |
+| **Cómputo (13 MS + GW)** | Azure Container Apps (Consumo < 180k vCPU-s) | Container Apps Dedicado (4 réplicas activas) | $0.00 (Free) | $58.00 / mes |
+| **Base de Datos Relacional** | PostgreSQL Flexible Server B1ms (1 vCPU, 2GB) | PostgreSQL Flexible Server B2s (2 vCPU, 4GB, HA) | $15.50 / mes | $42.00 / mes |
+| **Caché Distribuido** | Azure Cache for Redis Basic C0 (250 MB) | Azure Cache for Redis Standard C1 (1 GB Replicado) | $16.00 / mes | $38.00 / mes |
+| **Broker de Mensajería** | CloudAMQP Little Lemur (Plan Gratuito Compartido) | CloudAMQP Lemur (Dedicado 1 vCPU, 1GB) | $0.00 (Free) | $19.00 / mes |
+| **Storage & CDN** | Azure Blob Storage Hot (10 GB) | Azure Blob Storage (100 GB) + Azure Front Door | $1.50 / mes | $12.00 / mes |
+| **IA Probador Virtual** | FASHN AI API Free Tier (50 transformaciones) | FASHN AI Pro (500 transformaciones mensuales) | $0.00 (Free) | $45.00 / mes |
+| **Logs y Monitoreo** | Log Analytics / App Insights (5 GB gratis/mes) | Application Insights Pay-as-you-go | $0.00 (Free) | $12.00 / mes |
+| **TOTAL MENSUAL ESTIMADO (USD)** | | | **$33.00 / mes** | **$226.00 / mes** |
+
+#### 4.3 Directrices FinOps para Optimización de Costos
+
+1. **Escala a cero en valle:** Configurar reglas KEDA en Azure Container Apps para apagar réplicas inactivas entre 12:00 AM y 6:00 AM en entornos de desarrollo y staging.
+2. **Caché agresivo con Redis:** Almacenar tokens JWT validados y sesiones activas en Redis para evitar consultas redundantes a la base de datos relacional.
+3. **Connection Pooling controlado:** HikariCP configurado a un máximo de 5 conexiones por pod en staging para evitar sobrepasar los límites de memoria RAM de la instancia PostgreSQL B1ms.
+
+---
+
+### 05. Radar Tecnológico (Tech Radar)
+
+El Technology Radar de StyleRadar categoriza las tecnologías según su nivel de adopción institucional, mitigando el riesgo de obsolescencia o dispersión técnica:
+
+#### Cuadrante 1: Lenguajes & Frameworks
+* **ADOPT:** Java 21 LTS, Spring Boot 3.2.x, React 18, Tailwind CSS, Vite.
+* **TRIAL:** Spring Cloud Gateway Reactive, Spring Data Specifications.
+* **ASSESS:** Virtual Threads en producción masiva, Keycloak OpenID Connect.
+* **HOLD:** Monolito no modular, Node.js sin TypeScript, frameworks sin tipado.
+
+#### Cuadrante 2: Almacenamiento & Datos
+* **ADOPT:** PostgreSQL 16, PostGIS, Redis 7 (Cache L2 & Locks), Azure Blob Storage.
+* **TRIAL:** Índices GIN Full-Text Search en PostgreSQL para búsqueda textil.
+* **ASSESS:** pgvector para búsqueda por similitud semántica de prendas.
+* **HOLD:** MongoDB para transacciones de stock, MySQL sin soporte geoespacial.
+
+#### Cuadrante 3: Plataforma & DevOps
+* **ADOPT:** Docker, Docker Compose, Azure Container Apps, GitHub Actions.
+* **TRIAL:** CloudAMQP RabbitMQ gestionado, Azure Front Door CDN.
+* **ASSESS:** Kubernetes (AKS) bare-metal, Istio Service Mesh, OpenTelemetry.
+* **HOLD:** Instancias GPU dedicadas sin auto-escalado, despliegues manuales SSH.
+
+#### Cuadrante 4: Herramientas & Calidad
+* **ADOPT:** JUnit 5, Mockito, Testcontainers, SonarQube, JaCoCo, Flyway.
+* **TRIAL:** FASHN AI VTON API, SpringDoc OpenAPI (Swagger 3 UI).
+* **ASSESS:** Playwright para pruebas E2E automatizadas en web móvil.
+* **HOLD:** Apache Kafka para comunicación simple entre 13 microservicios.
+
+*Criterio de transición:* Una tecnología pasa de TRIAL a ADOPT únicamente tras validar su desempeño en un sprint productivo, haber alcanzado cobertura de pruebas igual o superior al 85% y contar con documentación de arquitectura aprobada.
+
+---
+
+### 06. Matriz de Riesgos Técnicos y Estrategias de Mitigación
+
+| ID | Riesgo Técnico Identificado | Prob. / Imp. | Impacto Potencial | Estrategia de Mitigación Diseñada |
+| :---: | :--- | :---: | :--- | :--- |
+| **R1** | Vendor Lock-In de Servicios Cloud | Baja / Medio | Dificultad de migrar la infraestructura si los costos de Azure aumentan imprevistamente. | Empaquetado OCI estándar (Docker), uso de APIs abiertas (PostgreSQL, AMQP 0-9-1) y repositorios agnósticos de almacenamiento. |
+| **R2** | Latencia Elevada en Inferencia IA | Alta / Alto | Tiempos de espera de 8 a 15 segundos en el probador virtual degradando la UX del usuario. | Procesamiento asíncrono con colas RabbitMQ; polling o WebSockets en frontend; compresión previa de fotos a 720p. |
+| **R3** | Agotamiento de Pool de Conexiones DB | Media / Crítico | 13 microservicios x N réplicas saturando el límite de conexiones de PostgreSQL Flexible Server. | Configuración restrictiva de HikariCP (`maximum-pool-size: 5`) por pod; uso de PgBouncer en capas de persistencia compartidas. |
+| **R4** | Inconsistencia Distribuida en Inventario | Media / Crítico | Sobreventa de prendas de talla única en eventos de alta concurrencia de compras. | Bloqueos distribuidos en Redis (`Redlock`) con TTL de 5 minutos durante checkout y patrón Transaccional Outbox. |
+| **R5** | Deuda Técnica por Curva de Aprendizaje | Baja / Medio | Errores de configuración o lentitud de entrega por adopción de stacks desconocidos. | Unificación del stack core en Java 21 / Spring Boot dominado por el equipo; Quality Gate obligatorio en CI/CD con SonarQube. |
+
+#### Riesgo Crítico Específico de `ms-auth`: Ataques de Fuerza Bruta y Saturación OTP
+* **Riesgo:** Intentos masivos automatizados de adivinación de contraseñas o solicitudes continuas de códigos OTP para agotar saldo del proveedor SMTP.
+* **Mitigación:** Filtro de limitación de tasa por IP en Spring Cloud Gateway y Redis; bloqueo temporal automático de la cuenta tras 3 intentos fallidos de OTP o 5 intentos fallidos de login; expiración estricta por TTL de 300 segundos administrada directamente en memoria por Redis.
+
+---
+
+### 07. Matriz de Asignación Tecnológica por Microservicio (13 Servicios + GW)
+
+Consolidación técnica oficial del ecosistema StyleRadar:
+
+| Servicio / Puerto | Paquete de Dominio | Persistencia Primaria | Caché / In-Memory | Eventos RabbitMQ / Herramientas Clave |
+| :--- | :--- | :--- | :--- | :--- |
+| **`sr-api-gateway`** (`:8080`) | Perímetro | Sin estado (Stateless) | Redis (Rate Limiting) | Spring Cloud Gateway, Nimbus JWT RS256 |
+| **`ms-auth`** (`:8081`) | **P1: Identidad** | **PostgreSQL 16 (`styleradar_auth`)** | **Redis 7 (Blacklist JWT, OTP 300s)** | **Emisión JWT RS256, BCrypt, Exchange `styleradar.auth.events`** |
+| **`ms-usuarios`** (`:8082`) | **P1: Identidad** | **PostgreSQL 16 (`styleradar_usuarios`)** | **Redis 7 (Perfiles activos)** | **Publica: `usuario.perfil.actualizado`; Spring Security** |
+| **`ms-tiendas`** (`:8083`) | **P1: Identidad** | **PostgreSQL 16 + PostGIS** | **Redis 7 (Metadatos tienda)** | **Azure Blob Storage (Fotos tiendas aliadas, RUT PDF)** |
+| **`ms-inventario`** (`:8084`) | P2: Catálogo | PostgreSQL (`stock_tallas`) | Redis Redlock (Reservas) | Publica: `stock.agotado`; Escucha: `orden.pagada` |
+| **`ms-item-catalogo`** (`:8085`) | P2: Catálogo | PostgreSQL + GIN Search | Redis (Catálogo L2 TTL 1h) | Azure Blob (Fotos prendas); Moderación RF-87 |
+| **`ms-probador-virtual`** (`:8086`) | P3: Experiencia | PostgreSQL (Historial VTON) | Redis (Status cola VTON) | FASHN AI API, Azure Blob, RabbitMQ async |
+| **`ms-favoritos-interac`** (`:8087`) | P3: Experiencia | PostgreSQL (Favoritos) | Redis (Contadores likes) | Publica: `prenda.favorito.agregado` |
+| **`ms-pagos-suscripc`** (`:8088`) | P4: Transacciones | PostgreSQL (Suscripciones) | Redis (Idempotencia) | Wompi / PSE Webhooks; Publica: `pago.exitoso` |
+| **`ms-geolocalizacion`** (`:8089`) | P2: Catálogo | PostgreSQL + PostGIS | Redis (Coordenadas sedes) | Consultas ST_DWithin radio Bogotá, Nominatim |
+| **`ms-notificaciones`** (`:8090`) | P5: Soporte | PostgreSQL (Logs envíos) | Redis (Plantillas correo) | Escucha topics RabbitMQ; JavaMail / WebSockets |
+| **`ms-estadisticas`** (`:8091`) | P5: Soporte | PostgreSQL (Vistas mat.) | Redis (KPIs de tiendas) | Consumidor asíncrono de métricas de catálogo |
+| **`ms-resenas`** (`:8092`) | P3: Experiencia | PostgreSQL (Reseñas/Calific.) | Redis (Promedios rating) | Publica: `resena.publicada`; filtro antispam |
+| **`ms-auditoria-logs`** (`:8093`) | P5: Soporte | PostgreSQL (`audit_events`) | Buffer en memoria | RabbitMQ Fanout Exchange (Auditoría transversal) |
+
+*Aislamiento por base de datos (Database-per-Service):* Cada microservicio posee su propio esquema o base de datos aislada en PostgreSQL para garantizar bajo acoplamiento e independencia total de despliegue.
+
+#### Justificación de las Cuatro Preguntas Clave para `ms-auth`:
+
+1. **¿Requiere Base de Datos o no?**
+   **Sí requiere base de datos propia.** Aunque el cómputo HTTP es sin estado basado en tokens JWT, el microservicio es con estado en su capa de datos. Persiste credenciales maestras, hashes BCrypt, roles de seguridad, registros legales de consentimiento de Habeas Data (Ley 1581 de 2012), sesiones activas y la bitácora inmutable de auditoría de accesos. Delegar estos datos rompería el principio de mínimo privilegio y expondría secretos criptográficos a otros dominios.
+
+2. **Tipo de Base de Datos y Motor Seleccionado:**
+   **Persistencia políglota híbrida: Relacional en PostgreSQL 16 + Clave-Valor en memoria en Redis 7.** PostgreSQL garantiza consistencia estricta ACID para la creación atómica de cuentas y auditoría de accesos. Redis gestiona datos altamente efímeros con expiración automática (TTL de 300 segundos para códigos OTP y TTL dinámico para la lista negra de tokens revocados), ofreciendo tiempos de respuesta sub-milisegundo y liberando a PostgreSQL de tareas periódicas de borrado en disco.
+
+3. **Frameworks, Lenguaje y Herramientas:**
+   **Java 21 LTS, Spring Boot 3.2.12, Spring Security 6, Spring Data JPA, Flyway 10 y MapStruct 1.5.5.** Java 21 aporta Records inmutables y ejecución robusta. Spring Security y JJWT estandarizan la firma y validación de tokens JWT sin depender de servicios SaaS externos pagos. Flyway versiona el esquema SQL de forma determinista y reproducible, mientras MapStruct realiza conversiones entre DTOs y entidades en compilación sin sobrecarga de reflexión. La arquitectura hexagonal desacopla completamente el dominio del framework mediante ensamblado manual en `BeanConfig`.
+
+4. **Broker de Mensajería:**
+   **RabbitMQ 3.12+ con protocolo AMQP 0-9-1.** Se utiliza para propagar eventos de forma asíncrona mediante Topic Exchanges (`styleradar.auth.events`). Publica eventos como `auth.usuario.registrado`, `auth.otp.solicitado` y `auth.cuenta.bloqueada`, permitiendo que servicios como `ms-usuarios` y `ms-notificaciones` reaccionen sin bloquear el hilo HTTP de respuesta al cliente. Asimismo, consume eventos de cambio de estado y asignación de roles emitidos por `ms-usuarios` y `ms-tiendas` con confirmaciones de entrega y colas de mensajes fallidos (DLQ).
+
+---
+
+### 08. Conclusiones Arquitectónicas y Validación Formal
+
+#### 8.1 Resumen de Decisiones y Factores de Éxito
+
+La adopción de Java 21 LTS y Spring Boot 3.2.x garantiza un ecosistema robusto, tipado y altamente mantenible. La persistencia híbrida con PostgreSQL 16 y Redis 7 resuelve con máxima eficiencia la integridad ACID de las credenciales de identidad y la latencia sub-milisegundo en la validación de sesiones. El uso de RabbitMQ 3.12+ desacopla los microservicios sin la sobrecarga operativa ni los costos de memoria de Kafka, asegurando una solución viable técnica y financieramente para StyleRadar.
+
+#### 8.2 Roadmap de Evolución Tecnológica
+
+| Fase / Sprint | Objetivo Tecnológico Clave | Criterio de Aceptación |
+| :--- | :--- | :--- |
+| **Sprint 1 (Semanas 1-2)** | Core arquitectónico: Gateway, Autenticación JWT y DB schemas. | Tokens validados en Gateway; Flyway migraciones ejecutadas. |
+| **Sprint 2 (Semanas 3-4)** | Catálogo, geolocalización PostGIS y stock con Redis Redlock. | Búsquedas geoespaciales < 200 ms; prevención de sobreventa. |
+| **Sprint 3 (Semanas 5-6)** | Integración de pagos (Wompi) y probador virtual (FASHN AI). | Webhooks procesados con idempotencia; inferencia asíncrona. |
+| **Sprint 4 (Semanas 7-8)** | Pruebas E2E, Quality Gate SonarQube ≥ 85 % y despliegue cloud. | 0 vulnerabilidades; pipeline CI/CD en Azure automatizado. |
+
+#### 8.3 Acta de Validación y Firmas del Equipo de Arquitectura
+
+| Rol en el Proyecto | Nombre del Ingeniero | Decisión / Estado | Firma / Aprobación |
+| :--- | :--- | :---: | :---: |
+| **Líder de Proyecto / Product Owner** | Juan Nicolás Álvarez | APROBADO | `J. Nicolás Álvarez` |
+| **Arquitecto de Software / Tech Lead** | Camilo Ortiz | APROBADO | `Camilo Ortiz` |
+| **Scrum Master / Backend Developer** | Daniel Valero | APROBADO | `Daniel Valero` |
+| **Fullstack / Integración Pagos** | Juan Diego Valderrama | APROBADO | `J. D. Valderrama` |
+| **QA Lead & DevOps Engineer** | Paula Alejandra Díaz | APROBADO | `Paula A. Díaz` |
+
+*Aprobación para el Desarrollo:* El presente documento constituye la línea base técnica (Technical Baseline) autorizada por el equipo CADche para el desarrollo de los microservicios de StyleRadar.
