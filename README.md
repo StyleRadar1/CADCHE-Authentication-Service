@@ -515,20 +515,97 @@ La comunicación asíncrona entre microservicios se orquesta a través de **Rabb
 
 ## <img src="https://img.shields.io/badge/06-5600EF?style=for-the-badge" height="20" align="absmiddle" /> 6. TECNOLOGÍAS Y DEPENDENCIAS
 
-El stack del microservicio cumple con el estándar unificado de arquitectura de StyleRadar:
+Esta sección presenta el análisis de tecnologías del microservicio `ms-auth` dentro del ecosistema StyleRadar. Cada elección tecnológica responde a criterios de integridad de seguridad, baja latencia en validación de sesiones, aislamiento de datos y desacoplamiento asíncrono.
 
-| Capa / Componente | Tecnología | Versión | Justificación Técnica |
-| :--- | :--- | :--- | :--- |
-| **Lenguaje Core** | Java LTS | `17 / 21 LTS` | Tipado fuerte, Records inmutables para DTOs y alto rendimiento en ejecución sobre JVM. |
-| **Framework Empresarial** | Spring Boot | `3.2.12` | Gestión declarativa de configuración, ecosistema nativo Spring Web, Spring Security y Actuator. |
-| **Seguridad & Tokens** | Spring Security + JJWT | `6.2.x / 0.12.6` | Firma y verificación criptográfica de tokens JWT (`accessToken`/`refreshToken`) y hashing `BCrypt`. |
-| **Base de Datos** | PostgreSQL | `16` | Integridad transaccional ACID para cuentas, roles, auditoría de accesos y sesiones. |
-| **Migraciones de BD** | Flyway | `10.20.1` | Control de versiones reproducible de scripts SQL en el arranque del microservicio. |
-| **Broker de Mensajería** | RabbitMQ | `3.12+` | Desacoplamiento temporal de eventos de identidad, OTP y cambios de estado de cuenta. |
-| **Caché en Memoria** | Redis | `7.x` | Almacenamiento con TTL exacto de 300 segundos para códigos OTP y lista negra de JWT revocados. |
-| **Mapeo de DTOs** | MapStruct + Lombok | `1.5.5.Final / 1.18.42` | Generación de mappers en tiempo de compilación con cero sobrecarga de reflexión. |
-| **Documentación API** | SpringDoc OpenAPI | `2.3.0` | Generación automática del contrato OpenAPI 3.0 y consola interactiva `/swagger-ui.html`. |
-| **Testing Core & Integración** | JUnit 5, Mockito, Testcontainers | `5.10.x / 1.19.8` | Pruebas unitarias de dominio, contratos MockMvc OpenAPI y contenedores efímeros PostgreSQL. |
+### Tabla Completa de Análisis de Tecnologías del Servicio
+
+La siguiente matriz consolida las cuatro decisiones tecnológicas estructurales del microservicio `ms-auth` y su relación con los demás componentes del Paquete 1 de Identidad gestionado por el equipo CADche:
+
+| Servicio | Equipo | ¿BD o no? | Tipo de BD y Motor | Frameworks y Lenguaje | Broker de Mensajería | Justificación Técnica de cada Decisión |
+| :--- | :---: | :---: | :--- | :--- | :--- | :--- |
+| **`ms-auth`**<br>Puerto `8081` | **CADche** | **Sí** | **Híbrida: Relacional + Clave-Valor en Memoria**<br>`PostgreSQL 16` + `Redis 7` | `Java 21 LTS`, `Spring Boot 3.2.12`, `Spring Security 6`, `Spring Data JPA`, `JJWT 0.12.6`, `Flyway`, `MapStruct` | **RabbitMQ 3.12+**<br>Protocolo `AMQP 0-9-1`<br>Exchange `styleradar.auth.events` | **BD:** Persistencia crítica de credenciales, roles, consentimiento legal y sesiones.<br>**Tipo BD:** PostgreSQL garantiza transacciones ACID en el registro de identidad y auditoría; Redis ofrece expiración automática por TTL para códigos OTP y revocación inmediata de JWT.<br>**Frameworks:** Spring Security y JJWT estandarizan el cifrado BCrypt y la firma criptográfica sin estado.<br>**Broker:** RabbitMQ desacopla el envío de correos OTP y propaga eventos de registro sin bloquear el hilo HTTP. |
+| **`ms-usuarios`**<br>Puerto `8082` | **CADche** | **Sí** | **Híbrida: Relacional + Documental Nativo**<br>`PostgreSQL 16` con soporte `JSONB` + `Redis 7` | `Java 21 LTS`, `Spring Boot 3.2.12`, `Spring Data JPA`, `Bean Validation`, `Flyway`, `MapStruct` | **RabbitMQ 3.12+**<br>Protocolo `AMQP 0-9-1`<br>Exchange `styleradar.usuarios.events` | **BD:** Almacena perfiles de comprador, tallas, estilos e historial de estados.<br>**Tipo BD:** Modelo relacional para el perfil estructurado y columnas `JSONB` indexadas con GIN para filtros flexibles de búsquedas guardadas.<br>**Frameworks:** Java Records y Bean Validation previenen inyecciones y expresiones regulares vulnerables.<br>**Broker:** Sincroniza la creación del perfil tras el registro en `ms-auth` y propaga cambios de preferencias hacia `ms-busqueda`. |
+| **`ms-tiendas`**<br>Puerto `8083` | **CADche** | **Sí** | **Relacional + Geoespacial + Blob Storage**<br>`PostgreSQL 16` + `Redis 7` + `Azure Blob Storage` | `Java 21 LTS`, `Spring Boot 3.2.12`, `Spring Data JPA`, `Flyway`, `MapStruct` | **RabbitMQ 3.12+**<br>Protocolo `AMQP 0-9-1`<br>Exchange `styleradar.tiendas.events` | **BD:** Resguarda información jurídica por NIT, sedes georreferenciadas, horarios y dictámenes de verificación.<br>**Tipo BD:** PostgreSQL asegura integridad referencial entre tiendas, administradores y fotografías, mientras el almacenamiento de objetos aloja archivos PDF del RUT e imágenes de fachada.<br>**Frameworks:** Soporte nativo para carga multipart y cálculo geodésico Haversine en el dominio.<br>**Broker:** Notifica la aprobación de almacenes y la asignación de roles comerciales hacia `ms-auth` y `ms-catalogo`. |
+
+---
+
+### Matriz Detallada del Stack Tecnológico y Alternativas Evaluadas
+
+| Capa / Componente | Tecnología Seleccionada | Versión | Alternativas Descartadas | Justificación Técnica de Elección y Descarte |
+| :--- | :--- | :--- | :--- | :--- |
+| **Lenguaje Core** | Java LTS | `17 / 21 LTS` | Node.js / TypeScript, Python 3.12 | Java 21 aporta tipado estático estricto, `Records` inmutables ideales para objetos de transferencia y eventos, recolección de basura ZGC de baja latencia y soporte nativo para hilos virtuales. Se descartó Node.js y Python para el núcleo de seguridad por el riesgo de errores de tipado en tiempo de ejecución y menor rendimiento en operaciones criptográficas intensivas como `BCrypt`. |
+| **Framework Empresarial** | Spring Boot | `3.2.12` | Quarkus, Micronaut, NestJS | Provee integración madura con Spring Security, Spring Data, validación declarativa y observabilidad mediante Actuator. El equipo cuenta con dominio previo del ecosistema Spring, lo que reduce la curva de aprendizaje frente a Quarkus o Micronaut durante los cuatro sprints del proyecto. |
+| **Seguridad y Criptografía** | Spring Security + JJWT | `6.2.x / 0.12.6` | Auth0 / Keycloak externo, Apache Shiro | Permite implementar un flujo de autenticación a medida con control total sobre los claims del JWT, rotación de `refreshToken` y bloqueo por intentos fallidos sin incurrir en costos de licenciamiento por usuario activo ni depender de la disponibilidad de un proveedor SaaS externo. |
+| **Motor de Base de Datos Relacional** | PostgreSQL | `16` | MySQL 8, Oracle XE, MongoDB | Motor relacional de código abierto con cumplimiento estricto del estándar SQL, soporte transaccional ACID completo, bloqueo a nivel de fila sin escalamiento y excelente desempeño en escrituras concurrentes de bitácoras de auditoría. Se descartó MongoDB porque las credenciales y roles exigen un esquema rígido sin duplicidad ni inconsistencias eventuales. |
+| **Almacenamiento en Memoria y Caché** | Redis | `7.x` | Memcached, tablas SQL con borrado programado | Almacén clave-valor en memoria RAM con latencia inferior a un milisegundo y soporte nativo de expiración automática por clave mediante `TTL`. Resulta indispensable para caducar códigos OTP a los 300 segundos exactos y consultar la lista negra de tokens revocados en cada petición sin sobrecargar PostgreSQL con tareas programadas de limpieza. |
+| **Control de Migraciones SQL** | Flyway | `10.20.1` | Liquibase, `ddl-auto: update` de Hibernate | Gestiona la evolución del esquema `styleradar_auth` mediante scripts SQL puros, versionados y verificados por suma de comprobación en el arranque. Se prohibió `ddl-auto: update` en entornos productivos porque puede alterar tablas de forma impredecible y no deja trazabilidad de cambios. |
+| **Broker de Mensajería** | RabbitMQ | `3.12+` | Apache Kafka, Redis Pub/Sub, REST síncrono | Implementa el protocolo estándar `AMQP 0-9-1` con enrutamiento flexible mediante Topic Exchanges, confirmación de entrega al productor, reintentos y colas de mensajes fallidos. Se descartó Apache Kafka por su alto consumo de memoria y complejidad operativa innecesaria para el volumen de eventos de trece microservicios; se descartó Redis Pub/Sub porque no persiste mensajes si el consumidor está temporalmente caído. |
+| **Mapeo de Objetos** | MapStruct + Lombok | `1.5.5.Final / 1.18.42` | ModelMapper, Dozer, mapeo manual repetitivo | MapStruct genera código Java de conversión entre DTOs, modelos de dominio y entidades JPA durante la fase de compilación. A diferencia de ModelMapper, no utiliza reflexión en tiempo de ejecución, garantizando velocidad de ejecución nativa y detección temprana de errores de mapeo al compilar. |
+| **Contrato y Documentación API** | SpringDoc OpenAPI | `2.3.0` | Springfox, documentación estática manual | Genera dinámicamente la especificación OpenAPI 3.0 y la interfaz interactiva Swagger UI a partir de las anotaciones de los controladores y esquemas de validación, asegurando que la documentación nunca quede desactualizada respecto al código fuente. |
+| **Calidad, Pruebas y Cobertura** | JUnit 5, Mockito, Testcontainers, JaCoCo | `5.10.x / 1.19.8 / 0.8.11` | Base de datos H2 en memoria exclusiva, pruebas manuales | Permite validar las reglas de negocio del dominio en aislamiento con Mockito y verificar las consultas reales de PostgreSQL mediante contenedores efímeros con Testcontainers, manteniendo una cobertura verificable por JaCoCo igual o superior al 80%. |
+
+---
+
+### Análisis Detallado de las Decisiones Tecnológicas
+
+#### 6.1 ¿Requiere Base de Datos o no?
+
+**Decisión: Sí requiere base de datos propia.**
+
+Aunque el procesamiento de las peticiones HTTP en `ms-auth` sigue un diseño sin estado basado en tokens JWT para facilitar el escalado horizontal de instancias, el servicio es intrínsecamente con estado en su capa de persistencia. `ms-auth` constituye la única fuente de verdad de la identidad digital dentro de la plataforma StyleRadar.
+
+El servicio necesita persistir de forma duradera e independiente cinco conjuntos de información crítica:
+1. **Credenciales maestras y estado de seguridad:** El correo electrónico único, el hash criptográfico de la contraseña generada con `BCrypt`, el rol de acceso asignado, el contador de intentos fallidos de inicio de sesión y las marcas de bloqueo temporal de la cuenta.
+2. **Trazabilidad legal y regulatoria:** La fecha, hora e identificador de aceptación de los términos y condiciones junto con la política de tratamiento de datos personales exigida por la Ley 1581 de 2012 en Colombia.
+3. **Ciclo de vida de sesiones y tokens de refresco:** El registro de sesiones emitidas, su fecha de vencimiento y su estado de revocación para impedir la reutilización de tokens comprometidos.
+4. **Bitácora inmutable de auditoría de seguridad:** El historial de inicios de sesión exitosos, intentos fallidos, cambios de contraseña y bloqueos administrativos para análisis forense y control de fraude.
+5. **Estado efímero de verificación y revocación:** Los desafíos de código OTP de segundo factor y los identificadores de tokens invalidados antes de su expiración natural.
+
+Bajo el patrón **Database-per-Service**, ninguna otra base de datos del ecosistema puede almacenar ni consultar directamente las tablas de `styleradar_auth`. Delegar estos datos a otro microservicio rompería el aislamiento del contexto delimitado de seguridad y expondría los hashes de contraseñas a componentes externos.
+
+#### 6.2 Tipo de Base de Datos y Justificación del Modelo de Persistencia
+
+**Decisión: Persistencia políglota híbrida compuesta por una Base de Datos Relacional en PostgreSQL 16 y una Base de Datos No Relacional Clave-Valor en Memoria en Redis 7.**
+
+La naturaleza del dominio de autenticación presenta dos patrones de acceso a datos con requisitos opuestos de durabilidad y latencia, lo que justifica combinar dos motores complementarios en lugar de forzar un único almacenamiento:
+
+* **Por qué una Base de Datos Relacional en PostgreSQL 16 como motor principal:**
+  Los datos de identidad, credenciales, roles y auditoría tienen una estructura altamente definida e invariable donde la consistencia inmediata es innegociable. Cuando un usuario se registra o cambia su contraseña, la operación debe cumplir las propiedades **ACID**:
+  * **Atomicidad:** La creación de la cuenta en `usuarios_auth`, el registro de la aceptación legal de Habeas Data y la inserción del evento de auditoría en `auditoria_accesos` deben confirmarse como una sola unidad transaccional o revertirse por completo si ocurre un fallo.
+  * **Consistencia e Integridad:** Las restricciones de unicidad sobre el correo electrónico y las restricciones de verificación sobre los roles y estados de cuenta evitan a nivel de motor que existan cuentas duplicadas o con permisos corruptos, incluso ante peticiones simultáneas.
+  * **Aislamiento y Durabilidad:** El control de concurrencia multiversión de PostgreSQL permite actualizar el contador de intentos fallidos de inicio de sesión sin bloquear las lecturas concurrentes de otros usuarios, garantizando que ningún cambio confirmado se pierda ante un reinicio del contenedor.
+
+* **Por qué una Base de Datos No Relacional Clave-Valor en Redis 7 como motor complementario:**
+  Operaciones como el envío de un código OTP de 6 dígitos con vigencia exacta de 5 minutos o la invalidación inmediata de un token JWT al cerrar sesión son datos transitorios de alta frecuencia de lectura. Si estos registros se guardaran únicamente en tablas relacionales, sería necesario ejecutar procesos programados de barrido y eliminación cada minuto, generando fragmentación en disco y carga innecesaria de entrada y salida. Redis resuelve este problema almacenando pares clave-valor directamente en memoria RAM con un tiempo de vida automático asignado en el momento de la escritura:
+  * **Claves `otp:challenge:{correo}` con TTL de 300 segundos:** El propio motor de Redis elimina el código OTP exactamente al cumplirse los cinco minutos sin intervención de la aplicación.
+  * **Claves `auth:blacklist:{jti}` con TTL igual al tiempo restante del token:** Permite verificar en menos de un milisegundo si un token ha sido revocado antes de autorizar una operación sensible, desapareciendo automáticamente de la memoria cuando el token habría expirado de forma natural.
+
+#### 6.3 Frameworks, Lenguaje y Herramientas de Desarrollo
+
+**Decisión: Ecosistema Java 17/21 LTS con Spring Boot 3.2.12, Spring Security 6, Spring Data JPA, Flyway y MapStruct bajo Arquitectura Hexagonal.**
+
+Cada herramienta del stack cumple una responsabilidad técnica precisa sin invadir la lógica de negocio:
+
+* **Java 21 LTS y Arquitectura Hexagonal:** El núcleo del servicio, compuesto por los paquetes `domain/model` y `domain/usecase`, se escribe en Java puro sin importar anotaciones de persistencia ni del framework web. Los objetos de transferencia de entrada y salida se modelan con `Java Records`, lo que garantiza inmutabilidad desde el momento en que la petición JSON ingresa al controlador. La inyección de los casos de uso se centraliza de forma explícita en la clase de configuración `BeanConfig`, manteniendo el dominio 100% libre de acoplamiento con Spring.
+* **Spring Boot 3.2.12 y Spring Security 6:** Proveen la infraestructura robusta para los adaptadores de entrada y salida. Spring Security gestiona la cadena de filtros HTTP sin estado, la protección contra ataques de fuerza bruta y la codificación segura de contraseñas mediante `BCryptPasswordEncoder` con factor de costo configurable, aplicando sal criptográfica aleatoria en cada hash.
+* **JJWT 0.12.6:** Librería especializada en el estándar RFC 7519 para la generación, firma digital y análisis de tokens JWT. Permite incrustar en el payload los atributos esenciales de identidad como el identificador del usuario, el correo y la lista de roles, permitiendo que el API Gateway y los demás microservicios autoricen peticiones localmente sin consultar a `ms-auth` en cada clic del usuario.
+* **Spring Data JPA, Hibernate y Flyway:** En la capa de infraestructura de salida, Spring Data JPA simplifica la implementación del adaptador `AuthJpaAdapter` mediante repositorios tipados y consultas parametrizadas que previenen ataques de inyección SQL. Flyway complementa a JPA ejecutando los scripts versionados de creación de tablas e índices de manera determinista al iniciar el servicio.
+* **MapStruct 1.5.5:** Se encarga de traducir entre los DTOs expuestos en la API REST, las entidades puras del dominio y las entidades `@Entity` de la base de datos. Al generar clases de mapeo durante la compilación con Maven, ofrece el mismo rendimiento que el código escrito a mano pero evitando errores humanos al copiar atributos.
+
+#### 6.4 Broker de Mensajería y Comunicación Orientada a Eventos
+
+**Decisión: RabbitMQ 3.12+ mediante el protocolo estándar AMQP 0-9-1 con arquitectura de Topic Exchanges y colas durables.**
+
+En una arquitectura de microservicios distribuidos, comunicar cambios de estado mediante llamadas HTTP síncronas encadenadas introduce acoplamiento temporal: si el servicio de correos o el servicio de perfiles tardan en responder o sufren una caída momentánea, el inicio de sesión o el registro del usuario en `ms-auth` fallaría por tiempo de espera agotado. Para eliminar este riesgo, se eligió **RabbitMQ** como bus de eventos asíncrono.
+
+* **Justificación de RabbitMQ frente a otras alternativas:**
+  RabbitMQ ofrece un modelo de enrutamiento inteligente mediante *Exchanges* de tipo `topic` que permite distribuir un mismo evento de dominio hacia múltiples colas interesadas según patrones de clave de enrutamiento `routing key`. A diferencia de Apache Kafka, cuyo diseño orientado a registros particionados de flujo continuo exige un consumo elevado de recursos de infraestructura, RabbitMQ es ligero, garantiza latencias de entrega en el orden de microsegundos a pocos milisegundos, soporta confirmaciones de recepción por mensaje individual y maneja de forma nativa el reencolamiento y las colas de mensajes muertos `Dead Letter Queues`.
+* **Flujo de eventos publicados por `ms-auth`:**
+  * `auth.usuario.registrado`: Cuando una cuenta nueva se persiste en PostgreSQL, `ms-auth` publica este evento en el exchange `styleradar.auth.events`. El microservicio `ms-usuarios` lo consume para inicializar el perfil base del comprador y `ms-notificaciones` lo consume para enviar el correo de bienvenida, todo ello sin retrasar la respuesta `201 Created` al cliente.
+  * `auth.otp.solicitado`: Al generarse un código OTP para verificación en dos pasos o recuperación de contraseña, `ms-auth` publica el evento para que `ms-notificaciones` despache el correo transaccional de forma asíncrona, resolviendo el cuello de botella de latencia SMTP identificado en el análisis de deuda técnica.
+  * `auth.cuenta.bloqueada`: Notifica de manera inmediata al ecosistema cuando una cuenta supera el umbral de intentos fallidos o recibe una suspensión de seguridad.
+* **Flujo de eventos consumidos por `ms-auth`:**
+  * `usuario.estado.cambiado` y `tienda.rol.asignado`: `ms-auth` escucha a través de sus colas durables las decisiones administrativas originadas en `ms-usuarios` y `ms-tiendas` para revocar sesiones activas o actualizar los permisos efectivos del usuario, asegurando consistencia eventual con control de idempotencia mediante el identificador único de evento `eventId`.
 
 ---
 
