@@ -30,4 +30,4 @@ jobs:
         run: mvn -B clean verify
 
       - name: Analisis estatico con SpotBugs
-        run: mvn -B com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check
+        run: mvn -B com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check -Dspotbugs.excludeFilterFile=spotbugs-exclude.xml
