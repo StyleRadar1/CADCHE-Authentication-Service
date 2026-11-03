@@ -178,24 +178,141 @@ flowchart TD
     <tr>
       <td align="center" style="padding: 20px;">
         <p>
-          <img src="https://img.shields.io/badge/ESPACIO_DE_DIAGRAMA-DRAW.IO_/_PLANTUML-12063A?style=for-the-badge" alt="Diagrama Opcional" /><br />
-          <strong><font color="#5600EF" size="3">DIAGRAMA DE ARQUITECTURA HEXAGONAL Y UML EXPORTADO</font></strong>
+          <img src="https://img.shields.io/badge/ESPACIO_DE_DIAGRAMA-DRAW.IO_/_PLANTUML-12063A?style=for-the-badge" alt="Diagramas de Arquitectura" /><br />
+          <strong><font color="#5600EF" size="3">DIAGRAMAS DE ARQUITECTURA HEXAGONAL Y UML DEL SERVICIO</font></strong>
         </p>
         <p>
-          <sub>Los diagramas de clases, componentes específico, entidad-relación y secuencia del servicio se versionan en <code>docs/uml/</code>. Archivos fuente Draw.io: <a href="docs/uml/DiagramaClases.drawio"><code>DiagramaClases.drawio</code></a> · <a href="docs/uml/DiagramaBaseDatos.drawio"><code>DiagramaBaseDatos.drawio</code></a> · <a href="docs/uml/DiagramaComponentesEspecifico.drawio"><code>DiagramaComponentesEspecifico.drawio</code></a>.</sub>
-        </p>
-        <p>
-          <strong>Diagrama de Clases (<code>ms-auth</code>)</strong><br />
-          <img src="docs/uml/DiagramaClases.png" width="95%" alt="Diagrama de Clases ms-auth" /><br /><br />
-          <strong>Diagrama de Base de Datos Relacional y No Relacional (<code>ms-auth</code>)</strong><br />
-          <img src="docs/uml/DiagramaBaseDatos.png" width="95%" alt="Diagrama de Base de Datos ms-auth" /><br /><br />
-          <strong>Diagrama de Componentes Específico en Arquitectura Hexagonal (<code>ms-auth</code>)</strong><br />
-          <img src="docs/uml/DiagramaComponentesEspecifico.png" width="95%" alt="Diagrama de Componentes Específico ms-auth" /><br />
+          <sub>Los diagramas de clases, base de datos, componentes específico y secuencia se versionan en <code>docs/uml/</code>. Archivos fuente Draw.io: <a href="docs/uml/DiagramaClases.drawio"><code>DiagramaClases.drawio</code></a> · <a href="docs/uml/DiagramaBaseDatos.drawio"><code>DiagramaBaseDatos.drawio</code></a> · <a href="docs/uml/DiagramaComponentesEspecifico.drawio"><code>DiagramaComponentesEspecifico.drawio</code></a>.</sub>
         </p>
       </td>
     </tr>
   </table>
 </div>
+
+#### 7.1 Diagrama de Clases de Dominio (`ms-auth`)
+
+<div align="center">
+  <img src="docs/uml/DiagramaClases.png" width="95%" alt="Diagrama de Clases ms-auth" /><br />
+  <sub>Figura 7.1: Diagrama de clases del núcleo de dominio puro para ms-auth (Draw.io editable en <a href="docs/uml/DiagramaClases.drawio"><code>docs/uml/DiagramaClases.drawio</code></a>).</sub>
+</div>
+
+##### Justificación de Diseño y Principios Arquitecturales
+El diagrama de clases de `ms-auth` modela el núcleo de autenticación y seguridad siguiendo los lineamientos de Domain-Driven Design y el principio de Inversión de Dependencias:
+- **Pureza de Dominio (0% Frameworks)**: Las clases de dominio no contienen anotaciones de persistencia como `@Entity` ni estereotipos de Spring como `@Component` o `@Service`. Esto garantiza que la lógica de seguridad y validación sea agnóstica de la infraestructura y pueda ser probada mediante pruebas unitarias puras sin levantar el contexto de Spring.
+- **Inmutabilidad y Validación de Value Objects**: Los conceptos como `Email`, `PasswordHash`, `TokenJwt` y `SesionOtp` se modelan como Value Objects inmutables que encapsulan sus invariantes en el momento de instanciación, impidiendo la existencia de estados inconsistentes en el sistema.
+- **Segregación de Responsabilidades y Manejo de Políticas**: La lógica de verificación de contraseñas robustas y control de intentos fallidos se delega a validadores de dominio dedicados (`PasswordRequestValidator`, `OtpAttemptValidator`), desacoplando la entidad raíz de algoritmos volátiles de seguridad.
+
+##### Explicación Detallada de los Elementos
+1. **Agregado Raíz `Credencial`**:
+   - `id`: Identificador global único de tipo UUID.
+   - `email`: Value Object que garantiza formato RFC 5322 válido y normalización a minúsculas.
+   - `passwordHash`: Hash criptográfico seguro generado mediante BCrypt o Argon2id.
+   - `rol`: Enumeración de dominio (`COMPRADOR`, `VENDEDOR`, `ADMINISTRADOR`).
+   - `estado`: Estado de la cuenta (`ACTIVO`, `BLOQUEADO`, `PENDIENTE_VERIFICACION`).
+   - `intentosFallidos`: Contador entero de intentos consecutivos fallidos de autenticación.
+   - `bloqueadoHasta`: Marca temporal que rige el bloqueo temporal preventivo tras superar 5 intentos fallidos.
+   - Métodos de negocio: `verificarPassword()`, `registrarIntentoFallido()`, `reiniciarIntentos()`, `bloquearTemporalmente()`, `cambiarPassword()`.
+2. **Entidad `ConsentimientoHabeasData`**:
+   - Modela el cumplimiento legal de la Ley 1581 de 2012 y normativas de privacidad.
+   - Atributos: `versionPolitica`, `fechaAceptacion`, `ipOrigen`, `canalRegistro`, `estado`.
+3. **Value Objects**:
+   - `Email`: Encapsula la dirección de correo y reglas de formato.
+   - `PasswordHash`: Garantiza que nunca transite texto plano en la capa de dominio.
+   - `SesionOtp`: Representa el desafío de autenticación en dos pasos con código hash, expiración y límite de 3 intentos.
+4. **Validadores de Dominio**:
+   - `CredencialValidator`: Verifica integridad de la entidad y coherencia de estados.
+   - `PasswordRequestValidator`: Aplica reglas OWASP sobre longitud mínima, caracteres especiales, números y entropía.
+   - `OtpAttemptValidator`: Valida vigencia temporal y número de reintentos antes del bloqueo.
+5. **Puertos de Entrada y Salida**:
+   - Puertos de Entrada: `LoginUseCase`, `RegisterUserUseCase`, `VerifyOtpUseCase`, `RefreshTokenUseCase`.
+   - Puertos de Salida: `CredencialRepositoryPort`, `TokenProviderPort`, `RedisBlacklistPort`, `EventPublisherPort`.
+
+---
+
+#### 7.2 Diagrama de Base de Datos Relacional y No Relacional (`ms-auth`)
+
+<div align="center">
+  <img src="docs/uml/DiagramaBaseDatos.png" width="95%" alt="Diagrama de Base de Datos ms-auth" /><br />
+  <sub>Figura 7.2: Esquema de base de datos relacional PostgreSQL 15 y motor NoSQL Redis para ms-auth (Draw.io editable en <a href="docs/uml/DiagramaBaseDatos.drawio"><code>docs/uml/DiagramaBaseDatos.drawio</code></a>).</sub>
+</div>
+
+##### Justificación del Modelo Híbrido (Database-per-Service & Polyglot Persistence)
+El microservicio `ms-auth` implementa una estrategia de persistencia políglota para resolver dos requisitos con naturalezas operativas completamente opuestas:
+- **Base de Datos Relacional (PostgreSQL 15)**: La identidad y las credenciales de los usuarios constituyen el activo más crítico de StyleRadar. Se requiere consistencia ACID estricta, integridad referencial y aislamiento transaccional para garantizar que no existan duplicados de cuentas, que los registros de consentimiento legal de Habeas Data no puedan quedar huérfanos y que el historial de auditoría de logins sea persistente e inmutable.
+- **Motor NoSQL / En Memoria (Redis 7)**: La verificación de tokens revocados (Blacklist de JWT al cerrar sesión) y la gestión de códigos OTP de autenticación en dos pasos requieren latencia sub-milisegundo. Consultar una base de datos relacional en cada petición HTTP authenticated para comprobar si el JWT fue revocado degradaría severamente el throughput. Redis permite lecturas ultra-rápidas mediante almacenamiento clave-valor en memoria RAM y dispone de expiración nativa mediante TTL (Time-To-Live), eliminando la necesidad de procesos batch para purgar tokens vencidos u OTPs obsoletos.
+
+##### Explicación Detallada del Esquema de Datos
+1. **Esquema Relacional PostgreSQL (`styleradar_auth`)**:
+   - **Tabla `credenciales`**:
+     - `id (UUID, PK)`: Identificador primario no secuencial.
+     - `email (VARCHAR(150), UNIQUE, NOT NULL)`: Correo electrónico con índice único para búsquedas rápidas en el login.
+     - `password_hash (VARCHAR(255), NOT NULL)`: Hash seguro de la contraseña.
+     - `rol (VARCHAR(30), NOT NULL)`: Rol de autorización RBAC.
+     - `estado (VARCHAR(30), NOT NULL)`: Estado operativo de la cuenta.
+     - `intentos_fallidos (INT, DEFAULT 0)`: Control de fuerza bruta.
+     - `bloqueado_hasta (TIMESTAMP WITH TIME ZONE, NULL)`: Fin del bloqueo temporal.
+     - `created_at, updated_at (TIMESTAMP WITH TIME ZONE, NOT NULL)`: Auditoría temporal.
+   - **Tabla `consentimientos_habeas_data`**:
+     - `id (UUID, PK)`: Identificador primario.
+     - `credencial_id (UUID, FK, NOT NULL)`: Referencia con clave foránea a `credenciales(id)` con `ON DELETE CASCADE`.
+     - `version_politica (VARCHAR(20), NOT NULL)`: Versión de términos aceptada.
+     - `ip_registro (VARCHAR(45), NOT NULL)`: Registro legal de IP de aceptación.
+     - `fecha_consentimiento (TIMESTAMP WITH TIME ZONE, NOT NULL)`: Marca temporal de aceptación.
+   - **Tabla `historial_autenticacion`**:
+     - `id (UUID, PK)`: Identificador de evento.
+     - `credencial_id (UUID, FK, NOT NULL)`: Referencia a la credencial.
+     - `tipo_evento (VARCHAR(50), NOT NULL)`: `LOGIN_EXITOSO`, `LOGIN_FALLIDO`, `OTP_ENVIADO`, `PASSWORD_RESET`.
+     - `direccion_ip (VARCHAR(45), NOT NULL)`: IP de la solicitud.
+     - `user_agent (VARCHAR(255), NOT NULL)`: Navegador o dispositivo origen.
+     - `fecha_evento (TIMESTAMP WITH TIME ZONE, NOT NULL)`: Momento del evento.
+2. **Estructura NoSQL Clave-Valor en Redis**:
+   - **Namespace `blacklist:{jti}`**:
+     - Estructura: String o Set con clave `blacklist:<jti>` (identificador único del JWT) y valor `REVOKED`.
+     - TTL: Configurado exactamente con los segundos restantes para la expiración natural del token JWT. Una vez transcurrido este tiempo, Redis desaloca la memoria automáticamente.
+   - **Namespace `otp:{email}`**:
+     - Estructura: Hash con campos `code_hash` (código de 6 dígitos hasheado), `attempts` (contador de intentos realizados, máximo 3) y `created_at`.
+     - TTL: 300 segundos (5 minutos). Si el usuario no valida el código dentro de esa ventana temporal, la clave desaparece sin intervención manual.
+
+---
+
+#### 7.3 Diagrama de Componentes Específico en Arquitectura Hexagonal (`ms-auth`)
+
+<div align="center">
+  <img src="docs/uml/DiagramaComponentesEspecifico.png" width="95%" alt="Diagrama de Componentes Específico ms-auth" /><br />
+  <sub>Figura 7.3: Diagrama de componentes específico en arquitectura hexagonal para ms-auth (Draw.io editable en <a href="docs/uml/DiagramaComponentesEspecifico.drawio"><code>docs/uml/DiagramaComponentesEspecifico.drawio</code></a>).</sub>
+</div>
+
+##### Justificación del Enfoque Hexagonal (Puertos y Adaptadores)
+El microservicio `ms-auth` aplica estrictamente el estándar hexagonal de StyleRadar y el checklist de 10 puntos de calificación:
+- **Desacoplamiento Tecnológico**: Los adaptadores de entrada (Controladores REST y consumidores AMQP) no contienen lógica de negocio; su única responsabilidad es deserializar la petición, validar el formato de entrada mediante anotaciones Jakarta y delegar la ejecución a través de la interfaz del puerto de entrada (`domain/port/in/`).
+- **Inversión de Dependencias (DIP)**: La capa de aplicación y el núcleo de dominio no conocen las implementaciones de base de datos ni los clientes de mensajería. Dependen exclusivamente de interfaces de puertos de salida (`domain/port/out/`). Las implementaciones concretas residen en `infrastructure/adapter/out/` e inyectan los repositorios de Spring Data y clientes Redis.
+- **Configuración IoC Manual**: La capa de aplicación no utiliza `@Service` ni `@Component`. El cableado de dependencias se realiza de manera explícita en `BeanConfig.java` dentro de la capa de infraestructura, manteniendo la aplicación desacoplada del contenedor de Spring.
+
+##### Explicación Detallada de los Flujos de Componentes
+1. **Flujo 1: Login, Emisión/Refresh de JWT y Revocación en Blacklist (SR-RF-02, SR-RNF-01)**:
+   - **Entrada (Driving)**: `AuthController` (`infrastructure/adapter/in/rest/`) expone los endpoints `POST /login`, `POST /refresh` y `POST /logout`. Implementa la interfaz contractual `AuthApi` de documentación OpenAPI.
+   - **Puerto In**: Interfaz `LoginUseCase` (`domain/port/in/`).
+   - **Aplicación**: `LoginUseCaseImpl` (`application/usecase/`) orquesta la operación y se apoya en los mappers `LoginDtoInMapper` y `AuthDtoOutMapper` (`application/mapper/in/` y `out/`). Invoca la interfaz `AuthService` implementada en `AuthServiceImpl` (`application/service/impl/`).
+   - **Dominio Puro**: `AuthServiceImpl` opera sobre el modelo `Credencial`, el Value Object `Email` y el validador `CredencialValidator` (100% puro, 0% Spring).
+   - **Puerto Out**: Invoca `CredencialRepositoryPort` y `TokenProviderPort` (`domain/port/out/`).
+   - **Adaptadores Driven**: `CredencialPersistenceMapper` traduce el modelo de dominio a `CredencialJpaEntity`. `CredencialRepositoryAdapter` consulta a `SpringDataCredencialRepo` hacia PostgreSQL 15, mientras que `JwtTokenAdapter` y `RedisBlacklistAdapter` gestionan la firma de tokens y el almacenamiento en Redis.
+2. **Flujo 2: Registro de Comprador, Políticas OWASP y Consentimiento Habeas Data (SR-RF-01, SR-RNF-02)**:
+   - **Entrada**: `RegistroAuthController` recibe la solicitud `POST /api/v1/auth/register`.
+   - **Puerto In y Aplicación**: Se conecta a `RegisterUserUseCase` e invoca `RegisterUserUseCaseImpl` con apoyo de `RegisterUserDtoInMapper` y `RegisterUserDtoOutMapper`.
+   - **Servicio y Dominio**: `RegistroAuthServiceImpl` invoca a `HabeasDataServiceImpl`. Se validan las políticas de contraseña mediante `PasswordRequestValidator` y se instancia el evento de dominio `UserRegisteredEvent`.
+   - **Salida**: Se persiste el consentimiento mediante `ConsentimientoPersistenceMapper` y `UserRepositoryAdapter` en PostgreSQL, y se emite el evento a través de `EventPublisherPort` hacia `RabbitMqEventPublisherAdapter` con destino al Topic Exchange `auth.events`.
+3. **Flujo 3: Verificación en Dos Pasos 2FA / OTP y Auditoría de Intentos (SR-RF-92)**:
+   - **Entrada**: `OtpVerificationController` atiende `POST /verify-otp` y `POST /resend-otp`.
+   - **Puerto In y Aplicación**: Conexión a `VerifyOtpUseCase` y ejecución en `VerifyOtpUseCaseImpl`, asistido por `VerifyOtpDtoInMapper` y `OtpChallengedDtoOutMapper`.
+   - **Servicio y Dominio**: `OtpVerificationServiceImpl` utiliza el modelo `OtpSession`, el Value Object `OtpSessionOtp` y la regla de negocio pura `OtpAttemptValidator` (control de máximo 3 intentos y ventana de 5 minutos).
+   - **Salida**: `OtpSessionPersistenceMapper` y `AuditoriaPersistenceMapper` se conectan con `RedisOtpSessionAdapter` (lectura/escritura veloz con TTL en Redis) y `AuditoriaRepositoryAdapter` (registro inmutable del evento en PostgreSQL).
+4. **Banda Transversal de Infraestructura**:
+   - `BeanConfig.java` (`infrastructure/config/`): Instancia manualmente los beans de casos de uso y servicios de aplicación sin requerir anotaciones en el dominio ni en la aplicación.
+   - `SecurityConfig.java` & `JwtAuthFilter`: Configura la seguridad stateless, la validación de firmas JWT contra Redis y la prevención de accesos no autorizados.
+   - `GlobalExceptionHandler.java` (`infrastructure/exception/`): Captura excepciones de dominio y las serializa bajo el estándar internacional RFC 7807 Problem Details (`400`, `401`, `403`, `404`, `409`, `423`).
+   - `RabbitMqConfig.java`: Declara el Topic Exchange `auth.events`, colas durables, enrutamiento y cola de mensajes muertos (DLQ).
+   - `OpenApiConfig.java`: Configuración de Swagger 3 / OpenAPI 3.0 con esquema de seguridad Bearer JWT.
+   - `Flyway SQL Migrations` (`resources/db/migration/V1__init_schema.sql`): Versionamiento automatizado del esquema relacional `styleradar_auth`.
 
 ### Estructura Oficial de Paquetes en `src/main/java/`
 
