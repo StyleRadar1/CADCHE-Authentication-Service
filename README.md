@@ -182,11 +182,10 @@ flowchart TD
           <strong><font color="#5600EF" size="3">DIAGRAMA DE ARQUITECTURA HEXAGONAL Y UML EXPORTADO</font></strong>
         </p>
         <p>
-          <sub>Los diagramas de clases, componentes específico, entidad-relación y secuencia del servicio se versionan en <code>docs/uml/</code> y <code>docs/evidencias/diagrama-hexagonal.png</code>.</sub>
+          <sub>Los diagramas de clases, componentes específico, entidad-relación y secuencia del servicio se versionan en <code>docs/uml/</code>. Archivo fuente Draw.io: <a href="docs/uml/DiagramaClases.drawio"><code>docs/uml/DiagramaClases.drawio</code></a>.</sub>
         </p>
         <p>
-<!-- <img src="docs/evidencias/diagrama-hexagonal.png" width="90%" alt="Diagrama Hexagonal" /><br /> -->
-          <code>[ Espacio para diagrama exportado · docs/evidencias/diagrama-hexagonal.png | docs/uml/ ]</code>
+          <img src="docs/uml/DiagramaClases.png" width="95%" alt="Diagrama de Clases ms-auth" /><br />
         </p>
       </td>
     </tr>
