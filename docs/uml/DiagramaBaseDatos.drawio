@@ -251,39 +251,39 @@
     </mxCell>
 
     
-    <mxCell id="lbl_nosql_auth" value="&lt;b&gt;MODELO NO RELACIONAL · NoSQL Document / Key-Value (OTP &amp;amp; JWT Blacklist)&lt;/b&gt;" style="text;html=1;strokeColor=#D1C4AE;fillColor=#E8DCCB;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;strokeWidth=2;fontColor=#262626;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
+    <mxCell id="lbl_nosql_auth" value="&lt;b&gt;MODELO NO RELACIONAL · NoSQL Document / Key-Value (OTP &amp;amp; JWT Blacklist)&lt;/b&gt;" style="text;html=1;strokeColor=#48119A;fillColor=#E4DBF0;align=center;verticalAlign=middle;rounded=1;fontSize=13;fontStyle=1;strokeWidth=2;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
       <mxGeometry x="1020" y="20" width="1020" height="32" as="geometry" />
     </mxCell>
 
     
-    <mxCell id="auth_top_yellow" value="&lt;b&gt;SesionAutenticacion&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=32;fillColor=#fff2cc;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#d6b656;swimlaneFillColor=#ffffff;fontSize=13;" vertex="1" parent="1">
+    <mxCell id="auth_top_yellow" value="&lt;b&gt;SesionAutenticacion&lt;/b&gt;" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=32;fillColor=#E4DBF0;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#48119A;strokeWidth=2;swimlaneFillColor=#ffffff;fontSize=13;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
       <mxGeometry x="1410" y="80" width="240" height="92" as="geometry" />
     </mxCell>
-    <mxCell id="auth_top_yellow_a1" value="- correo: String&lt;br&gt;- usuarioId: Long&lt;br&gt;- estadoSesion: String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="auth_top_yellow">
+    <mxCell id="auth_top_yellow_a1" value="- correo: String&lt;br&gt;- usuarioId: Long&lt;br&gt;- estadoSesion: String" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="auth_top_yellow">
       <mxGeometry y="32" width="240" height="60" as="geometry" />
     </mxCell>
 
     
-    <mxCell id="auth_cyan_left" value="&lt;b&gt;CodigoOtp&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=32;fillColor=#ccf2ff;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#33b5e5;swimlaneFillColor=#ffffff;fontSize=13;" vertex="1" parent="1">
+    <mxCell id="auth_cyan_left" value="&lt;b&gt;CodigoOtp&lt;/b&gt;" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=32;fillColor=#E4DBF0;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#48119A;strokeWidth=2;swimlaneFillColor=#ffffff;fontSize=13;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
       <mxGeometry x="1040" y="240" width="250" height="104" as="geometry" />
     </mxCell>
-    <mxCell id="auth_cyan_left_a1" value="- codigoOtp: String (6 dígitos)&lt;br&gt;- intentosRestantes: int = 3&lt;br&gt;- ttlSegundos: long = 300&lt;br&gt;- verificado: boolean" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="auth_cyan_left">
+    <mxCell id="auth_cyan_left_a1" value="- codigoOtp: String (6 dígitos)&lt;br&gt;- intentosRestantes: int = 3&lt;br&gt;- ttlSegundos: long = 300&lt;br&gt;- verificado: boolean" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="auth_cyan_left">
       <mxGeometry y="32" width="250" height="72" as="geometry" />
     </mxCell>
 
     
-    <mxCell id="auth_cyan_mid" value="&lt;b&gt;SesionAutenticacion&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=32;fillColor=#ccf2ff;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#33b5e5;swimlaneFillColor=#ffffff;fontSize=13;" vertex="1" parent="1">
+    <mxCell id="auth_cyan_mid" value="&lt;b&gt;SesionAutenticacion&lt;/b&gt;" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=32;fillColor=#E4DBF0;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#48119A;strokeWidth=2;swimlaneFillColor=#ffffff;fontSize=13;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
       <mxGeometry x="1410" y="240" width="240" height="104" as="geometry" />
     </mxCell>
-    <mxCell id="auth_cyan_mid_a1" value="- _id: String (correo)&lt;br&gt;- usuarioId: Long&lt;br&gt;- roles: List&amp;lt;String&amp;gt;&lt;br&gt;- expiraEn: Instant" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="auth_cyan_mid">
+    <mxCell id="auth_cyan_mid_a1" value="- _id: String (correo)&lt;br&gt;- usuarioId: Long&lt;br&gt;- roles: List&amp;lt;String&amp;gt;&lt;br&gt;- expiraEn: Instant" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="auth_cyan_mid">
       <mxGeometry y="32" width="240" height="72" as="geometry" />
     </mxCell>
 
     
-    <mxCell id="auth_cyan_right" value="&lt;b&gt;TokenRevocado&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=32;fillColor=#ccf2ff;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#33b5e5;swimlaneFillColor=#ffffff;fontSize=13;" vertex="1" parent="1">
+    <mxCell id="auth_cyan_right" value="&lt;b&gt;TokenRevocado&lt;/b&gt;" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=32;fillColor=#E4DBF0;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#48119A;strokeWidth=2;swimlaneFillColor=#ffffff;fontSize=13;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
       <mxGeometry x="1770" y="240" width="250" height="104" as="geometry" />
     </mxCell>
-    <mxCell id="auth_cyan_right_a1" value="- _id: String (jti)&lt;br&gt;- tokenHash: String&lt;br&gt;- fechaLogout: Instant&lt;br&gt;- ttlRestanteSegundos: long" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="auth_cyan_right">
+    <mxCell id="auth_cyan_right_a1" value="- _id: String (jti)&lt;br&gt;- tokenHash: String&lt;br&gt;- fechaLogout: Instant&lt;br&gt;- ttlRestanteSegundos: long" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="auth_cyan_right">
       <mxGeometry y="32" width="250" height="72" as="geometry" />
     </mxCell>
 
@@ -311,22 +311,22 @@
     </mxCell>
 
     
-    <mxCell id="auth_nosql_box" value="&lt;i&gt;NoSql Document&lt;/i&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;dashed=1;strokeColor=#9898A6;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;fontSize=13;fontColor=#262626;strokeWidth=2;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
+    <mxCell id="auth_nosql_box" value="&lt;i&gt;NoSql Document&lt;/i&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;dashed=1;strokeColor=#48119A;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;fontSize=13;fontColor=#48119A;strokeWidth=2;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
       <mxGeometry x="1040" y="460" width="980" height="220" as="geometry" />
     </mxCell>
 
     
-    <mxCell id="auth_doc_1" value="SesionAutenticacion" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#E8DCCB;strokeColor=#D1C4AE;fontSize=13;fontStyle=1;size=18;strokeWidth=2;fontColor=#262626;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
+    <mxCell id="auth_doc_1" value="SesionAutenticacion" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#E4DBF0;strokeColor=#48119A;fontSize=13;fontStyle=1;size=18;strokeWidth=2;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
       <mxGeometry x="1350" y="525" width="210" height="110" as="geometry" />
     </mxCell>
 
     
-    <mxCell id="auth_doc_2" value="TokenRevocado" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#E8DCCB;strokeColor=#D1C4AE;fontSize=13;fontStyle=1;size=18;strokeWidth=2;fontColor=#262626;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
+    <mxCell id="auth_doc_2" value="TokenRevocado" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#E4DBF0;strokeColor=#48119A;fontSize=13;fontStyle=1;size=18;strokeWidth=2;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
       <mxGeometry x="1790" y="525" width="210" height="110" as="geometry" />
     </mxCell>
 
     
-    <mxCell id="auth_doc_e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=block;endFill=0;exitX=0.25;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fillColor=#E8DCCB;strokeColor=#48119A;strokeWidth=2;fontColor=#262626;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1" source="auth_doc_1" target="auth_cyan_left">
+    <mxCell id="auth_doc_e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=block;endFill=0;exitX=0.25;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeColor=#48119A;strokeWidth=2;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1" source="auth_doc_1" target="auth_cyan_left">
       <mxGeometry relative="1" as="geometry">
         <Array as="points">
           <mxPoint x="1403" y="440" />
@@ -334,7 +334,7 @@
         </Array>
       </mxGeometry>
     </mxCell>
-    <mxCell id="auth_doc_e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=block;endFill=0;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fillColor=#E8DCCB;strokeColor=#48119A;strokeWidth=2;fontColor=#262626;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1" source="auth_doc_1" target="auth_cyan_mid">
+    <mxCell id="auth_doc_e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=block;endFill=0;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeColor=#48119A;strokeWidth=2;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1" source="auth_doc_1" target="auth_cyan_mid">
       <mxGeometry relative="1" as="geometry">
         <Array as="points">
           <mxPoint x="1508" y="440" />
@@ -342,7 +342,7 @@
         </Array>
       </mxGeometry>
     </mxCell>
-    <mxCell id="auth_doc_e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=block;endFill=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fillColor=#E8DCCB;strokeColor=#48119A;strokeWidth=2;fontColor=#262626;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1" source="auth_doc_2" target="auth_cyan_right">
+    <mxCell id="auth_doc_e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=block;endFill=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeColor=#48119A;strokeWidth=2;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1" source="auth_doc_2" target="auth_cyan_right">
       <mxGeometry relative="1" as="geometry" />
     </mxCell>
   </root>
