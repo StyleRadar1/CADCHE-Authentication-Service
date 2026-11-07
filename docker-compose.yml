@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: ms-auth
     ports:
-      - "8081:8081"
+      - "8100:8100"
     environment:
       DB_URL: jdbc:postgresql://auth-db:5432/${POSTGRES_DB}
       DB_USERNAME: ${POSTGRES_USER}
