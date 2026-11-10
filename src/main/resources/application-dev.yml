@@ -19,6 +19,9 @@ spring:
           auth: true
           starttls:
             enable: true
+            required: true
+          ssl:
+            trust: smtp.gmail.com
 
 styleradar:
   usuarios:

@@ -47,9 +47,10 @@ public class EmailServiceImpl implements EmailService {
 
         try {
             mailSender.send(mensaje);
-            log.info("Correo con código OTP enviado exitosamente a {}", email);
+            log.info("📧 Correo con código OTP enviado exitosamente a {}", email);
         } catch (MailException ex) {
-            log.warn("Servidor SMTP no disponible o fallo de envío local ({})", ex.getMessage());
+            String detalle = ex.getRootCause() != null ? ex.getRootCause().getMessage() : ex.getMessage();
+            log.warn("Servidor SMTP no disponible o fallo de envío ({}) - Detalle: {}", ex.getMessage(), detalle);
             log.info("================================================================================");
             log.info("🔔 [ENTORNO LOCAL DEV] CÓDIGO OTP DE 6 DÍGITOS PARA {}: >>> {} <<<", email, codigo);
             log.info("================================================================================");
