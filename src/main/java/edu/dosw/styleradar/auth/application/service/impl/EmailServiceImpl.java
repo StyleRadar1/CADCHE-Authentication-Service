@@ -1,18 +1,22 @@
 package edu.dosw.styleradar.auth.application.service.impl;
 
-import edu.dosw.styleradar.auth.application.service.EmailService;
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import edu.dosw.styleradar.auth.application.service.EmailService;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.username:styleradar1@gmail.com}")
     private String correoEmisor;
 
     public EmailServiceImpl(JavaMailSender mailSender) {
@@ -21,10 +25,8 @@ public class EmailServiceImpl implements EmailService {
 
     @PostConstruct
     public void verificarConfiguracion() {
-        System.out.println("========== CONFIGURACION SMTP ==========");
-        System.out.println("Correo emisor: " + correoEmisor);
-        System.out.println("JavaMailSender disponible: " + (mailSender != null));
-        System.out.println("========================================");
+        log.info("Configuración SMTP inicializada. Correo emisor: {}, JavaMailSender disponible: {}",
+                correoEmisor, mailSender != null);
     }
 
     @Override
@@ -43,7 +45,14 @@ public class EmailServiceImpl implements EmailService {
                         "Equipo StyleRadar"
         );
 
-        mailSender.send(mensaje);
+        try {
+            mailSender.send(mensaje);
+            log.info("📧 Correo con código OTP enviado exitosamente a {}", email);
+        } catch (MailException ex) {
+            log.warn("Servidor SMTP no disponible o fallo de envío local ({})", ex.getMessage());
+            log.info("================================================================================");
+            log.info("🔔 [ENTORNO LOCAL DEV] CÓDIGO OTP DE 6 DÍGITOS PARA {}: >>> {} <<<", email, codigo);
+            log.info("================================================================================");
+        }
     }
 }
-

@@ -25,6 +25,11 @@
         <lombok.version>1.18.42</lombok.version>
         <flyway.version>10.20.1</flyway.version>
         <testcontainers.version>1.19.8</testcontainers.version>
+        <sonar.version>5.8.0.7211</sonar.version>
+        <sonar.projectKey>StyleRadar1_CADCHE-Authentication-Service</sonar.projectKey>
+        <sonar.organization>styleradar1</sonar.organization>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     </properties>
 
     <dependencies>
@@ -205,6 +210,34 @@
                     <xmlOutput>true</xmlOutput>
                     <excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
                 </configuration>
+            </plugin>
+
+            <!-- Reporte de Cobertura JaCoCo -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- SonarQube Cloud Scanner -->
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>${sonar.version}</version>
             </plugin>
 
         </plugins>
