@@ -106,7 +106,7 @@ public class AuthController implements AuthApi {
     }
 
     @Override
-    @PostMapping({"/otp/verificar", "/verificar-otp"})
+    @PostMapping("/otp/verificar")
     public ResponseEntity<LoginResponseDTO> verificarOtp(
             @Valid @RequestBody VerificarOtpRequestDTO request) {
 
@@ -145,7 +145,7 @@ public class AuthController implements AuthApi {
     }
 
     @Override
-    @PostMapping({"/otp/reenviar", "/reenviar-otp"})
+    @PostMapping("/otp/reenviar")
     public ResponseEntity<OtpMensajeResponseDTO> reenviarOtp(
             @Valid @RequestBody ReenviarOtpRequestDTO request) {
 
