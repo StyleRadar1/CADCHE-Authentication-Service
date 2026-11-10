@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import edu.dosw.styleradar.auth.application.service.JwtService;
 import edu.dosw.styleradar.auth.domain.model.Rol;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -42,5 +43,14 @@ public class JwtServiceImpl implements JwtService {
                 .expiration(Date.from(expiracion))
                 .signWith(secretKey, Jwts.SIG.HS256)
                 .compact();
+    }
+
+    @Override
+    public Claims validarToken(String token) {
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }
