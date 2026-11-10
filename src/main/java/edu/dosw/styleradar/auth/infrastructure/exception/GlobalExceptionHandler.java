@@ -107,7 +107,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleOtpIntentosAgotados(
             OtpIntentosAgotadosException exception, HttpServletRequest request) {
 
-        return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY,
+        return buildResponse(HttpStatus.TOO_MANY_REQUESTS,
                 exception.getMessage(), request.getRequestURI(), Map.of());
     }
 

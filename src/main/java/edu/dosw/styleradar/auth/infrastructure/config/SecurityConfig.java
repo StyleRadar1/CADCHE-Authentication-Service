@@ -38,12 +38,7 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/actuator/info").permitAll()
                         .requestMatchers(HttpMethod.POST,
-                                "/api/v1/auth/login",
-                                "/api/v1/auth/registro",
-                                "/api/v1/auth/otp/verificar",
-                                "/api/v1/auth/otp/reenviar",
-                                "/api/v1/auth/refresh",
-                                "/api/v1/auth/logout").permitAll()
+                                "/api/v1/auth/**").permitAll()
                         .anyRequest().authenticated())
                 .build();
     }

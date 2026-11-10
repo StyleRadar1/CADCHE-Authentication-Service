@@ -9,10 +9,10 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
   mail:
-    host: ${MAIL_HOST}
+    host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${MAIL_USERNAME:juliancamilogiral@gmail.com}
+    password: ${MAIL_PASSWORD:ekkp syxx rkfy gudf}
     properties:
       mail:
         smtp:
@@ -24,7 +24,7 @@ styleradar:
   usuarios:
     base-url: ${USUARIOS_SERVICE_URL:http://localhost:8120}
     username: ${USUARIOS_INTERNAL_USERNAME:ms-auth}
-    password: ${USUARIOS_INTERNAL_PASSWORD:}
+    password: ${USUARIOS_INTERNAL_PASSWORD:tu_clave_tecnica}
 
   security:
     jwt:
