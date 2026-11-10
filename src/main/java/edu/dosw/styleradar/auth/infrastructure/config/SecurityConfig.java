@@ -44,13 +44,18 @@ public class SecurityConfig {
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource(
-            @Value("${styleradar.cors.allowed-origins:http://localhost:3000}") List<String> origins) {
+    CorsConfigurationSource corsConfigurationSource() {
         var cors = new CorsConfiguration();
-        cors.setAllowedOrigins(origins);
+        cors.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "https://*.styleradar.com",
+                "https://*.azurewebsites.net"
+        ));
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        cors.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        cors.setExposedHeaders(List.of("WWW-Authenticate"));
+        cors.setAllowedHeaders(List.of("*"));
+        cors.setExposedHeaders(List.of("Authorization", "WWW-Authenticate"));
+        cors.setAllowCredentials(true);
         cors.setMaxAge(3600L);
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cors);
