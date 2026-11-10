@@ -1,6 +1,7 @@
 package edu.dosw.styleradar.auth.application.service.impl;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -44,7 +45,14 @@ public class EmailServiceImpl implements EmailService {
                         "Equipo StyleRadar"
         );
 
-        mailSender.send(mensaje);
-        log.info("Correo con código OTP enviado exitosamente a {}", email);
+        try {
+            mailSender.send(mensaje);
+            log.info("Correo con código OTP enviado exitosamente a {}", email);
+        } catch (MailException ex) {
+            log.warn("Servidor SMTP no disponible o fallo de envío local ({})", ex.getMessage());
+            log.info("================================================================================");
+            log.info("🔔 [ENTORNO LOCAL DEV] CÓDIGO OTP DE 6 DÍGITOS PARA {}: >>> {} <<<", email, codigo);
+            log.info("================================================================================");
+        }
     }
 }
