@@ -1,5 +1,7 @@
 server:
-  port: ${SERVER_PORT:8100}
+  port: ${SERVER_PORT:${PORT:8100}}
+  forward-headers-strategy: framework
+  shutdown: graceful
 
 spring:
   application:

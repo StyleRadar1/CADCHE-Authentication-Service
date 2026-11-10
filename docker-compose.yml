@@ -5,30 +5,57 @@ services:
       dockerfile: Dockerfile
     container_name: ms-auth
     ports:
-      - "8081:8081"
+      - "8100:8100"
     environment:
-      DB_URL: jdbc:postgresql://auth-db:5432/${POSTGRES_DB}
-      DB_USERNAME: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      SERVER_PORT: 8100
+      DB_URL: jdbc:postgresql://auth-db:5432/${POSTGRES_DB:-styleradar_auth}
+      DB_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      REDIS_HOST: auth-redis
+      REDIS_PORT: 6379
+      USUARIOS_SERVICE_URL: ${USUARIOS_SERVICE_URL:-http://ms-usuarios:8120}
+      USUARIOS_INTERNAL_USERNAME: ${USUARIOS_INTERNAL_USERNAME:-ms-auth}
+      USUARIOS_INTERNAL_PASSWORD: ${USUARIOS_INTERNAL_PASSWORD:-}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-styleradar1@gmail.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     depends_on:
       auth-db:
+        condition: service_healthy
+      auth-redis:
         condition: service_healthy
     networks:
       - auth-network
 
+  auth-redis:
+    image: redis:7-alpine
+    container_name: auth-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - auth-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - auth-network
+
   auth-db:
-    image: postgres:15
+    image: postgres:16-alpine
     container_name: auth-db
     ports:
       - "5434:5432"
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-styleradar_auth}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - auth-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-styleradar_auth}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -37,6 +64,7 @@ services:
 
 volumes:
   auth-data:
+  auth-redis-data:
 
 networks:
   auth-network:

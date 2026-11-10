@@ -9,4 +9,13 @@
         <Class name="~.*DTO.*" />
         <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2" />
     </Match>
+    <!-- Excluir inyección de dependencias de Spring en servicios y adaptadores -->
+    <Match>
+        <Package name="~.*\.application\.service.*" />
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2" />
+    </Match>
+    <Match>
+        <Package name="~.*\.infrastructure\.adapter.*" />
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2" />
+    </Match>
 </FindBugsFilter>

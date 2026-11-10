@@ -28,8 +28,9 @@ public class SwaggerConfig {
                         .bearerFormat("JWT")
                         .description("Token JWT emitido por ms-auth (HS256)")))
                 .servers(List.of(
-                        new Server().url("http://localhost:8100").description("Servidor local ms-auth"),
-                        new Server().url("http://localhost:8080").description("API Gateway StyleRadar")))
+                        new Server().url("/").description("Ruta relativa al host actual (recomendado)"),
+                        new Server().url("http://localhost:8100").description("Servidor local ms-auth (:8100)"),
+                        new Server().url("http://localhost:8080").description("API Gateway StyleRadar (:8080)")))
                 .info(new Info()
                         .title("StyleRadar - Authentication Service API (ms-auth)")
                         .description("Especificación OpenAPI 3.0 del microservicio de autenticación de StyleRadar. "
@@ -49,10 +50,12 @@ public class SwaggerConfig {
                 "/api/v1/auth/otp/verificar",
                 "/api/v1/auth/otp/reenviar",
                 "/api/v1/auth/refresh");
+
         return api -> {
             if (api.getPaths() == null) {
                 return;
             }
+
             api.getPaths().forEach((path, item) -> item.readOperationsMap().forEach((method, operation) -> {
                 boolean publicRoute = method == PathItem.HttpMethod.POST && publicPosts.contains(path);
                 operation.setSecurity(publicRoute
@@ -62,4 +65,3 @@ public class SwaggerConfig {
         };
     }
 }
-

@@ -48,12 +48,7 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/actuator/info").permitAll()
                         .requestMatchers(HttpMethod.POST,
-                                "/api/v1/auth/login",
-                                "/api/v1/auth/registro",
-                                "/api/v1/auth/otp/verificar",
-                                "/api/v1/auth/otp/reenviar",
-                                "/api/v1/auth/refresh",
-                                "/api/v1/auth/logout").permitAll()
+                                "/api/v1/auth/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(
                         jwtAuthenticationFilter,
@@ -62,13 +57,18 @@ public class SecurityConfig {
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource(
-            @Value("${styleradar.cors.allowed-origins:http://localhost:3000}") List<String> origins) {
+    CorsConfigurationSource corsConfigurationSource() {
         var cors = new CorsConfiguration();
-        cors.setAllowedOrigins(origins);
+        cors.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "https://*.styleradar.com",
+                "https://*.azurewebsites.net"
+        ));
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        cors.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        cors.setExposedHeaders(List.of("WWW-Authenticate"));
+        cors.setAllowedHeaders(List.of("*"));
+        cors.setExposedHeaders(List.of("Authorization", "WWW-Authenticate"));
+        cors.setAllowCredentials(true);
         cors.setMaxAge(3600L);
 
         var source = new UrlBasedCorsConfigurationSource();

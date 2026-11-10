@@ -10,4 +10,10 @@ public interface JwtService {
     String generarToken(Long usuarioId, Set<Rol> roles);
 
     Claims validarToken(String token);
+
+    Long obtenerUsuarioId(String token);
+
+    Set<Rol> obtenerRoles(String token);
+
+    long obtenerTiempoRestanteSegundos(String token);
 }

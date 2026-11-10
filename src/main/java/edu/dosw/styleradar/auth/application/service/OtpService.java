@@ -6,6 +6,8 @@ public interface OtpService {
 
     void verificarOtp(String email, String codigo);
 
+    String reenviarOtp(String email);
+
     Long obtenerUsuarioId(String email);
 
     String obtenerRol(String email);
@@ -13,4 +15,8 @@ public interface OtpService {
     int obtenerIntentosRestantes(String email);
 
     void eliminarOtp(String email);
+
+    void invalidarToken(String token, long ttlSegundos);
+
+    boolean esTokenInvalido(String token);
 }
