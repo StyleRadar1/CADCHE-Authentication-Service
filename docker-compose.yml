@@ -15,11 +15,11 @@ services:
       REDIS_PORT: 6379
       USUARIOS_SERVICE_URL: ${USUARIOS_SERVICE_URL:-http://ms-usuarios:8120}
       USUARIOS_INTERNAL_USERNAME: ${USUARIOS_INTERNAL_USERNAME:-ms-auth}
-      USUARIOS_INTERNAL_PASSWORD: ${USUARIOS_INTERNAL_PASSWORD:-tu_clave_tecnica}
+      USUARIOS_INTERNAL_PASSWORD: ${USUARIOS_INTERNAL_PASSWORD:-}
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
-      MAIL_USERNAME: ${MAIL_USERNAME:-juliancamilogiral@gmail.com}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-ekkp syxx rkfy gudf}
+      MAIL_USERNAME: ${MAIL_USERNAME:-styleradar1@gmail.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     depends_on:
       auth-db:
         condition: service_healthy

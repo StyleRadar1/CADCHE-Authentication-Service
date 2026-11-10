@@ -11,8 +11,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:juliancamilogiral@gmail.com}
-    password: ${MAIL_PASSWORD:ekkp syxx rkfy gudf}
+    username: ${MAIL_USERNAME:styleradar1@gmail.com}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -24,7 +24,7 @@ styleradar:
   usuarios:
     base-url: ${USUARIOS_SERVICE_URL:http://localhost:8120}
     username: ${USUARIOS_INTERNAL_USERNAME:ms-auth}
-    password: ${USUARIOS_INTERNAL_PASSWORD:tu_clave_tecnica}
+    password: ${USUARIOS_INTERNAL_PASSWORD:}
 
   security:
     jwt:
