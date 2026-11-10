@@ -62,7 +62,6 @@ jobs:
         run: mvn -B com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check "-Dspotbugs.excludeFilterFile=spotbugs-exclude.xml"
 
       - name: Analisis estatico SonarQube Cloud (Quality Gate A)
-        if: env.SONAR_TOKEN != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -79,7 +78,7 @@ jobs:
   build-and-push:
     name: 2. Build y Push Imagen OCI Docker Hub
     needs: test-and-quality
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && secrets.DOCKERHUB_USERNAME != ''
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       image-tag: ${{ steps.meta.outputs.version }}
@@ -120,7 +119,7 @@ jobs:
   deploy-qa:
     name: 3. Desplegar a Azure App Service QA
     needs: build-and-push
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && secrets.AZURE_CREDENTIALS != ''
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment:
       name: qa
