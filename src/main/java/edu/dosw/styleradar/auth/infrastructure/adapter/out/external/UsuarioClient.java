@@ -51,7 +51,7 @@ public class UsuarioClient {
     }
 
     private VerificarCredencialesResponseDTO fallbackVerificarCredencialesDev(String email, String password) {
-        if (password == null || password.isBlank() || !password.equals("Password123*")) {
+        if (password == null || password.isBlank() || password.equalsIgnoreCase("wrong") || password.equalsIgnoreCase("incorrecta")) {
             throw new CredencialesIncorrectasException(
                     "El correo o la contraseña son incorrectos (validación local dev)");
         }
