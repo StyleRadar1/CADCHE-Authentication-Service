@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import edu.dosw.styleradar.auth.application.service.JwtService;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -25,6 +26,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final StringRedisTemplate redisTemplate;
 
+    @SuppressFBWarnings(
+            value = "EI_EXPOSE_REP2",
+            justification = "StringRedisTemplate es una dependencia administrada por Spring e inyectada por constructor.")
     public JwtAuthenticationFilter(
             JwtService jwtService,
             StringRedisTemplate redisTemplate) {
