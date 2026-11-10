@@ -50,10 +50,12 @@ public class SwaggerConfig {
                 "/api/v1/auth/otp/verificar",
                 "/api/v1/auth/otp/reenviar",
                 "/api/v1/auth/refresh");
+
         return api -> {
             if (api.getPaths() == null) {
                 return;
             }
+
             api.getPaths().forEach((path, item) -> item.readOperationsMap().forEach((method, operation) -> {
                 boolean publicRoute = method == PathItem.HttpMethod.POST && publicPosts.contains(path);
                 operation.setSecurity(publicRoute
@@ -63,4 +65,3 @@ public class SwaggerConfig {
         };
     }
 }
-

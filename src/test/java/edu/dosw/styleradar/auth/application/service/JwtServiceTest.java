@@ -1,6 +1,7 @@
 package edu.dosw.styleradar.auth.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Set;
 
@@ -15,7 +16,7 @@ import edu.dosw.styleradar.auth.domain.model.Rol;
 class JwtServiceTest {
 
     private JwtServiceImpl jwtService;
-    // Clave de prueba de 256 bits codificada en Base64
+
     private final String secretBase64 = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
     private final String duration = "PT24H";
 
@@ -31,7 +32,7 @@ class JwtServiceTest {
         String token = jwtService.generarToken(123L, roles);
 
         assertThat(token).isNotBlank();
-        assertThat(token.split("\\.")).hasSize(3); // Header, Payload, Signature
+        assertThat(token.split("\\.")).hasSize(3);
     }
 
     @Test
@@ -39,15 +40,21 @@ class JwtServiceTest {
     void debeValidarTokenExitosamente() {
         String token = jwtService.generarToken(99L, Set.of(Rol.COMPRADOR));
 
-        assertThat(jwtService.validarToken(token)).isTrue();
+        assertThat(jwtService.validarToken(token)).isNotNull();
+        assertThat(jwtService.validarToken(token).getSubject()).isEqualTo("99");
     }
 
     @Test
     @DisplayName("Debe rechazar tokens corruptos, nulos o con firmas incorrectas")
     void debeRechazarTokensInvalidos() {
-        assertThat(jwtService.validarToken("token.invalido.falso")).isFalse();
-        assertThat(jwtService.validarToken("")).isFalse();
-        assertThat(jwtService.validarToken(null)).isFalse();
+        assertThatThrownBy(() -> jwtService.validarToken("token.invalido.falso"))
+                .isInstanceOf(RuntimeException.class);
+
+        assertThatThrownBy(() -> jwtService.validarToken(""))
+                .isInstanceOf(RuntimeException.class);
+
+        assertThatThrownBy(() -> jwtService.validarToken(null))
+                .isInstanceOf(RuntimeException.class);
     }
 
     @Test
@@ -56,6 +63,7 @@ class JwtServiceTest {
         String token = jwtService.generarToken(456L, Set.of(Rol.ADMIN_STYLERADAR));
 
         Long usuarioId = jwtService.obtenerUsuarioId(token);
+
         assertThat(usuarioId).isEqualTo(456L);
     }
 
@@ -65,6 +73,7 @@ class JwtServiceTest {
         String token = jwtService.generarToken(789L, Set.of(Rol.REPRESENTANTE_FUNDACION));
 
         Set<Rol> roles = jwtService.obtenerRoles(token);
+
         assertThat(roles).containsExactly(Rol.REPRESENTANTE_FUNDACION);
     }
 
@@ -74,6 +83,7 @@ class JwtServiceTest {
         String token = jwtService.generarToken(100L, Set.of(Rol.COMPRADOR));
 
         long tiempoRestante = jwtService.obtenerTiempoRestanteSegundos(token);
+
         assertThat(tiempoRestante).isGreaterThan(86300L).isLessThanOrEqualTo(86400L);
     }
 }

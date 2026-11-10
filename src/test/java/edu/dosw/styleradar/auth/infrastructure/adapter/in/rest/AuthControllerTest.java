@@ -2,11 +2,9 @@ package edu.dosw.styleradar.auth.infrastructure.adapter.in.rest;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -15,6 +13,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.Date;
 import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +22,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -48,6 +49,8 @@ import edu.dosw.styleradar.auth.domain.model.Rol;
 import edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioClient;
 import edu.dosw.styleradar.auth.infrastructure.config.SecurityConfig;
 import edu.dosw.styleradar.auth.infrastructure.exception.GlobalExceptionHandler;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
 
 @WebMvcTest(controllers = AuthController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
@@ -73,9 +76,11 @@ class AuthControllerTest {
     @MockBean
     private JwtService jwtService;
 
-    // =========================================================================
-    // SR-RF-02 & SR-RF-92: POST /api/v1/auth/login
-    // =========================================================================
+    @MockBean
+    private StringRedisTemplate stringRedisTemplate;
+
+    @MockBean
+    private ValueOperations<String, String> valueOperations;
 
     @Test
     @DisplayName("Login exitoso debe validar credenciales, generar OTP y retornar requiereOtp=true con 200 OK")
@@ -144,10 +149,6 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status", is(400)));
     }
-
-    // =========================================================================
-    // SR-RF-92: POST /api/v1/auth/otp/verificar
-    // =========================================================================
 
     @Test
     @DisplayName("Verificar OTP correcto dentro del tiempo debe emitir JWT y retornar 200 OK")
@@ -231,10 +232,6 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.status", is(400)));
     }
 
-    // =========================================================================
-    // SR-RF-92: POST /api/v1/auth/otp/reenviar
-    // =========================================================================
-
     @Test
     @DisplayName("Reenviar OTP con sesión activa debe regenerar código, enviar correo y retornar 200 OK")
     void reenviarOtp_conSesionActiva_debeRetornar200() throws Exception {
@@ -269,16 +266,16 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.status", is(401)));
     }
 
-    // =========================================================================
-    // SR-RF-02: POST /api/v1/auth/refresh
-    // =========================================================================
-
     @Test
     @DisplayName("Refresh con token válido y no revocado debe retornar nuevo JWT con 200 OK")
     void refresh_conTokenValido_debeRetornarNuevoJwt() throws Exception {
         RefreshTokenRequestDTO request = new RefreshTokenRequestDTO("token.valido.jwt");
 
-        when(jwtService.validarToken("token.valido.jwt")).thenReturn(true);
+        Claims claims = Jwts.claims()
+                .subject("10")
+                .build();
+
+        when(jwtService.validarToken("token.valido.jwt")).thenReturn(claims);
         when(otpService.esTokenInvalido("token.valido.jwt")).thenReturn(false);
         when(jwtService.obtenerUsuarioId("token.valido.jwt")).thenReturn(10L);
         when(jwtService.obtenerRoles("token.valido.jwt")).thenReturn(Set.of(Rol.COMPRADOR));
@@ -297,7 +294,11 @@ class AuthControllerTest {
     void refresh_conTokenRevocado_debeRetornar401() throws Exception {
         RefreshTokenRequestDTO request = new RefreshTokenRequestDTO("token.revocado.jwt");
 
-        when(jwtService.validarToken("token.revocado.jwt")).thenReturn(true);
+        Claims claims = Jwts.claims()
+                .subject("10")
+                .build();
+
+        when(jwtService.validarToken("token.revocado.jwt")).thenReturn(claims);
         when(otpService.esTokenInvalido("token.revocado.jwt")).thenReturn(true);
 
         mockMvc.perform(post("/api/v1/auth/refresh")
@@ -308,14 +309,18 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.message", containsString("revocado")));
     }
 
-    // =========================================================================
-    // SR-RNF-01: POST /api/v1/auth/logout
-    // =========================================================================
-
     @Test
     @DisplayName("Logout con token válido debe revocarlo en lista negra de Redis y retornar 204 No Content")
     void logout_conTokenValido_debeRevocarYRetornar204() throws Exception {
-        when(jwtService.validarToken("token.a.revocar")).thenReturn(true);
+        Claims claims = Jwts.claims()
+                .subject("10")
+                .issuedAt(new Date())
+                .build();
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(anyString())).thenReturn(null);
+
+        when(jwtService.validarToken("token.a.revocar")).thenReturn(claims);
         when(jwtService.obtenerTiempoRestanteSegundos("token.a.revocar")).thenReturn(3600L);
 
         mockMvc.perform(post("/api/v1/auth/logout")
@@ -324,10 +329,6 @@ class AuthControllerTest {
 
         verify(otpService).invalidarToken("token.a.revocar", 3600L);
     }
-
-    // =========================================================================
-    // SR-RF-01: POST /api/v1/auth/registro
-    // =========================================================================
 
     @Test
     @DisplayName("Registro de comprador debe retornar 201 Created con usuarioAuthResponseDTO")

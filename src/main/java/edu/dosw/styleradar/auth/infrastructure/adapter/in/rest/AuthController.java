@@ -30,6 +30,7 @@ import edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException;
 import edu.dosw.styleradar.auth.domain.model.Rol;
 import edu.dosw.styleradar.auth.infrastructure.adapter.in.rest.doc.AuthApi;
 import edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioClient;
+import io.jsonwebtoken.JwtException;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 
@@ -86,7 +87,8 @@ public class AuthController implements AuthApi {
         try {
             emailService.enviarOtp(request.getEmail(), codigo);
         } catch (RuntimeException exception) {
-            log.error("Fallo al enviar correo con OTP para {}: {}", request.getEmail(), exception.getMessage());
+            log.error("Fallo al enviar correo con OTP para {}: {}",
+                    request.getEmail(), exception.getMessage());
             otpService.eliminarOtp(request.getEmail());
             throw exception;
         }
@@ -171,8 +173,16 @@ public class AuthController implements AuthApi {
         String token = request.getRefreshToken();
         log.info("Solicitud de renovación de token de acceso JWT");
 
-        if (token == null || !jwtService.validarToken(token) || otpService.esTokenInvalido(token)) {
+        if (token == null || otpService.esTokenInvalido(token)) {
             log.warn("Intento de renovación con token inválido, expirado o revocado");
+            throw new CredencialesIncorrectasException(
+                    "El token presentado es inválido, expiró o fue revocado");
+        }
+
+        try {
+            jwtService.validarToken(token);
+        } catch (JwtException | IllegalArgumentException exception) {
+            log.warn("Intento de renovación con token JWT inválido o expirado");
             throw new CredencialesIncorrectasException(
                     "El token presentado es inválido, expiró o fue revocado");
         }
@@ -206,12 +216,18 @@ public class AuthController implements AuthApi {
 
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             String token = authorizationHeader.substring(7).trim();
-            if (jwtService.validarToken(token)) {
+
+            try {
+                jwtService.validarToken(token);
+
                 long tiempoRestante = jwtService.obtenerTiempoRestanteSegundos(token);
+
                 if (tiempoRestante > 0) {
                     otpService.invalidarToken(token, tiempoRestante);
                     log.info("Token revocado en logout con TTL restante de {}s", tiempoRestante);
                 }
+            } catch (JwtException | IllegalArgumentException exception) {
+                log.warn("Se intentó cerrar sesión con un token inválido o expirado");
             }
         }
 

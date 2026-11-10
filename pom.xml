@@ -25,6 +25,8 @@
         <lombok.version>1.18.42</lombok.version>
         <flyway.version>10.20.1</flyway.version>
         <testcontainers.version>1.19.8</testcontainers.version>
+
+        <!-- SonarCloud -->
         <sonar.version>5.8.0.7211</sonar.version>
         <sonar.projectKey>StyleRadar1_CADCHE-Authentication-Service</sonar.projectKey>
         <sonar.organization>styleradar1</sonar.organization>
@@ -33,6 +35,13 @@
     </properties>
 
     <dependencies>
+
+        <dependency>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs-annotations</artifactId>
+            <version>4.8.6</version>
+            <scope>provided</scope>
+        </dependency>
 
         <!-- Envío de correos electrónicos -->
         <dependency>
@@ -70,6 +79,12 @@
             <artifactId>postgresql</artifactId>
             <version>42.7.4</version>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- RabbitMQ -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
 
         <!-- Flyway -->
@@ -212,7 +227,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Reporte de Cobertura JaCoCo -->
+            <!-- Cobertura de pruebas con JaCoCo -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -223,6 +238,7 @@
                             <goal>prepare-agent</goal>
                         </goals>
                     </execution>
+
                     <execution>
                         <id>report</id>
                         <phase>verify</phase>
@@ -230,10 +246,32 @@
                             <goal>report</goal>
                         </goals>
                     </execution>
+
+                    <execution>
+                        <id>check-coverage</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.85</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
 
-            <!-- SonarQube Cloud Scanner -->
+            <!-- SonarCloud Scanner -->
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
