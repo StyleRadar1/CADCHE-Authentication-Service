@@ -1309,7 +1309,7 @@ Evaluación técnica y verificación automatizada de **`CADCHE-Authentication-Se
 * **¿Aplica?:** **SÍ (Crítico).** Firma tokens JWT de sesión, genera/verifica OTP y protege secretos y transporte.
 * **Estado:** 🟢 **PASS *(Mitigado)***
 * **Controles verificados en código:**
-  1. `JwtServiceImpl` valida en arranque que `JWT_SECRET_BASE64` sea Base64 válido con mínimo `32` bytes (`256` bits para `HS256`) y prohíbe el uso del secreto de ejemplo `DEV_SAMPLE_SECRET` en perfiles `qa` y `prod`.
+  1. `JwtServiceImpl` valida en arranque que `JWT_SECRET_BASE64` sea Base64 válido con mínimo `32` bytes (`256` bits para `HS256`) y prohíbe el uso de la clave de ejemplo de desarrollo (verificada por huella SHA-256 `DISALLOWED_EXAMPLE_FINGERPRINT`, sin literales secretos en código) en perfiles `qa` y `prod`.
   2. `OtpServiceImpl` genera OTPs de 6 dígitos con `java.security.SecureRandom` y persiste únicamente un **hash SHA-256 salteado** (`<saltB64>$<hashB64>`, sal aleatoria de 16 bytes) verificado en tiempo constante con `MessageDigest.isEqual()`.
   3. `.env.example` y perfiles `qa`/`prod` parametrizan `JWT_SECRET_BASE64`, `REDIS_PASSWORD`, `RABBITMQ_PASSWORD`, `sslmode=require`, Redis SSL, RabbitMQ SSL y SMTP con `starttls.required: true`.
 

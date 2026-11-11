@@ -1,9 +1,13 @@
 package edu.dosw.styleradar.auth.application.service.impl;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 
@@ -30,7 +34,8 @@ import lombok.extern.slf4j.Slf4j;
 public final class JwtServiceImpl implements JwtService {
 
     public static final int MIN_SECRET_KEY_BYTES = 32;
-    private static final String DEV_SAMPLE_SECRET = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
+    private static final String DISALLOWED_EXAMPLE_FINGERPRINT =
+            "2cf5e6ec387461b4bf954f587ad4d957753fcbc48bf892b5e49996b90cf3b476";
 
     private final SecretKey secretKey;
     private final Duration duration;
@@ -58,7 +63,7 @@ public final class JwtServiceImpl implements JwtService {
         String trimmed = secretBase64.trim();
         if (environment != null
                 && environment.acceptsProfiles(Profiles.of("prod", "qa"))
-                && DEV_SAMPLE_SECRET.equals(trimmed)) {
+                && esHuellaDeEjemplo(trimmed)) {
             throw new IllegalStateException(
                     "Falla criptográfica (OWASP A04:2025): no se permite la clave JWT de ejemplo en perfiles qa/prod.");
         }
@@ -77,6 +82,16 @@ public final class JwtServiceImpl implements JwtService {
         }
 
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private static boolean esHuellaDeEjemplo(String rawValue) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(rawValue.getBytes(StandardCharsets.UTF_8));
+            return DISALLOWED_EXAMPLE_FINGERPRINT.equals(HexFormat.of().formatHex(digest));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("Algoritmo SHA-256 no disponible en la JVM.", ex);
+        }
     }
 
     @Override
