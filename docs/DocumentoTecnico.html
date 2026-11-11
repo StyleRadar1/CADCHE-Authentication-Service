@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>StyleRadar · ms-auth — Documento de Arquitectura Técnica (CADCHE)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E0A16;--paper:#FBF7F0;--paper2:#F4ECE0;--ink:#110D1B;--muted:#5A5468;
+  --rule:#E8DCCB;--pur:#48119A;--pur2:#5600EF;--lav:#E4DBF0;--lav2:#F3ECFA;
+  --accent:#7E57C2;--ok:#15803D;--okbg:#DCFCE7;--warn:#B45309;--warnbg:#FEF3C7;
+  --bad:#B91C1C;--badbg:#FEE2E2;--card:#FFFFFF;
+  --fs-scale:1;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:'Plus Jakarta Sans','Poppins','Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+
+/* Atmospheric StyleRadar Canvas Backdrop */
+#bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(920px 620px at 14% 18%,rgba(86,0,239,.26),transparent 62%),
+    radial-gradient(760px 560px at 86% 82%,rgba(72,17,154,.30),transparent 65%),
+    linear-gradient(155deg,#0B0812 0%,#160E27 52%,#0D0915 100%);
+}
+#bg::before{content:'';position:absolute;inset:0;opacity:.16;
+  background-image:radial-gradient(rgba(228,219,240,.55) 1px,transparent 1px);
+  background-size:26px 26px;
+}
+
+/* Top Interactive Toolbar */
+.tb{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:40;
+  display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;
+  background:rgba(17,13,27,.86);backdrop-filter:blur(14px);
+  border:1px solid rgba(228,219,240,.18);box-shadow:0 14px 36px rgba(0,0,0,.45);
+  color:#FBF7F0;font-size:12px;white-space:nowrap;
+}
+.tb-brand{display:flex;align-items:center;gap:7px;padding-right:10px;border-right:1px solid rgba(228,219,240,.16);font-weight:700;letter-spacing:.4px}
+.tb-dot{width:8px;height:8px;border-radius:50%;background:#5600EF;box-shadow:0 0 10px #8B5CF6}
+.tb button{background:rgba(255,255,255,.07);border:1px solid rgba(228,219,240,.15);color:#FBF7F0;
+  border-radius:999px;padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.16s}
+.tb button:hover{background:rgba(86,0,239,.45);border-color:rgba(228,219,240,.4)}
+.tb button.act{background:var(--pur2);border-color:#A78BFA}
+.tb button:disabled{opacity:.35;cursor:not-allowed}
+.tb .pg-ind{font-family:'JetBrains Mono',monospace;font-size:11px;color:#E4DBF0;min-width:74px;text-align:center}
+.tb input[type=range]{width:110px;accent-color:#7C3AED;cursor:pointer}
+.tb select{background:rgba(255,255,255,.08);color:#FBF7F0;border:1px solid rgba(228,219,240,.2);border-radius:999px;padding:4px 8px;font-size:11px;font-family:inherit;cursor:pointer}
+.tb select option{background:#1B132D;color:#FBF7F0}
+
+/* Stage Viewport & Spread Scaling */
+#vp{position:fixed;inset:56px 14px 14px 14px;display:flex;align-items:center;justify-content:center;z-index:10;overflow:hidden}
+#fit{transform-origin:center center;transition:transform .18s ease}
+#book{display:flex;gap:6px;align-items:stretch;border-radius:8px;box-shadow:0 28px 80px rgba(0,0,0,.68),0 0 0 1px rgba(228,219,240,.14)}
+.p-slot.hidden{display:none!important}
+.nw{white-space:nowrap}
+
+/* Fixed A4 Portrait Sheet */
+.p{position:relative;width:794px;height:1123px;background:var(--paper);color:var(--ink);
+  padding:32px 34px 42px;overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;
+  font-size:calc(12.2px * var(--fs-scale));line-height:1.45;
+  box-shadow:inset 0 0 0 1px var(--rule);
+}
+.p.l-side{border-radius:6px 0 0 6px;background-image:linear-gradient(90deg,var(--paper) 94%,rgba(232,220,203,.55) 100%)}
+.p.r-side{border-radius:0 6px 6px 0;background-image:linear-gradient(270deg,var(--paper) 94%,rgba(232,220,203,.55) 100%)}
+.p.dark{background:linear-gradient(150deg,#110D1B 0%,#241046 58%,#48119A 100%);color:#FBF7F0;box-shadow:none}
+.p.dark.l-side,.p.dark.r-side{background-image:linear-gradient(150deg,#110D1B 0%,#241046 58%,#48119A 100%)}
+
+/* Page Header & Footer */
+.ph{display:flex;justify-content:space-between;align-items:center;padding-bottom:9px;margin-bottom:13px;border-bottom:1.5px solid var(--rule);flex-shrink:0}
+.ph-tag{font-family:'Space Grotesk',monospace;font-size:10px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:var(--pur);display:flex;align-items:center;gap:6px}
+.ph-tag span.num{background:var(--pur);color:#fff;padding:2px 7px;border-radius:4px;font-size:10px}
+.ph-sub{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.3px}
+.pf{position:absolute;bottom:16px;left:34px;right:34px;display:flex;justify-content:space-between;align-items:center;
+  padding-top:8px;border-top:1px solid var(--rule);font-size:9.5px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.p.dark .pf{border-color:rgba(228,219,240,.18);color:rgba(228,219,240,.72)}
+
+/* Headings & Typography */
+h2.st{font-family:'Poppins',sans-serif;font-size:19.5px;font-weight:800;letter-spacing:-.35px;color:var(--ink);margin-bottom:6px;line-height:1.15}
+h2.st em{font-style:normal;color:var(--pur)}
+p.lead{font-size:11.6px;color:var(--muted);margin-bottom:12px;line-height:1.45}
+h3.h3{font-family:'Poppins',sans-serif;font-size:12.6px;font-weight:700;color:var(--pur);margin:10px 0 6px;display:flex;align-items:center;gap:6px;letter-spacing:-.1px}
+h3.h3::before{content:'';width:6px;height:6px;border-radius:2px;background:var(--pur2);display:inline-block;flex-shrink:0}
+
+/* Editorial Cards, Callouts, Grids & Tables */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;box-shadow:0 2px 6px rgba(17,13,27,.03)}
+.card.pur{background:var(--lav2);border-color:#D8C9EE}
+.kpi{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:9px 11px;border-top:3px solid var(--pur)}
+.kpi .v{font-family:'Poppins',sans-serif;font-size:19px;font-weight:800;color:var(--pur);line-height:1.1}
+.kpi .k{font-size:10px;color:var(--muted);font-weight:600;margin-top:3px;text-transform:uppercase;letter-spacing:.4px}
+.kpi .d{font-size:10.3px;color:var(--ink);margin-top:3px}
+
+.callout{background:var(--lav2);border-left:4px solid var(--pur2);border-radius:0 9px 9px 0;padding:10px 13px;margin:8px 0;font-size:11.4px}
+.callout strong{color:var(--pur)}
+.callout.warn{background:#FFF8EB;border-left-color:#D97706}
+.callout.warn strong{color:#B45309}
+.callout.ok{background:#F0FDF4;border-left-color:#15803D}
+.callout.ok strong{color:#15803D}
+
+table.dt{width:100%;border-collapse:collapse;font-size:10.7px;background:var(--card);border-radius:9px;overflow:hidden;border:1px solid var(--rule)}
+table.dt th{background:var(--pur);color:#FBF7F0;text-align:left;padding:6px 8px;font-weight:700;font-size:10px;letter-spacing:.3px;text-transform:uppercase}
+table.dt td{padding:5.5px 8px;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.35}
+table.dt tr:last-child td{border-bottom:none}
+table.dt tr:nth-child(even) td{background:#FCF9F4}
+
+code, .mono{font-family:'JetBrains Mono',monospace;font-size:10px;background:#EFE9F8;color:var(--pur);padding:1px 5px;border-radius:4px;font-weight:600}
+.badge{display:inline-block;padding:1.5px 6px;border-radius:999px;font-size:9.3px;font-weight:700;letter-spacing:.25px;vertical-align:middle}
+.b-ok{background:var(--okbg);color:var(--ok)}
+.b-warn{background:var(--warnbg);color:var(--warn)}
+.b-bad{background:var(--badbg);color:var(--bad)}
+.b-pur{background:var(--lav);color:var(--pur)}
+
+/* Diagram Frames */
+.diag-box{background:#FFFFFF;border:1.5px solid #DFD2F2;border-radius:11px;padding:8px;margin:6px 0;box-shadow:0 3px 10px rgba(72,17,154,.05)}
+.diag-box svg{width:100%;height:auto;display:block}
+.diag-cap{font-size:10px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between;align-items:center}
+
+/* TOC Index Pills */
+.toc-list{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:6px 0}
+.toc-item{display:flex;align-items:center;gap:8px;padding:6.5px 9px;background:#fff;border:1px solid var(--rule);border-radius:8px;cursor:pointer;transition:.14s;text-align:left}
+.toc-item:hover{border-color:var(--pur2);background:var(--lav2);transform:translateY(-1px)}
+.toc-n{font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;color:#fff;background:var(--pur);padding:3px 6px;border-radius:5px;flex-shrink:0}
+.toc-t{font-size:11px;font-weight:700;color:var(--ink);line-height:1.2}
+.toc-s{font-size:9.6px;color:var(--muted);display:block;font-weight:500}
+
+/* ADR Cards */
+.adr{background:#fff;border:1px solid var(--rule);border-left:4px solid var(--pur);border-radius:8px;padding:7.5px 10px;margin-bottom:7px}
+.adr-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.adr-id{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--pur);background:var(--lav);padding:1.5px 6px;border-radius:4px}
+.adr-ti{font-weight:700;font-size:11.2px;color:var(--ink);flex:1;margin:0 8px}
+.adr-b{font-size:10.4px;color:#2D263B;line-height:1.36}
+
+/* Bar Charts */
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:10.2px}
+.bar-lbl{width:170px;font-family:'JetBrains Mono',monospace;font-size:9.6px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;height:11px;background:#EAE2F5;border-radius:999px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--pur),var(--pur2));border-radius:999px}
+.bar-val{width:44px;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:10px;color:var(--pur)}
+
+/* Edit Mode Highlighting */
+body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.05);border-radius:3px}
+
+/* Print Layout (Clean Sequential A4 Sheets) */
+@media print{
+  @page{size:A4 portrait;margin:0}
+  html,body{height:auto;overflow:visible;background:#fff}
+  #bg,.tb{display:none!important}
+  #vp{position:static;inset:auto;display:block;overflow:visible}
+  #fit{transform:none!important}
+  #book{display:block;box-shadow:none;gap:0}
+  .p-slot,.p-slot.hidden{display:block!important;page-break-after:always;break-after:page}
+  .p-slot:last-child{page-break-after:auto;break-after:auto}
+  .p{width:210mm;height:297mm;border-radius:0!important;box-shadow:none!important}
+}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+
+<nav class="tb" aria-label="Controles del documento">
+  <div class="tb-brand"><span class="tb-dot"></span><span>STYLE RADAR · ms-auth</span></div>
+  <button id="prevBtn" type="button" title="Anterior (Flecha izquierda)">← Ant</button>
+  <span class="pg-ind" id="pgInd">Pág 0–1 / 15</span>
+  <button id="nextBtn" type="button" title="Siguiente (Flecha derecha)">Sig →</button>
+  <input id="pgRange" type="range" min="0" max="7" value="0" aria-label="Navegar páginas">
+  <button id="modeBtn" type="button" title="Alternar 1 o 2 páginas">2 Pág</button>
+  <select id="fpSel" title="Tamaño de tipografía">
+    <option value="0.95">Texto 95%</option>
+    <option value="1" selected>Texto 100%</option>
+    <option value="1.05">Texto 105%</option>
+  </select>
+  <button id="edBtn" type="button" class="ed" title="Editar notas inline">Editar</button>
+  <button id="rsBtn" type="button" class="rs" title="Restablecer contenido">Reset</button>
+  <button id="prBtn" type="button" title="Imprimir / Exportar PDF A4">PDF / Imprimir</button>
+</nav>
+
+<main id="vp">
+  <div id="fit">
+    <div id="book">
+
+<!-- ==================== PAGE 00: PORTADA ==================== -->
+<div class="p-slot" data-p="0">
+  <section class="p dark l-side" style="justify-content:space-between;padding:44px 40px 48px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div style="display:flex;align-items:center;gap:12px">
+        <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
+          <polygon points="23,2 42,12.5 42,33.5 23,44 4,33.5 4,12.5" fill="rgba(228,219,240,.12)" stroke="#A78BFA" stroke-width="2"/>
+          <text x="23" y="28" text-anchor="middle" fill="#FBF7F0" font-family="Anton,sans-serif" font-size="16" letter-spacing="1">SR</text>
+        </svg>
+        <div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;letter-spacing:2.2px;color:#C4B5FD;text-transform:uppercase">StyleRadar Platform</div>
+          <div style="font-size:11px;color:rgba(251,247,240,.72)">Paquete 1 · Identidad y Seguridad Perimetral</div>
+        </div>
+      </div>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(228,219,240,.25);color:#E4DBF0">v1.0 · Base code develop @ 6f237e6</span>
+    </div>
+
+    <div style="margin:26px 0">
+      <div style="display:inline-block;padding:4px 11px;border-radius:6px;background:#5600EF;color:#fff;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.8px;margin-bottom:16px">CADCHE · MICROSERVICIO ms-auth (:8100)</div>
+      <h1 style="font-family:'Anton','Poppins',sans-serif;font-size:66px;line-height:.95;letter-spacing:1.2px;text-transform:uppercase;color:#FBF7F0;margin-bottom:16px">
+        DOCUMENTO DE<br><span style="color:#C4B5FD">ARQUITECTURA</span><br>TÉCNICA
+      </h1>
+      <p style="font-size:14.2px;line-height:1.58;color:rgba(251,247,240,.86);max-width:620px">
+        Decisiones arquitectónicas (el <em>porqué</em> técnico), topología C4, arquitectura hexagonal de componentes, modelo de datos en Redis 7, estado de persistencia PostgreSQL/Flyway, contratos REST, mensajería RabbitMQ, seguridad JWT/OTP y evidencia verificada de calidad CI/CD del microservicio de autenticación de StyleRadar.
+      </p>
+      <div style="margin-top:24px;display:flex;gap:10px;align-items:center">
+        <button type="button" onclick="go(1)" style="background:#FBF7F0;color:#48119A;border:none;border-radius:999px;padding:10px 20px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;box-shadow:0 10px 26px rgba(0,0,0,.35)">Explorar Documento →</button>
+        <button type="button" onclick="go(4)" style="background:rgba(255,255,255,.11);color:#FBF7F0;border:1px solid rgba(228,219,240,.3);border-radius:999px;padding:10px 18px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit">Ir a Diagrama Hexagonal (Pág. 4)</button>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:rgba(14,10,22,.56);border:1px solid rgba(228,219,240,.2);border-radius:12px;padding:14px 16px;margin-bottom:16px">
+        <div>
+          <div style="font-size:9.5px;color:#C4B5FD;text-transform:uppercase;letter-spacing:1px">Artefacto &amp; Stack Actual</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;margin-top:3px">edu.dosw.styleradar:ms-auth</div>
+          <div style="font-size:10.5px;color:rgba(251,247,240,.75)">Spring Boot 3.2.12 · Java 17*</div>
+        </div>
+        <div>
+          <div style="font-size:9.5px;color:#C4B5FD;text-transform:uppercase;letter-spacing:1px">Calidad Verificada (Maven)</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;margin-top:3px">56 / 56 Tests · 0 Bugs</div>
+          <div style="font-size:10.5px;color:#86EFAC">JaCoCo 85.89% Instr · SpotBugs 0</div>
+        </div>
+        <div>
+          <div style="font-size:9.5px;color:#C4B5FD;text-transform:uppercase;letter-spacing:1px">Equipo Responsable</div>
+          <div style="font-weight:700;font-size:11.5px;margin-top:3px">Squad CADche</div>
+          <div style="font-size:10.5px;color:rgba(251,247,240,.75)">Escuela Colombiana de Ingeniería</div>
+        </div>
+      </div>
+      <div class="pf" style="position:static;padding-top:10px">
+        <span>StyleRadar · DOSW 2026</span>
+        <span>*Pendiente migración a Java 21 LTS en Backlog Técnico</span>
+        <span>Pág. 00</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 01: SUMARIO, REGLA DE ORO & CONTROL ==================== -->
+<div class="p-slot" data-p="1">
+  <section class="p r-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">01</span> Sumario y Trazabilidad</div>
+      <div class="ph-sub">CADCHE · ms-auth (:8100)</div>
+    </div>
+
+    <h2 class="st">Índice Navegable &amp; <em>Regla de Oro</em></h2>
+    <p class="lead">Este documento sigue la plantilla oficial <strong>StyleRadar v1</strong> exigiendo que cada artefacto visual explique explícitamente el <em>porqué</em> de sus decisiones, alternativas descartadas y brechas reales respecto a la implementación actual en código.</p>
+
+    <div class="callout">
+      <strong>Regla de Oro del Curso:</strong> Ningún diagrama en StyleRadar habla por sí solo. Cada vista C4, Hexagonal, Clases, Datos, Secuencia y Mensajería se acompaña aquí de su justificación técnica y trazabilidad real contra el código fuente auditado.
+    </div>
+
+    <div class="toc-list">
+      <button type="button" class="toc-item" onclick="go(2)"><span class="toc-n">02</span><div><span class="toc-t">Ecosistema y Bounded Context</span><span class="toc-s">Separación ms-auth vs ms-usuarios</span></div></button>
+      <button type="button" class="toc-item" onclick="go(3)"><span class="toc-n">03</span><div><span class="toc-t">Diagramas Generales C4</span><span class="toc-s">Contexto L1 y Topología L2 (:8100)</span></div></button>
+      <button type="button" class="toc-item" onclick="go(4)"><span class="toc-n">04</span><div><span class="toc-t">Arquitectura Hexagonal</span><span class="toc-s">Diagrama de Componentes Minimalista</span></div></button>
+      <button type="button" class="toc-item" onclick="go(5)"><span class="toc-n">05</span><div><span class="toc-t">Decisiones Arquitectónicas</span><span class="toc-s">ADRs 01–06 y Matriz de Trade-offs</span></div></button>
+      <button type="button" class="toc-item" onclick="go(6)"><span class="toc-n">06</span><div><span class="toc-t">Dominio y Diagrama de Clases</span><span class="toc-s">Rol, EstadoCuenta, Excepciones y DTOs</span></div></button>
+      <button type="button" class="toc-item" onclick="go(7)"><span class="toc-n">07</span><div><span class="toc-t">Modelo de Datos Real</span><span class="toc-s">Claves Redis 7 TTL y estado PostgreSQL</span></div></button>
+      <button type="button" class="toc-item" onclick="go(8)"><span class="toc-n">08</span><div><span class="toc-t">Alcance y Contratos REST</span><span class="toc-s">Endpoints /api/v1/auth y DTOs</span></div></button>
+      <button type="button" class="toc-item" onclick="go(9)"><span class="toc-n">09</span><div><span class="toc-t">Flujos Críticos y Reglas</span><span class="toc-s">Secuencia Login-OTP-JWT y Rollback</span></div></button>
+      <button type="button" class="toc-item" onclick="go(10)"><span class="toc-n">10</span><div><span class="toc-t">Comunicación Asíncrona</span><span class="toc-s">RabbitMQConfig y alcance QA actual</span></div></button>
+      <button type="button" class="toc-item" onclick="go(11)"><span class="toc-n">11</span><div><span class="toc-t">Seguridad en Profundidad</span><span class="toc-s">Stateless, HS256 y doble revocación</span></div></button>
+      <button type="button" class="toc-item" onclick="go(12)"><span class="toc-n">12</span><div><span class="toc-t">Integración, FinOps &amp; Deuda</span><span class="toc-s">TCO Azure y hoja de ruta Java 21</span></div></button>
+      <button type="button" class="toc-item" onclick="go(13)"><span class="toc-n">13</span><div><span class="toc-t">Calidad y Pruebas</span><span class="toc-s">56 Tests, JaCoCo 85.89%, SpotBugs 0</span></div></button>
+      <button type="button" class="toc-item" onclick="go(14)"><span class="toc-n">14</span><div><span class="toc-t">CI/CD, Despliegue y Acta</span><span class="toc-s">Pipeline, QA 200/503 y Checklist</span></div></button>
+      <button type="button" class="toc-item" onclick="go(15)"><span class="toc-n">15</span><div><span class="toc-t">Contraportada y Cierre Jira</span><span class="toc-s">Evidencia para Hecho CADCHE</span></div></button>
+    </div>
+
+    <h3 class="h3">Control de Versiones &amp; Repositorios Oficiales</h3>
+    <table class="dt">
+      <thead><tr><th>Ref / Versión</th><th>Fecha / Estado</th><th>Hito y Trazabilidad en Código</th><th>Autor / Squad</th></tr></thead>
+      <tbody>
+        <tr><td><code>6249377</code></td><td>Inicial</td><td>Andamiaje base <code>ms-auth</code> (:8100), SecurityConfig, JWT y Swagger OpenAPI</td><td>Squad CADche</td></tr>
+        <tr><td><code>6f237e6</code></td><td>Actual (<code>develop</code>)</td><td>Implementación OTP Redis+fallback, UsuarioClient, 56 tests verificados</td><td>Squad CADche</td></tr>
+        <tr><td><code>v1.0</code></td><td>Documento</td><td>Autoría completa de <code>docs/DocumentoTecnico.html</code> (Evidencia Jira CADCHE)</td><td>Squad CADche</td></tr>
+      </tbody>
+    </table>
+
+    <div class="grid2" style="margin-top:8px">
+      <div class="card">
+        <div style="font-size:10px;font-weight:700;color:var(--pur);text-transform:uppercase">Repositorio &amp; Tablero Jira</div>
+        <div style="font-size:10.3px;margin-top:3px;word-break:break-all">
+          <strong>GitHub:</strong> <code>StyleRadar1/CADCHE-Authentication-Service</code><br>
+          <strong>Jira CADCHE:</strong> <code>mail-team-nyjtgqcj.atlassian.net/jira/software/projects/CADCHE/boards/75/backlog</code>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:10px;font-weight:700;color:var(--pur);text-transform:uppercase">Observabilidad &amp; SonarCloud</div>
+        <div style="font-size:10.3px;margin-top:3px;word-break:break-all">
+          <strong>Swagger QA:</strong> <code>styleradar-auth-qa.azurewebsites.net/swagger-ui/index.html</code><br>
+          <strong>Sonar Key:</strong> <code>StyleRadar1_CADCHE-Authentication-Service</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>DocumentoTecnico.html · Portada &amp; Trazabilidad</span><span>Pág. 01</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 02: ECOSISTEMA & BOUNDED CONTEXT ==================== -->
+<div class="p-slot" data-p="2">
+  <section class="p l-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">02</span> Ecosistema &amp; Contexto Delimitado</div>
+      <div class="ph-sub">Paquete 1: Identidad</div>
+    </div>
+
+    <h2 class="st">Ubicación en StyleRadar &amp; <em>Por Qué</em> Existe <code>ms-auth</code></h2>
+    <p class="lead">Dentro de la plataforma de moda circular <strong>StyleRadar</strong> (<code>sr-api-gateway :8080</code> + 13 microservicios), <code>ms-auth</code> actúa como la aduana criptográfica y de verificación multifactor del <strong>Paquete 1: Identidad</strong>.</p>
+
+    <div class="grid2">
+      <div class="card pur">
+        <h3 class="h3" style="margin-top:0">Responsabilidad Exclusiva de <code>ms-auth (:8100)</code></h3>
+        <ul style="padding-left:16px;font-size:10.9px;line-height:1.45">
+          <li>Recibir intentos de autenticación y registro en la frontera perimetral.</li>
+          <li>Orquestar verificación <strong>2FA por OTP de 6 dígitos</strong> con TTL de <code>300 s</code> y máximo <code>3</code> intentos.</li>
+          <li>Firmar y validar tokens <strong>JWT HS256</strong> (vigencia <code>PT24H</code>) con rol e ID de usuario.</li>
+          <li>Ejecutar revocación inmediata vía <code>blacklist:&lt;token&gt;</code> y <code>usuario:revocado:&lt;id&gt;</code>.</li>
+          <li>Despachar notificaciones OTP transaccionales por SMTP Gmail (<code>JavaMailSender</code>).</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 class="h3" style="margin-top:0">Frontera Clara con <code>ms-usuarios (:8120)</code></h3>
+        <ul style="padding-left:16px;font-size:10.9px;line-height:1.45">
+          <li><code>ms-usuarios</code> es hoy la <strong>única fuente de verdad</strong> de datos de perfil, rol asignado, estado de cuenta (<code>ACTIVA</code>/<code>INACTIVA</code>/<code>BLOQUEADA</code>) y hash de contraseña.</li>
+          <li><code>ms-auth</code> <strong>no</strong> almacena direcciones, preferencias de estilo ni perfiles personales.</li>
+          <li>La validación de credenciales cruza la frontera vía HTTP Basic interno: <code>POST /internal/api/v1/usuarios/verificar-credenciales</code>.</li>
+          <li>Si una cuenta cambia de estado en Usuarios, <code>ms-auth</code> reacciona sin acoplarse a tablas ajenas.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="h3">¿Por qué no fusionar Autenticación dentro de <code>ms-usuarios</code> o el <code>API Gateway</code>?</h3>
+    <div class="callout">
+      <strong>Razón Arquitectónica:</strong> En picos de tráfico o ataques de fuerza bruta/credential stuffing sobre <code>/login</code> y <code>/otp/verificar</code>, escalar horizontalmente un microservicio <em>stateless</em> apoyado en Redis (<code>ms-auth</code>) protege la base de datos transaccional de perfiles de <code>ms-usuarios</code> y evita sobrecargar el <code>API Gateway</code> con lógica SMTP, rotación OTP y manejo de secretos HMAC-SHA256. Además, cada microservicio consumidor de StyleRadar verifica el JWT sin depender de consultas síncronas por request a un servicio de perfiles.
+    </div>
+
+    <h3 class="h3">Mapa Sintético del Ecosistema StyleRadar (Relación con ms-auth)</h3>
+    <table class="dt">
+      <thead><tr><th>Paquete / Servicio</th><th>Puerto / Rol</th><th>Interacción con <code>ms-auth</code></th><th>Estado Real</th></tr></thead>
+      <tbody>
+        <tr><td><code>sr-api-gateway</code></td><td><code>:8080</code> Edge</td><td>Enruta tráfico público a <code>/api/v1/auth/**</code> y valida tokens emitidos</td><td><span class="badge b-pur">Consumidor / Router</span></td></tr>
+        <tr><td><strong><code>ms-auth</code> (Este doc)</strong></td><td><code>:8100</code> Identidad</td><td>Emisión JWT HS256, flujo OTP, blacklist Redis y filtro de seguridad</td><td><span class="badge b-ok">Activo · 56 tests OK</span></td></tr>
+        <tr><td><code>ms-usuarios</code></td><td><code>:8120</code> Identidad</td><td>Expone endpoint interno Basic Auth para verificar email/password</td><td><span class="badge b-pur">Dependencia Upstream</span></td></tr>
+        <tr><td><code>ms-tiendas</code> / <code>catalogo</code> / <code>inventario</code></td><td>Core Negocio</td><td>Validan firma JWT y autoridad <code>ROLE_*</code> en sus rutas protegidas</td><td><span class="badge b-ok">Consumen JWT</span></td></tr>
+        <tr><td><code>ms-chat</code> / <code>pagos</code> / <code>donaciones</code> / <code>probador</code></td><td>Valor / IA</td><td>Consumen claims <code>sub</code>, <code>email</code> y <code>rol</code> contenidos en el token</td><td><span class="badge b-ok">Consumen JWT</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout warn" style="margin-top:9px">
+      <strong>Transparencia de Alcance Actual:</strong> Aunque <code>README.md</code> proyecta una base propia <code>styleradar_auth</code> y endpoint <code>POST /registro</code> completo, en la rama <code>develop</code> actual <code>POST /api/v1/auth/registro</code> opera como <em>stub controlado</em> (retorna <code>id=12L</code> con estado <code>INACTIVA</code> y envía OTP) mientras se consolida la sincronización transaccional con <code>ms-usuarios</code>.
+    </div>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>Ecosistema y Delimitación de Contexto</span><span>Pág. 02</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 03: DIAGRAMAS C4 GENERALES L1 Y L2 ==================== -->
+<div class="p-slot" data-p="3">
+  <section class="p r-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">03</span> Vistas Generales C4 (Contexto y Contenedores)</div>
+      <div class="ph-sub">Perímetro y Topología de Red</div>
+    </div>
+
+    <h2 class="st">Nivel C4-1 (Contexto) y Nivel C4-2 (Contenedores)</h2>
+    <p class="lead">Los diagramas generales muestran cómo <code>ms-auth</code> aísla la verificación de identidad del tráfico público de entrada y distribuye estado efímero vs estado maestro.</p>
+
+    <div class="diag-box">
+      <svg viewBox="0 0 720 190" xmlns="http://www.w3.org/2000/svg" aria-label="Diagrama C4 Nivel 1 Contexto">
+        <rect x="6" y="6" width="708" height="178" rx="10" fill="#FCF9FE" stroke="#E8DCCB"/>
+        <text x="18" y="24" font-family="Space Grotesk,sans-serif" font-size="10" font-weight="700" fill="#48119A">C4 NIVEL 1 · DIAGRAMA DE CONTEXTO</text>
+        <!-- Actors -->
+        <rect x="18" y="42" width="128" height="122" rx="8" fill="#E4DBF0" stroke="#48119A" stroke-width="1.5"/>
+        <text x="82" y="66" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#110D1B">Roles StyleRadar</text>
+        <text x="82" y="85" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.5" fill="#48119A">COMPRADOR</text>
+        <text x="82" y="100" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.5" fill="#48119A">ADMIN_ALMACEN</text>
+        <text x="82" y="115" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.5" fill="#48119A">REP_FUNDACION</text>
+        <text x="82" y="130" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.5" fill="#48119A">ADMIN_STYLERADAR</text>
+        <!-- Gateway -->
+        <rect x="188" y="68" width="122" height="70" rx="8" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+        <text x="249" y="96" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#110D1B">API Gateway</text>
+        <text x="249" y="114" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#5A5468">HTTPS :8080</text>
+        <!-- ms-auth -->
+        <rect x="352" y="60" width="142" height="86" rx="10" fill="#48119A" stroke="#110D1B" stroke-width="1.6"/>
+        <text x="423" y="96" text-anchor="middle" font-family="Poppins,sans-serif" font-size="13" font-weight="800" fill="#FBF7F0">ms-auth</text>
+        <text x="423" y="115" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#E4DBF0">REST /api/v1/auth :8100</text>
+        <!-- External dependencies -->
+        <rect x="542" y="24" width="154" height="40" rx="7" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+        <text x="619" y="42" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#110D1B">ms-usuarios (:8120)</text>
+        <text x="619" y="56" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#5A5468">HTTP Basic Interno</text>
+
+        <rect x="542" y="75" width="154" height="40" rx="7" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+        <text x="619" y="93" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#110D1B">Redis 7 (:6379)</text>
+        <text x="619" y="107" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#5A5468">OTP TTL &amp; Blacklist JWT</text>
+
+        <rect x="542" y="126" width="154" height="44" rx="7" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4" stroke-dasharray="4 3"/>
+        <text x="619" y="145" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#110D1B">SMTP Gmail / RabbitMQ*</text>
+        <text x="619" y="159" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#5A5468">:587 TLS · *AMQP diferido QA</text>
+
+        <!-- Arrows -->
+        <defs><marker id="arw1" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#48119A"/></marker></defs>
+        <line x1="146" y1="103" x2="184" y2="103" stroke="#48119A" stroke-width="1.6" marker-end="url(#arw1)"/>
+        <line x1="310" y1="103" x2="348" y2="103" stroke="#48119A" stroke-width="1.6" marker-end="url(#arw1)"/>
+        <path d="M494,84 L538,44" fill="none" stroke="#48119A" stroke-width="1.5" marker-end="url(#arw1)"/>
+        <line x1="494" y1="98" x2="538" y2="95" stroke="#48119A" stroke-width="1.5" marker-end="url(#arw1)"/>
+        <path d="M494,118 L538,146" fill="none" stroke="#48119A" stroke-width="1.5" marker-end="url(#arw1)"/>
+      </svg>
+      <div class="diag-cap"><span>Fig 3.1 — Contexto C4 real según código activo en rama <code>develop</code>.</span><span>Estilo StyleRadar · #48119A</span></div>
+    </div>
+
+    <div class="diag-box">
+      <svg viewBox="0 0 720 236" xmlns="http://www.w3.org/2000/svg" aria-label="Diagrama C4 Nivel 2 Contenedores">
+        <rect x="6" y="6" width="708" height="224" rx="10" fill="#FFFFFF" stroke="#E8DCCB"/>
+        <text x="18" y="24" font-family="Space Grotesk,sans-serif" font-size="10" font-weight="700" fill="#48119A">C4 NIVEL 2 · TOPOLOGÍA DE CONTENEDORES Y DESPLIEGUE</text>
+        <!-- Runtime Container -->
+        <rect x="18" y="38" width="415" height="178" rx="9" fill="#F9F5FE" stroke="#48119A" stroke-width="1.5" stroke-dasharray="5 3"/>
+        <text x="30" y="56" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#48119A">Contenedor Docker: styleradar-auth (Alpine JRE 17*)</text>
+
+        <rect x="34" y="70" width="175" height="58" rx="7" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+        <text x="121" y="94" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#110D1B">Spring Boot 3.2.12 API</text>
+        <text x="121" y="111" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#48119A">Security + REST + OpenAPI</text>
+
+        <rect x="234" y="70" width="182" height="58" rx="7" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+        <text x="325" y="94" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#110D1B">Core OTP / JWT / Email</text>
+        <text x="325" y="111" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#48119A">JJWT 0.12.6 · Fallbacks Mem</text>
+
+        <rect x="34" y="144" width="382" height="54" rx="7" fill="#FFFFFF" stroke="#B45309" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <text x="225" y="166" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.3" font-weight="700" fill="#B45309">PostgreSQL 16 + Flyway 10 (Declarado en application.yml)</text>
+        <text x="225" y="183" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#5A5468">Excluido en perfil dev/test actual · db/migration/.gitkeep</text>
+
+        <!-- Data & Infra Containers -->
+        <rect x="462" y="38" width="236" height="54" rx="8" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+        <text x="580" y="60" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#110D1B">Contenedor Redis 7 (:6379)</text>
+        <text x="580" y="76" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#48119A">Volátil TTL 300s · Fallback RAM</text>
+
+        <rect x="462" y="102" width="236" height="54" rx="8" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+        <text x="580" y="124" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#110D1B">Servicio ms-usuarios (:8120)</text>
+        <text x="580" y="140" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#48119A">RestClient + Basic Auth</text>
+
+        <rect x="462" y="166" width="236" height="50" rx="8" fill="#FFFFFF" stroke="#48119A" stroke-width="1.3" stroke-dasharray="4 3"/>
+        <text x="580" y="187" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#110D1B">Gmail SMTP (:587) &amp; RabbitMQ</text>
+        <text x="580" y="202" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#5A5468">AMQP :5672 inactivo en QA</text>
+
+        <line x1="209" y1="99" x2="230" y2="99" stroke="#48119A" stroke-width="1.5" marker-end="url(#arw1)"/>
+        <path d="M416,84 L458,65" fill="none" stroke="#48119A" stroke-width="1.5" marker-end="url(#arw1)"/>
+        <path d="M416,104 L458,128" fill="none" stroke="#48119A" stroke-width="1.5" marker-end="url(#arw1)"/>
+        <path d="M416,120 L458,188" fill="none" stroke="#48119A" stroke-width="1.5" marker-end="url(#arw1)"/>
+      </svg>
+      <div class="diag-cap"><span>Fig 3.2 — Topología de contenedores locales (<code>docker-compose.yml</code>) y despliegue Azure App Service.</span><span>Puerto :8100</span></div>
+    </div>
+
+    <div class="callout">
+      <strong>¿Por qué separar Redis 7 y PostgreSQL del contenedor JVM?</strong> Permite que múltiples réplicas de <code>ms-auth</code> en Azure App Service compartan instantáneamente códigos OTP y tokens revocados en <code>Redis</code> sin crear estado pegajoso (<em>sticky sessions</em>), mientras cada contenedor mantiene resiliencia en memoria si la caché externa falla transitoriamente.
+    </div>
+
+    <div class="card pur" style="margin-top:8px">
+      <strong style="color:var(--pur);font-size:10.8px">Gobernanza de Secretos, Perfiles y Puertos</strong>
+      <p style="font-size:10.4px;margin-top:4px;line-height:1.42">
+        Ningún secreto JWT (<code>JWT_SECRET</code>), clave de correo SMTP ni contraseña de servicio interno (<code>ms-usuarios</code>) se versiona en YAML: todos se inyectan por variables de entorno / GitHub Secrets. El perfil por defecto (<code>dev</code>) expone el puerto <code>:8100</code> con OpenAPI activo para integración rápida con Frontend y Gateway.
+      </p>
+    </div>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>Diagramas C4 Contexto y Contenedores</span><span>Pág. 03</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 04: ARQUITECTURA HEXAGONAL · COMPONENTES MINIMALISTA ==================== -->
+<div class="p-slot" data-p="4">
+  <section class="p l-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">04</span> Arquitectura Hexagonal · Diagrama de Componentes</div>
+      <div class="ph-sub">Estilo Minimalista StyleRadar</div>
+    </div>
+
+    <h2 class="st">Diagrama de Componentes Específico (<em>Hexagonal</em>)</h2>
+    <p class="lead">Siguiendo la convención UML del curso y el formato visual <strong>StyleRadar</strong>, el diagrama de componentes prescinde de entidades de dominio (que pertenecen al modelo de clases) y expone únicamente las piezas ejecutables y sus interfaces de acoplamiento.</p>
+
+    <div class="diag-box" style="padding:12px 10px">
+      <!-- Minimalist Hexagonal Component Diagram (StyleRadar #48119A / #E4DBF0 + Lollipop Ball-and-Socket) -->
+      <svg viewBox="0 0 720 355" xmlns="http://www.w3.org/2000/svg" aria-label="Diagrama de Componentes Hexagonal ms-auth">
+        <defs>
+          <marker id="arwH" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 z" fill="#48119A"/>
+          </marker>
+        </defs>
+
+        <!-- Subtle Hexagonal Core Zone Hint (no heavy text or clutter) -->
+        <polygon points="240,18 465,18 508,177 465,336 240,336 196,177" fill="#FAF6FE" stroke="#D8C8F0" stroke-width="1.4" stroke-dasharray="6 4"/>
+
+        <!-- ROW 1: AuthController -(o- OtpServiceImpl -> EmailServiceImpl -> JavaMailSender -> SMTP -->
+        <!-- AuthController (Driving REST) -->
+        <g transform="translate(22,38)">
+          <rect x="8" y="0" width="128" height="48" rx="4" fill="#E4DBF0" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="0" y="9" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
+          <rect x="0" y="29" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
+          <text x="74" y="29" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#262626">AuthController</text>
+        </g>
+
+        <!-- OtpServiceImpl (Application Core Top) -->
+        <g transform="translate(262,38)">
+          <rect x="8" y="0" width="132" height="48" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.8"/>
+          <rect x="0" y="9" width="16" height="9" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+          <rect x="0" y="29" width="16" height="9" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+          <text x="74" y="29" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#262626">OtpServiceImpl</text>
+        </g>
+
+        <!-- UsuarioClient (Driven HTTP Adapter) -->
+        <g transform="translate(466,38)">
+          <rect x="8" y="0" width="120" height="48" rx="4" fill="#E4DBF0" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="0" y="9" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
+          <rect x="0" y="29" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
+          <text x="68" y="29" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#262626">UsuarioClient</text>
+        </g>
+
+        <!-- External Cylinder: ms-usuarios -->
+        <g transform="translate(632,35)">
+          <path d="M0,10 C0,4 72,4 72,10 L72,46 C72,52 0,52 0,46 Z" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <ellipse cx="36" cy="10" rx="36" ry="6" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+          <text x="36" y="34" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700" fill="#262626">ms-usuarios</text>
+        </g>
+
+        <!-- EmailServiceImpl (Center Upper-Mid) -->
+        <g transform="translate(262,126)">
+          <rect x="8" y="0" width="132" height="48" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.8"/>
+          <rect x="0" y="9" width="16" height="9" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+          <rect x="0" y="29" width="16" height="9" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+          <text x="74" y="29" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#262626">EmailServiceImpl</text>
+        </g>
+
+        <!-- JavaMailSender (Driven SMTP Adapter) -->
+        <g transform="translate(466,126)">
+          <rect x="8" y="0" width="120" height="48" rx="4" fill="#E4DBF0" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="0" y="9" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
+          <rect x="0" y="29" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
+          <text x="68" y="29" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#262626">JavaMailSender</text>
+        </g>
+
+        <!-- External Cylinder: SMTP Gmail -->
+        <g transform="translate(632,123)">
+          <path d="M0,10 C0,4 72,4 72,10 L72,46 C72,52 0,52 0,46 Z" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <ellipse cx="36" cy="10" rx="36" ry="6" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+          <text x="36" y="34" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700" fill="#262626">SMTP Gmail</text>
+        </g>
+
+        <!-- ROW 2: JwtAuthenticationFilter -(o- JwtServiceImpl -> StringRedisTemplate -> Redis 7 -->
+        <g transform="translate(14,202)">
+          <rect x="8" y="0" width="160" height="48" rx="4" fill="#E4DBF0" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="0" y="9" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
+          <rect x="0" y="29" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
+          <text x="88" y="28" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.6" font-weight="700" fill="#262626">JwtAuthenticationFilter</text>
+        </g>
+
+        <g transform="translate(262,202)">
+          <rect x="8" y="0" width="132" height="48" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.8"/>
+          <rect x="0" y="9" width="16" height="9" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+          <rect x="0" y="29" width="16" height="9" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+          <text x="74" y="29" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#262626">JwtServiceImpl</text>
+        </g>
+
+        <!-- StringRedisTemplate (Driven Cache Adapter) -->
+        <g transform="translate(460,226)">
+          <rect x="8" y="0" width="138" height="48" rx="4" fill="#E4DBF0" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="0" y="9" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
+          <rect x="0" y="29" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
+          <text x="77" y="28" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.5" font-weight="700" fill="#262626">StringRedisTemplate</text>
+        </g>
+
+        <!-- External Cylinder: Redis 7 -->
+        <g transform="translate(632,223)">
+          <path d="M0,10 C0,4 72,4 72,10 L72,46 C72,52 0,52 0,46 Z" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <ellipse cx="36" cy="10" rx="36" ry="6" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+          <text x="36" y="34" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#262626">Redis 7</text>
+        </g>
+
+        <!-- ROW 3: UsuarioEstadoCambiadoConsumer -(o- StringRedisTemplate -->
+        <g transform="translate(12,282)">
+          <rect x="8" y="0" width="192" height="48" rx="4" fill="#E4DBF0" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="0" y="9" width="14" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
+          <rect x="0" y="29" width="14" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
+          <text x="108" y="28" text-anchor="middle" font-family="Poppins,sans-serif" font-size="8.2" font-weight="700" fill="#262626">UsuarioEstadoCambiadoConsumer</text>
+        </g>
+
+        <!-- Connectors with Ball-and-Socket Lollipops (o -->
+        <!-- AuthController -> OtpServiceImpl -->
+        <line x1="158" y1="62" x2="205" y2="62" stroke="#48119A" stroke-width="1.5"/>
+        <path d="M205,55 A7,7 0 0,1 205,69" fill="none" stroke="#48119A" stroke-width="1.6"/>
+        <circle cx="211" cy="62" r="4.5" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="216" y1="62" x2="262" y2="62" stroke="#48119A" stroke-width="1.5"/>
+
+        <!-- AuthController -> JwtServiceImpl -->
+        <path d="M90,86 L90,118 L215,118 L215,214 L262,214" fill="none" stroke="#48119A" stroke-width="1.4"/>
+        <circle cx="238" cy="214" r="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
+
+        <!-- OtpServiceImpl -> UsuarioClient -> ms-usuarios -->
+        <line x1="402" y1="62" x2="430" y2="62" stroke="#48119A" stroke-width="1.5"/>
+        <circle cx="435" cy="62" r="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="439" y1="62" x2="466" y2="62" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="594" y1="62" x2="628" y2="62" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
+
+        <!-- OtpServiceImpl -> EmailServiceImpl -> JavaMailSender -> SMTP -->
+        <line x1="332" y1="86" x2="332" y2="123" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
+        <line x1="402" y1="150" x2="430" y2="150" stroke="#48119A" stroke-width="1.5"/>
+        <circle cx="435" cy="150" r="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="439" y1="150" x2="466" y2="150" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="594" y1="150" x2="628" y2="150" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
+
+        <!-- OtpServiceImpl -> StringRedisTemplate -->
+        <path d="M402,76 L444,76 L444,236 L460,236" fill="none" stroke="#48119A" stroke-width="1.4" marker-end="url(#arwH)"/>
+
+        <!-- JwtAuthFilter -> JwtServiceImpl -> StringRedisTemplate -> Redis 7 -->
+        <line x1="182" y1="226" x2="205" y2="226" stroke="#48119A" stroke-width="1.5"/>
+        <path d="M205,219 A7,7 0 0,1 205,233" fill="none" stroke="#48119A" stroke-width="1.6"/>
+        <circle cx="211" cy="226" r="4.5" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="216" y1="226" x2="262" y2="226" stroke="#48119A" stroke-width="1.5"/>
+
+        <path d="M402,242 L432,242 L432,250 L460,250" fill="none" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
+        <line x1="606" y1="250" x2="628" y2="250" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
+
+        <!-- JwtAuthFilter -> StringRedisTemplate (revocation check) -->
+        <path d="M98,250 L98,266 L438,266 L438,258 L460,258" fill="none" stroke="#7E57C2" stroke-width="1.3" stroke-dasharray="3 2"/>
+
+        <!-- UsuarioEstadoConsumer -> StringRedisTemplate -->
+        <path d="M212,306 L444,306 L444,266 L460,266" fill="none" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
+      </svg>
+      <div class="diag-cap"><span>Fig 4.1 — Adaptadores IN (izq.), Core Hexagonal (centro punteado), Adaptadores OUT (der.) y Recursos externos.</span><span>Cero entidades de dominio</span></div>
+    </div>
+
+    <h3 class="h3">Explicación Arquitectónica: Puertos, Adaptadores y Cohesión</h3>
+    <div class="grid2">
+      <div class="card">
+        <strong style="color:var(--pur);font-size:11px">Adaptadores Primarios (Driving · IN)</strong>
+        <p style="font-size:10.7px;margin-top:4px;line-height:1.4">
+          <code>AuthController</code> expone el contrato HTTP <code>AuthApi</code> y delega inmediatamente sin lógica de negocio. <code>JwtAuthenticationFilter</code> intercepta peticiones HTTP validando firma y revocación antes del controlador. <code>UsuarioEstadoCambiadoConsumer</code> escucha cambios asíncronos de estado en la cola durable.
+        </p>
+      </div>
+      <div class="card">
+        <strong style="color:var(--pur);font-size:11px">Core &amp; Adaptadores Secundarios (OUT)</strong>
+        <p style="font-size:10.7px;margin-top:4px;line-height:1.4">
+          El hexágono encapsula las interfaces <code>OtpService</code>, <code>JwtService</code> y <code>EmailService</code> con sus implementaciones. Hacia afuera, <code>UsuarioClient</code> encapsula el transporte HTTP <code>RestClient</code> hacia Usuarios, <code>StringRedisTemplate</code> persiste estado temporal y <code>JavaMailSender</code> abstrae SMTP.
+        </p>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:8px">
+      <strong>¿Por qué una Hexagonal Pragmática?</strong> Se implementaron interfaces explícitas para los tres servicios nucleares (<code>OtpService</code>, <code>JwtService</code>, <code>EmailService</code>) y separación estricta de paquetes <code>adapter.in/out</code>, pero se evitó duplicar interfaces puerto/adaptador sobre <code>StringRedisTemplate</code> y <code>JavaMailSender</code> porque ya proveen abstracciones Spring fácilmente simulables con Mockito en las <code>56</code> pruebas unitarias.
+    </div>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>Arquitectura Hexagonal y Componentes</span><span>Pág. 04</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 05: DECISIONES ARQUITECTÓNICAS (ADRs & MATRIZ) ==================== -->
+<div class="p-slot" data-p="5">
+  <section class="p r-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">05</span> Decisiones Arquitectónicas (El Porqué)</div>
+      <div class="ph-sub">Architecture Decision Records</div>
+    </div>
+
+    <h2 class="st">ADRs y <em>Justificación Técnica</em> de Diseño</h2>
+    <p class="lead">Cada elección estructural en <code>ms-auth</code> responde a requisitos de latencia, aislamiento de datos sensibles y evolución controlada hacia una arquitectura distribuida madura.</p>
+
+    <div class="adr">
+      <div class="adr-h"><span class="adr-id">ADR-01</span><span class="adr-ti">Delegación Síncrona de Credenciales a <code>ms-usuarios</code> (RestClient)</span><span class="badge b-ok">Implementado</span></div>
+      <div class="adr-b"><strong>Alternativa descartada:</strong> Duplicar una tabla <code>credenciales</code> en PostgreSQL propio sincronizada por eventos desde el día 1. <strong>Porqué:</strong> Evita inconsistencias eventuales de contraseñas recién actualizadas o usuarios recién creados y elimina un segundo almacén PII durante el MVP. <code>UsuarioClient</code> encapsula HTTP Basic (<code>ms-auth</code>) y fallback controlado en <code>dev</code> cuando <code>ResourceAccessException</code> ocurre offline. <em>Trade-off:</em> Acoplamiento temporal en el instante del <code>/login</code>.</div>
+    </div>
+
+    <div class="adr">
+      <div class="adr-h"><span class="adr-id">ADR-02</span><span class="adr-ti">Redis 7 con TTL Automático + Fallback <code>ConcurrentHashMap</code></span><span class="badge b-ok">Implementado</span></div>
+      <div class="adr-b"><strong>Alternativa descartada:</strong> Guardar OTPs y tokens revocados en tablas SQL o caché local sin distribución. <strong>Porqué:</strong> Redis garantiza expiración atómica en <code>300 s</code> y lectura sub-milisegundo en el filtro JWT por cada request. Ante fallos de conexión en desarrollo (<code>DataAccessException</code>), <code>OtpServiceImpl</code> conmuta a <code>localMemoryStore</code> y <code>localExpiryStore</code> sin derribar pruebas locales.</div>
+    </div>
+
+    <div class="adr">
+      <div class="adr-h"><span class="adr-id">ADR-03</span><span class="adr-ti">JWT HS256 (<code>PT24H</code>) con Doble Revocación (Token + Usuario)</span><span class="badge b-ok">Implementado</span></div>
+      <div class="adr-b"><strong>Alternativa descartada:</strong> Sesiones opacas puras o JWT sin blacklist. <strong>Porqué:</strong> Los 12 microservicios pares verifican firma sin latencia de red; al cerrar sesión (<code>/logout</code>) o cambiar estado en Usuarios, <code>blacklist:&lt;token&gt;</code> y <code>usuario:revocado:&lt;id&gt;</code> invalidan de inmediato todo token emitido antes del timestamp de revocación.</div>
+    </div>
+
+    <div class="adr">
+      <div class="adr-h"><span class="adr-id">ADR-04</span><span class="adr-ti">Aplazamiento de PostgreSQL 16 / Flyway 10 en Perfil <code>dev/test</code></span><span class="badge b-warn">Transitorio</span></div>
+      <div class="adr-b"><strong>Alternativa descartada:</strong> Levantar esquema SQL vacío obligando conexión JDBC en arranque cuando aún no hay entidades JPA persistentes. <strong>Porqué:</strong> <code>application.yml</code> y <code>pom.xml</code> mantienen listos PostgreSQL <code>42.7.4</code> y Flyway <code>10.20.1</code>, mientras <code>application-dev.yml</code> excluye sus autoconfiguraciones para permitir despliegue limpio de Login+OTP. Se activará al sustituir el stub de <code>/registro</code>.</div>
+    </div>
+
+    <div class="adr">
+      <div class="adr-h"><span class="adr-id">ADR-05</span><span class="adr-ti">Desacoplamiento Temporal del Broker Compartido RabbitMQ en QA</span><span class="badge b-warn">Acordado Equipo</span></div>
+      <div class="adr-b"><strong>Porqué:</strong> El módulo <code>RabbitMQConfig</code> y el consumidor de estado existen completos en código, pero por definición de alcance de entregas entre Auth, Stores y Notificaciones, QA no enlaza aún el broker compartido AMQPS para <code>ms-auth</code>, evitando exposición innecesaria de credenciales y falsos positivos de salud.</div>
+    </div>
+
+    <div class="adr">
+      <div class="adr-h"><span class="adr-id">ADR-06</span><span class="adr-ti">Brecha Identificada: Stack Java 17 Actual vs Estándar Java 21 LTS</span><span class="badge b-bad">Por Nivelar</span></div>
+      <div class="adr-b"><strong>Porqué se documenta:</strong> La auditoría de código evidencia <code>&lt;java.version&gt;17&lt;/java.version&gt;</code> y <code>temurin-17-alpine</code>. Aunque compila y supera JaCoCo/SpotBugs al 100%, el estándar de industria StyleRadar exige migrar a <strong>Java 21 LTS</strong> en la siguiente tarea de refactorización y pipeline.</div>
+    </div>
+
+    <h3 class="h3">Matriz Comparativa de Selección Tecnológica</h3>
+    <table class="dt">
+      <thead><tr><th>Decisión</th><th>Opción Elegida</th><th>Alternativa Rechazada</th><th>Criterio Decisivo</th></tr></thead>
+      <tbody>
+        <tr><td>Firma Token</td><td><code>JJWT 0.12.6 HS256</code></td><td>Sesión opaca Stateful</td><td>Escalabilidad horizontal sin cuello de botella BD</td></tr>
+        <tr><td>Estado Efímero</td><td><code>Redis 7</code> + <code>ConcurrentHashMap</code></td><td>PostgreSQL para OTP</td><td>TTL nativo de 300s + baja latencia de filtro</td></tr>
+        <tr><td>Cliente HTTP</td><td>Spring <code>RestClient</code></td><td>RestTemplate / WebClient</td><td>API fluida síncrona nativa de Spring Boot 3.2</td></tr>
+        <tr><td>Documentación API</td><td><code>SpringDoc 2.3.0</code> (<code>AuthApi</code>)</td><td>YAML estático manual</td><td>Contratos OpenAPI sincronizados al código</td></tr>
+      </tbody>
+    </table>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>Decisiones Arquitectónicas y Justificaciones</span><span>Pág. 05</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 06: MODELO DE DOMINIO Y CLASES ==================== -->
+<div class="p-slot" data-p="6">
+  <section class="p l-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">06</span> Modelo de Dominio y Diagrama de Clases</div>
+      <div class="ph-sub">Clases Reales Verificadas</div>
+    </div>
+
+    <h2 class="st">Dominio Actual, Excepciones y <em>Servicios</em></h2>
+    <p class="lead">A diferencia del diagrama de componentes, esta vista expone los tipos del núcleo (<code>domain</code> y <code>application</code>) presentes hoy en <code>src/main/java/edu/dosw/styleradar/auth</code>.</p>
+
+    <div class="diag-box">
+      <svg viewBox="0 0 720 350" xmlns="http://www.w3.org/2000/svg" aria-label="Diagrama de Clases Domain y Application ms-auth">
+        <defs><marker id="arwC" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#48119A"/></marker></defs>
+        <rect x="6" y="6" width="708" height="338" rx="9" fill="#FCF9FE" stroke="#E8DCCB"/>
+
+        <!-- Enum Rol -->
+        <g transform="translate(20,22)">
+          <rect width="205" height="96" rx="5" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
+          <rect width="205" height="28" rx="5" fill="#E4DBF0" stroke="#48119A" stroke-width="1.5"/>
+          <text x="102" y="13" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#48119A">&lt;&lt;enumeration&gt;&gt;</text>
+          <text x="102" y="24" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#110D1B">Rol</text>
+          <text x="10" y="45" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#110D1B">COMPRADOR</text>
+          <text x="10" y="59" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#110D1B">ADMIN_ALMACEN</text>
+          <text x="10" y="73" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#110D1B">REPRESENTANTE_FUNDACION</text>
+          <text x="10" y="87" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#110D1B">ADMIN_STYLERADAR</text>
+        </g>
+
+        <!-- Enum EstadoCuenta -->
+        <g transform="translate(20,132)">
+          <rect width="205" height="82" rx="5" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
+          <rect width="205" height="28" rx="5" fill="#E4DBF0" stroke="#48119A" stroke-width="1.5"/>
+          <text x="102" y="13" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#48119A">&lt;&lt;enumeration&gt;&gt;</text>
+          <text x="102" y="24" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#110D1B">EstadoCuenta</text>
+          <text x="10" y="45" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#110D1B">ACTIVA</text>
+          <text x="10" y="59" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#110D1B">INACTIVA</text>
+          <text x="10" y="73" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#110D1B">BLOQUEADA</text>
+        </g>
+
+        <!-- Event UsuarioEstadoCambiadoEvent -->
+        <g transform="translate(20,232)">
+          <rect width="205" height="90" rx="5" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
+          <rect width="205" height="28" rx="5" fill="#E4DBF0" stroke="#48119A" stroke-width="1.5"/>
+          <text x="102" y="13" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#48119A">&lt;&lt;domain event&gt;&gt;</text>
+          <text x="102" y="24" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.2" font-weight="700" fill="#110D1B">UsuarioEstadoCambiadoEvent</text>
+          <text x="10" y="47" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#110D1B">- usuarioId: Long</text>
+          <text x="10" y="62" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#110D1B">- nuevoEstado: EstadoCuenta</text>
+          <line x1="0" y1="70" x2="205" y2="70" stroke="#E8DCCB"/>
+          <text x="10" y="83" font-family="JetBrains Mono,monospace" font-size="9" fill="#5A5468">Serializable · RabbitMQ payload</text>
+        </g>
+
+        <!-- OtpService -->
+        <g transform="translate(262,22)">
+          <rect width="215" height="104" rx="5" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <rect width="215" height="28" rx="5" fill="#48119A"/>
+          <text x="107" y="13" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#E4DBF0">&lt;&lt;interface / service&gt;&gt;</text>
+          <text x="107" y="24" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#FFFFFF">OtpService / Impl</text>
+          <text x="10" y="45" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ login(LoginRequestDTO)</text>
+          <text x="10" y="59" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ registro(RegistroAuthDTO)</text>
+          <text x="10" y="73" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ verificarOtp(VerificarDTO)</text>
+          <text x="10" y="87" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ reenviarOtp / logout()</text>
+        </g>
+
+        <!-- JwtService -->
+        <g transform="translate(262,144)">
+          <rect width="215" height="84" rx="5" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <rect width="215" height="28" rx="5" fill="#48119A"/>
+          <text x="107" y="13" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#E4DBF0">&lt;&lt;interface / service&gt;&gt;</text>
+          <text x="107" y="24" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#FFFFFF">JwtService / Impl</text>
+          <text x="10" y="45" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ generarToken(id, email, rol)</text>
+          <text x="10" y="59" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ validarToken / extraerClaims()</text>
+          <text x="10" y="73" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ refreshToken(RefreshDTO)</text>
+        </g>
+
+        <!-- EmailService -->
+        <g transform="translate(262,244)">
+          <rect width="215" height="68" rx="5" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <rect width="215" height="28" rx="5" fill="#48119A"/>
+          <text x="107" y="13" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#E4DBF0">&lt;&lt;interface / service&gt;&gt;</text>
+          <text x="107" y="24" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#FFFFFF">EmailService / Impl</text>
+          <text x="10" y="46" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ enviarOtp(email, codigo)</text>
+          <text x="10" y="60" font-family="JetBrains Mono,monospace" font-size="9" fill="#5A5468">JavaMailSender SMTP :587</text>
+        </g>
+
+        <!-- Domain Exceptions Box -->
+        <g transform="translate(506,22)">
+          <rect width="194" height="142" rx="5" fill="#FFFDF9" stroke="#B91C1C" stroke-width="1.4"/>
+          <rect width="194" height="28" rx="5" fill="#FEE2E2" stroke="#B91C1C" stroke-width="1.4"/>
+          <text x="97" y="13" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#B91C1C">&lt;&lt;domain exceptions&gt;&gt;</text>
+          <text x="97" y="24" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#7F1D1D">RuntimeException (5)</text>
+          <text x="10" y="48" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">CredencialesIncorrectasEx.</text>
+          <text x="10" y="66" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">CuentaNoActivaException</text>
+          <text x="10" y="84" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">OtpExpiradoException</text>
+          <text x="10" y="102" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">OtpIntentosAgotadosEx.</text>
+          <text x="10" y="120" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">OtpInvalidoException</text>
+          <text x="10" y="136" font-family="Poppins,sans-serif" font-size="8.5" fill="#5A5468">Mapeadas en GlobalExceptionHandler</text>
+        </g>
+
+        <!-- DTO Contracts Box -->
+        <g transform="translate(506,182)">
+          <rect width="194" height="140" rx="5" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
+          <rect width="194" height="28" rx="5" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+          <text x="97" y="13" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#48119A">&lt;&lt;application.dto&gt;&gt;</text>
+          <text x="97" y="24" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#110D1B">Request &amp; Response DTOs</text>
+          <text x="10" y="46" font-family="JetBrains Mono,monospace" font-size="9" fill="#110D1B">Login / Registro / Refresh Req</text>
+          <text x="10" y="61" font-family="JetBrains Mono,monospace" font-size="9" fill="#110D1B">VerificarOtp / ReenviarOtp Req</text>
+          <text x="10" y="76" font-family="JetBrains Mono,monospace" font-size="9" fill="#110D1B">VerificarCredencialesReq/Res</text>
+          <text x="10" y="94" font-family="JetBrains Mono,monospace" font-size="9" fill="#48119A">LoginResponseDTO</text>
+          <text x="10" y="109" font-family="JetBrains Mono,monospace" font-size="9" fill="#48119A">UsuarioAuthResponseDTO</text>
+          <text x="10" y="124" font-family="JetBrains Mono,monospace" font-size="9" fill="#48119A">OtpMensaje / ErrorResponseDTO</text>
+        </g>
+
+        <!-- Relations -->
+        <line x1="122" y1="232" x2="122" y2="218" stroke="#48119A" stroke-width="1.4" marker-end="url(#arwC)"/>
+        <line x1="225" y1="70" x2="258" y2="70" stroke="#48119A" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#arwC)"/>
+        <line x1="225" y1="168" x2="258" y2="168" stroke="#48119A" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#arwC)"/>
+        <line x1="370" y1="126" x2="370" y2="140" stroke="#48119A" stroke-width="1.3" marker-end="url(#arwC)"/>
+        <path d="M262,102 L246,102 L246,278 L258,278" fill="none" stroke="#48119A" stroke-width="1.3" marker-end="url(#arwC)"/>
+        <line x1="477" y1="72" x2="502" y2="72" stroke="#B91C1C" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#arwC)"/>
+        <line x1="477" y1="205" x2="502" y2="205" stroke="#48119A" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#arwC)"/>
+      </svg>
+      <div class="diag-cap"><span>Fig 6.1 — Modelo de clases real (dominio + aplicación + fronteras DTO/excepciones).</span><span>35 fuentes Java</span></div>
+    </div>
+
+    <div class="callout">
+      <strong>¿Por qué no existen clases JPA <code>@Entity</code> en <code>domain.model</code> hoy?</strong>
+      Porque las credenciales y el perfil residen actualmente en <code>ms-usuarios</code> y los códigos OTP / listas negras tienen vida máxima de 5 minutos o 24 horas en Redis 7. Modelar <code>Rol</code>, <code>EstadoCuenta</code>, <code>UsuarioEstadoCambiadoEvent</code> y <code>5</code> excepciones tipadas mantiene el dominio expresivo sin inflarlo con ORM artificial. La evolución futura añadirá entidades de auditoría/credencial cuando PostgreSQL 16 se habilite para producción.
+    </div>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>Modelo de Dominio y Diagrama de Clases</span><span>Pág. 06</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 07: MODELO DE DATOS REAL (REDIS + POSTGRES) ==================== -->
+<div class="p-slot" data-p="7">
+  <section class="p r-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">07</span> Modelo de Datos y Estado Efímero</div>
+      <div class="ph-sub">Redis 7 (:6379) &amp; PostgreSQL 16*</div>
+    </div>
+
+    <h2 class="st">Estructura de Almacenamiento en <em>Redis 7</em></h2>
+    <p class="lead">El almacenamiento operativo vivo de <code>ms-auth</code> se articula sobre <strong>6 espacios de claves en Redis</strong> con expiración automática, asegurando limpieza sin trabajos cron ni bloqueos de disco.</p>
+
+    <div class="diag-box">
+      <svg viewBox="0 0 720 148" xmlns="http://www.w3.org/2000/svg" aria-label="Modelo de Claves Redis 7">
+        <rect x="6" y="6" width="708" height="136" rx="9" fill="#FFFFFF" stroke="#E8DCCB"/>
+        <text x="18" y="24" font-family="Space Grotesk,sans-serif" font-size="9.8" font-weight="700" fill="#48119A">ESPACIO DE CLAVES ACTIVO EN REDIS (:6379) · FALLBACK ConcurrentHashMap EN MEMORIA</text>
+
+        <rect x="18" y="36" width="218" height="92" rx="7" fill="#FAF6FE" stroke="#48119A" stroke-width="1.3"/>
+        <text x="30" y="53" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#48119A">Flujo OTP (TTL = 300s)</text>
+        <text x="30" y="71" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">otp:&lt;email&gt;          -&gt; "123456"</text>
+        <text x="30" y="87" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">otp:intentos:&lt;email&gt; -&gt; "3" .. "0"</text>
+        <text x="30" y="103" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">otp:usuario:&lt;email&gt;  -&gt; userId</text>
+        <text x="30" y="119" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">otp:rol:&lt;email&gt;      -&gt; Rol.name</text>
+
+        <rect x="252" y="36" width="222" height="92" rx="7" fill="#FAF6FE" stroke="#48119A" stroke-width="1.3"/>
+        <text x="264" y="53" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#48119A">Revocación JWT (TTL Dinámico)</text>
+        <text x="264" y="74" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">blacklist:&lt;token&gt;</text>
+        <text x="264" y="90" font-family="Poppins,sans-serif" font-size="9.5" fill="#5A5468">Valor: "revoked"</text>
+        <text x="264" y="108" font-family="Poppins,sans-serif" font-size="9.5" fill="#5A5468">TTL = seg restantes hasta exp(JWT)</text>
+
+        <rect x="490" y="36" width="212" height="92" rx="7" fill="#FAF6FE" stroke="#48119A" stroke-width="1.3"/>
+        <text x="502" y="53" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#48119A">Revocación Global Usuario</text>
+        <text x="502" y="74" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">usuario:revocado:&lt;id&gt;</text>
+        <text x="502" y="90" font-family="Poppins,sans-serif" font-size="9.5" fill="#5A5468">Valor: epoch ms de bloqueo</text>
+        <text x="502" y="108" font-family="Poppins,sans-serif" font-size="9.5" fill="#5A5468">Bloquea JWT si issuedAt &lt;= ts</text>
+      </svg>
+      <div class="diag-cap"><span>Fig 7.1 — Familias de claves verificadas en <code>OtpServiceImpl</code> y <code>JwtAuthenticationFilter</code>.</span><span>Redis + RAM fallback</span></div>
+    </div>
+
+    <h3 class="h3">Catálogo Detallado de Claves &amp; Reglas de Expiración</h3>
+    <table class="dt">
+      <thead><tr><th>Prefijo de Clave</th><th>Valor Guardado</th><th>TTL Configurado</th><th>Escrita Por</th><th>Leída Por</th></tr></thead>
+      <tbody>
+        <tr><td><code>otp:{email}</code></td><td>Código numérico 6 dígitos</td><td><code>300 s</code> (<code>otp.ttl-seconds</code>)</td><td><code>OtpServiceImpl</code></td><td><code>OtpServiceImpl</code></td></tr>
+        <tr><td><code>otp:intentos:{email}</code></td><td>Contador descendente desde <code>3</code></td><td><code>300 s</code></td><td><code>OtpServiceImpl</code></td><td><code>OtpServiceImpl</code></td></tr>
+        <tr><td><code>otp:usuario:{email}</code></td><td>ID numérico del usuario</td><td><code>300 s</code></td><td><code>OtpServiceImpl</code></td><td><code>OtpServiceImpl</code></td></tr>
+        <tr><td><code>otp:rol:{email}</code></td><td>Nombre del enum <code>Rol</code></td><td><code>300 s</code></td><td><code>OtpServiceImpl</code></td><td><code>OtpServiceImpl</code></td></tr>
+        <tr><td><code>blacklist:{token}</code></td><td><code>"revoked"</code></td><td>Restante del JWT (máx <code>24h</code>)</td><td><code>OtpServiceImpl</code></td><td><code>JwtAuthenticationFilter</code></td></tr>
+        <tr><td><code>usuario:revocado:{id}</code></td><td>Timestamp epoch (ms)</td><td>Persistente / hasta reactivar</td><td><code>UsuarioEstadoConsumer</code></td><td><code>JwtAuthenticationFilter</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="h3">Estado Real de PostgreSQL 16 (<code>styleradar_auth</code>) y Flyway 10</h3>
+    <div class="grid2" style="margin-top:4px">
+      <div class="card warn" style="background:#FFFBF2;border-color:#F5D08A">
+        <strong style="color:#B45309;font-size:10.8px">¿Qué está declarado en <code>pom.xml</code> y <code>application.yml</code>?</strong>
+        <p style="font-size:10.4px;margin-top:4px;line-height:1.4">
+          Se incluyen dependencias PostgreSQL <code>42.7.4</code> y Flyway <code>10.20.1</code>, apuntando a <code>jdbc:postgresql://localhost:5432/styleradar_auth</code> con <code>ddl-auto: validate</code> y <code>flyway.enabled: false</code>.
+        </p>
+      </div>
+      <div class="card pur">
+        <strong style="color:var(--pur);font-size:10.8px">¿Por qué está excluido hoy en <code>dev</code> y <code>test</code>?</strong>
+        <p style="font-size:10.4px;margin-top:4px;line-height:1.4">
+          Tanto <code>application-dev.yml</code> como <code>application-test.yml</code> excluyen <code>DataSourceAutoConfiguration</code>, <code>HibernateJpaAutoConfiguration</code> y <code>FlywayAutoConfiguration</code>; <code>db/migration</code> solo contiene <code>.gitkeep</code> mientras la persistencia de usuarios permanece en <code>ms-usuarios</code>.
+        </p>
+      </div>
+    </div>
+
+    <div class="callout ok" style="margin-top:8px">
+      <strong>Justificación de Limpieza de Esquema:</strong> Activar Flyway prematuramente con migraciones vacías induciría falsa sensación de persistencia. El esquema <code>styleradar_auth</code> permanece desacoplado hasta implementar la tabla local de auditoría/credenciales y eliminar el stub de <code>/registro</code>.
+    </div>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>Modelo de Datos Redis y Estado SQL</span><span>Pág. 07</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 08: ALCANCE FUNCIONAL & CONTRATOS API REST ==================== -->
+<div class="p-slot" data-p="8">
+  <section class="p l-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">08</span> Alcance Funcional &amp; Contratos REST</div>
+      <div class="ph-sub">/api/v1/auth · OpenAPI 3</div>
+    </div>
+
+    <h2 class="st">Trazabilidad de Requisitos &amp; <em>Endpoints Reales</em></h2>
+    <p class="lead">Cobertura verificada de los requisitos funcionales (RF) y no funcionales (RNF) del módulo de identidad sobre el controlador <code>AuthController</code> y su contrato <code>AuthApi</code>.</p>
+
+    <table class="dt" style="margin-bottom:10px">
+      <thead><tr><th class="nw">ID Req.</th><th>Descripción Funcional / No Funcional</th><th>Implementación en <code>ms-auth</code></th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><code>SR-RF-01</code></td><td>Registro inicial con verificación de correo</td><td><code>POST /registro</code> valida DTO, genera OTP y envía correo (ID stub <code>12L</code>)</td><td class="nw"><span class="badge b-warn">Parcial (Stub)</span></td></tr>
+        <tr><td class="nw"><code>SR-RF-02</code></td><td>Inicio de sesión con segundo factor OTP y JWT</td><td><code>POST /login</code> valida en <code>ms-usuarios</code>, envía OTP; <code>/otp/verificar</code> emite JWT</td><td class="nw"><span class="badge b-ok">Completo</span></td></tr>
+        <tr><td class="nw"><code>SR-RF-92</code></td><td>Renovación y cierre seguro de sesión</td><td><code>POST /refresh</code> emite nuevo JWT; <code>POST /logout</code> registra en <code>blacklist</code></td><td class="nw"><span class="badge b-ok">Completo</span></td></tr>
+        <tr><td class="nw"><code>SR-RNF-01</code></td><td>Seguridad basada en roles y expiración estricta</td><td><code>4</code> roles <code>ROLE_*</code>, JWT <code>24h</code>, OTP <code>300s</code> máx <code>3</code> intentos</td><td class="nw"><span class="badge b-ok">Completo</span></td></tr>
+        <tr><td class="nw"><code>SR-RNF-02</code></td><td>Observabilidad de contratos y trazabilidad de error</td><td><code>SpringDoc 2.3.0</code> + <code>GlobalExceptionHandler</code> estructurado</td><td class="nw"><span class="badge b-ok">Completo</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="h3">Contratos REST Públicos y Autenticados (<code>/api/v1/auth</code>)</h3>
+    <table class="dt">
+      <thead><tr><th class="nw">Método &amp; Ruta</th><th>Request DTO</th><th>Response DTO (Exitoso)</th><th>Errores HTTP Mapeados</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><code>POST /login</code></td><td><code>LoginRequestDTO</code></td><td><span class="nw"><code>200</code> ·</span> <code>OtpMensajeResponseDTO</code></td><td><code>400</code> BeanVal, <code>401</code> Credenciales, <code>403</code> Cuenta Inactiva</td></tr>
+        <tr><td class="nw"><code>POST /registro</code></td><td><code>RegistroAuthRequestDTO</code></td><td><span class="nw"><code>201</code> ·</span> <code>UsuarioAuthResponseDTO</code></td><td><code>400</code> BeanVal, <code>500</code> Fallo SMTP (rollback OTP)</td></tr>
+        <tr><td class="nw"><code>POST /otp/verificar</code></td><td><code>VerificarOtpRequestDTO</code></td><td><span class="nw"><code>200</code> ·</span> <code>LoginResponseDTO</code> (JWT)</td><td><code>400</code> OTP inválido, <code>401</code> OTP expirado, <code>429</code> Intentos agotados*</td></tr>
+        <tr><td class="nw"><code>POST /otp/reenviar</code></td><td><code>ReenviarOtpRequestDTO</code></td><td><span class="nw"><code>200</code> ·</span> <code>OtpMensajeResponseDTO</code></td><td><code>400</code> Validación / Datos OTP previos expirados</td></tr>
+        <tr><td class="nw"><code>POST /refresh</code></td><td><code>RefreshTokenRequestDTO</code></td><td><span class="nw"><code>200</code> ·</span> <code>LoginResponseDTO</code></td><td><code>401</code> Token inválido, expirado o revocado</td></tr>
+        <tr><td class="nw"><code>POST /logout</code></td><td>Header <code>Authorization: Bearer</code></td><td><span class="nw"><code>200</code> ·</span> <code>OtpMensajeResponseDTO</code></td><td><code>401</code> Token ausente / inválido en filtro de seguridad</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout warn" style="margin-top:9px">
+      <strong>*Hallazgo de Auditoría en Contrato Swagger vs Runtime:</strong> Las anotaciones OpenAPI en <code>AuthApi.java</code> documentan código <code>422</code> para intentos OTP agotados, pero <code>GlobalExceptionHandler.java</code> (verificado por <code>AuthControllerTest</code>) devuelve <strong><code>429 Too Many Requests</code></strong> para <code>OtpIntentosAgotadosException</code>, alineado con el estándar HTTP de <em>rate limiting</em>. Se planifica alinear la anotación Javadoc/Swagger en la siguiente tarea de documentación.
+    </div>
+
+    <div class="callout" style="margin-top:6px">
+      <strong>¿Por qué devolver <code>ErrorResponseDTO</code> homogéneo?</strong> Centralizar las excepciones en <code>GlobalExceptionHandler</code> garantiza que el frontend web/móvil y el API Gateway reciban siempre el mismo formato JSON independientemente de si falló validación (<code>400</code>), firma JWT (<code>401</code>), estado de cuenta (<code>403</code>), método HTTP (<code>405</code>) o límite OTP (<code>429</code>).
+    </div>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>Alcance Funcional y Contratos API REST</span><span>Pág. 08</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 09: FLUJOS CRÍTICOS & REGLAS DE NEGOCIO ==================== -->
+<div class="p-slot" data-p="9">
+  <section class="p r-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">09</span> Flujos Críticos y Resiliencia</div>
+      <div class="ph-sub">Login · OTP · Rollback · JWT</div>
+    </div>
+
+    <h2 class="st">Secuencia End-to-End &amp; <em>Reglas de Bloqueo</em></h2>
+    <p class="lead">El flujo de acceso combina verificación de contraseña contra <code>ms-usuarios</code> con emisión temporal OTP, asegurando que nunca quede un OTP huérfano ni un usuario bloqueado si falla el correo.</p>
+
+    <div class="diag-box">
+      <svg viewBox="0 0 720 285" xmlns="http://www.w3.org/2000/svg" aria-label="Diagrama de Secuencia Login OTP JWT">
+        <defs><marker id="arwS" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#48119A"/></marker></defs>
+        <rect x="6" y="6" width="708" height="273" rx="9" fill="#FFFFFF" stroke="#E8DCCB"/>
+
+        <!-- Lifelines -->
+        <g font-family="Poppins,sans-serif" font-size="10" font-weight="700" text-anchor="middle">
+          <rect x="16" y="16" width="90" height="28" rx="5" fill="#E4DBF0" stroke="#48119A"/><text x="61" y="34">Cliente/GW</text>
+          <rect x="136" y="16" width="110" height="28" rx="5" fill="#48119A"/><text x="191" y="34" fill="#fff">AuthController</text>
+          <rect x="274" y="16" width="108" height="28" rx="5" fill="#48119A"/><text x="328" y="34" fill="#fff">OtpServiceImpl</text>
+          <rect x="410" y="16" width="100" height="28" rx="5" fill="#E4DBF0" stroke="#48119A"/><text x="460" y="34">ms-usuarios</text>
+          <rect x="536" y="16" width="78" height="28" rx="5" fill="#E4DBF0" stroke="#48119A"/><text x="575" y="34">Redis 7</text>
+          <rect x="630" y="16" width="76" height="28" rx="5" fill="#E4DBF0" stroke="#48119A"/><text x="668" y="34">SMTP/JWT</text>
+        </g>
+
+        <line x1="61" y1="44" x2="61" y2="268" stroke="#D8C8F0" stroke-dasharray="4 3"/>
+        <line x1="191" y1="44" x2="191" y2="268" stroke="#D8C8F0" stroke-dasharray="4 3"/>
+        <line x1="328" y1="44" x2="328" y2="268" stroke="#D8C8F0" stroke-dasharray="4 3"/>
+        <line x1="460" y1="44" x2="460" y2="268" stroke="#D8C8F0" stroke-dasharray="4 3"/>
+        <line x1="575" y1="44" x2="575" y2="268" stroke="#D8C8F0" stroke-dasharray="4 3"/>
+        <line x1="668" y1="44" x2="668" y2="268" stroke="#D8C8F0" stroke-dasharray="4 3"/>
+
+        <!-- Step arrows -->
+        <g font-family="JetBrains Mono,monospace" font-size="8.8" fill="#110D1B">
+          <line x1="61" y1="68" x2="187" y2="68" stroke="#48119A" stroke-width="1.4" marker-end="url(#arwS)"/>
+          <text x="72" y="63">1. POST /login (email, pwd)</text>
+
+          <line x1="191" y1="90" x2="324" y2="90" stroke="#48119A" stroke-width="1.4" marker-end="url(#arwS)"/>
+          <text x="200" y="85">2. iniciarLogin()</text>
+
+          <line x1="328" y1="112" x2="456" y2="112" stroke="#48119A" stroke-width="1.4" marker-end="url(#arwS)"/>
+          <text x="336" y="107">3. Verificar credenciales</text>
+
+          <line x1="460" y1="132" x2="332" y2="132" stroke="#15803D" stroke-width="1.3" stroke-dasharray="3 2" marker-end="url(#arwS)"/>
+          <text x="342" y="127" fill="#15803D">4. OK (id, rol, ACTIVA)</text>
+
+          <line x1="328" y1="154" x2="571" y2="154" stroke="#48119A" stroke-width="1.4" marker-end="url(#arwS)"/>
+          <text x="338" y="149">5. Guardar otp + intentos(3) [300s]</text>
+
+          <line x1="328" y1="176" x2="664" y2="176" stroke="#48119A" stroke-width="1.4" marker-end="url(#arwS)"/>
+          <text x="338" y="171">6. Enviar código 6 dígitos (SMTP)</text>
+
+          <line x1="191" y1="196" x2="65" y2="196" stroke="#15803D" stroke-width="1.3" stroke-dasharray="3 2" marker-end="url(#arwS)"/>
+          <text x="72" y="191" fill="#15803D">7. 200 OtpMensaje (rollback si falla SMTP)</text>
+
+          <line x1="61" y1="220" x2="324" y2="220" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwS)"/>
+          <text x="72" y="215">8. POST /otp/verificar (email, codigo)</text>
+
+          <line x1="328" y1="240" x2="571" y2="240" stroke="#48119A" stroke-width="1.4" marker-end="url(#arwS)"/>
+          <text x="338" y="235">9. Validar + consumir claves otp:*</text>
+
+          <line x1="668" y1="260" x2="65" y2="260" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwS)"/>
+          <text x="200" y="255" font-weight="700" fill="#48119A">10. Emitir JWT HS256 (PT24H) -&gt; 200 LoginResponseDTO</text>
+        </g>
+      </svg>
+      <div class="diag-cap"><span>Fig 9.1 — Secuencia real de autenticación multifactor con protección contra fallos SMTP.</span><span>TTL 300s · Máx 3</span></div>
+    </div>
+
+    <h3 class="h3">Reglas de Negocio &amp; Resiliencia Verificadas en Código</h3>
+    <div class="grid2">
+      <div class="card">
+        <strong style="color:var(--pur);font-size:11px">1. Límite de Intentos y Rollback Transaccional</strong>
+        <ul style="padding-left:15px;font-size:10.5px;margin-top:4px;line-height:1.42">
+          <li>Cada OTP generado inicia <code>otp:intentos:{email}</code> en <code>"3"</code> con ventana de <code>300 s</code>.</li>
+          <li>Si el código no coincide, decrementa el contador y lanza <code>OtpInvalidoException</code> (<code>400</code>). Al llegar a <code>0</code>, limpia el OTP y lanza <code>OtpIntentosAgotadosException</code> (<code>429</code>).</li>
+          <li><strong>Rollback SMTP:</strong> si <code>EmailService</code> falla enviando el correo, <code>OtpServiceImpl</code> elimina las 4 claves OTP creadas para que el usuario pueda reintentar inmediatamente.</li>
+        </ul>
+      </div>
+      <div class="card pur">
+        <strong style="color:var(--pur);font-size:11px">2. Degradación Controlada (Resiliencia Dev)</strong>
+        <ul style="padding-left:15px;font-size:10.5px;margin-top:4px;line-height:1.42">
+          <li><strong>Fallback Redis:</strong> ante <code>DataAccessException</code>, todas las lecturas/escrituras de OTP y blacklist conmutan a mapas concurrentes con sello temporal.</li>
+          <li><strong>Fallback <code>UsuarioClient</code>:</strong> si <code>ms-usuarios</code> no responde en local (<code>ResourceAccessException</code>), en perfil <code>dev</code> retorna credenciales sintéticas de prueba para permitir desarrollo desacoplado de Frontend.</li>
+          <li><strong>Seguridad en Prod:</strong> ambos fallbacks deben estar deshabilitados en entornos productivos auditados.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>Flujos Críticos y Reglas de Resiliencia</span><span>Pág. 09</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 10: COMUNICACIÓN ASÍNCRONA & RABBITMQ ==================== -->
+<div class="p-slot" data-p="10">
+  <section class="p l-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">10</span> Comunicación Asíncrona y Alcance Broker</div>
+      <div class="ph-sub">RabbitMQ · Estado QA</div>
+    </div>
+
+    <h2 class="st">Diseño Orientado a Eventos &amp; <em>Decisión en QA</em></h2>
+    <p class="lead">Para revocar sesiones activas inmediatamente cuando un administrador bloquea o inactiva una cuenta en <code>ms-usuarios</code>, <code>ms-auth</code> implementa una topología AMQP reactiva en <code>RabbitMQConfig</code>.</p>
+
+    <div class="diag-box">
+      <svg viewBox="0 0 720 155" xmlns="http://www.w3.org/2000/svg" aria-label="Flujo Asíncrono RabbitMQ ms-auth">
+        <defs><marker id="arwR" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#48119A"/></marker></defs>
+        <rect x="6" y="6" width="708" height="143" rx="9" fill="#FFFFFF" stroke="#E8DCCB"/>
+        <text x="18" y="24" font-family="Space Grotesk,sans-serif" font-size="9.8" font-weight="700" fill="#48119A">TOPOLOGÍA DEFINIDA EN RabbitMQConfig.java (DESHABILITADA EN BROKER QA ACTUAL)</text>
+
+        <rect x="18" y="46" width="128" height="72" rx="7" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
+        <text x="82" y="75" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700">ms-usuarios</text>
+        <text x="82" y="93" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.8" fill="#48119A">Publica cambio estado</text>
+
+        <rect x="176" y="46" width="144" height="72" rx="7" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4" stroke-dasharray="4 3"/>
+        <text x="248" y="70" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700">DirectExchange</text>
+        <text x="248" y="86" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#48119A">styleradar.usuarios</text>
+        <text x="248" y="102" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.4" fill="#5A5468">key: usuario.estado.cambiado</text>
+
+        <rect x="350" y="46" width="168" height="72" rx="7" fill="#48119A"/>
+        <text x="434" y="69" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.2" font-weight="700" fill="#fff">UsuarioEstadoCambiado</text>
+        <text x="434" y="83" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.2" font-weight="700" fill="#fff">Consumer</text>
+        <text x="434" y="101" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.2" fill="#E4DBF0">auth.usuario.estado.cambiado</text>
+
+        <rect x="548" y="46" width="152" height="72" rx="7" fill="#FAF6FE" stroke="#48119A" stroke-width="1.4"/>
+        <text x="624" y="74" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#48119A">Redis 7</text>
+        <text x="624" y="91" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.8" fill="#110D1B">usuario:revocado:&lt;id&gt;</text>
+        <text x="624" y="105" text-anchor="middle" font-family="Poppins,sans-serif" font-size="8.6" fill="#5A5468">Timestamp de bloqueo</text>
+
+        <line x1="146" y1="82" x2="172" y2="82" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwR)"/>
+        <line x1="320" y1="82" x2="346" y2="82" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwR)"/>
+        <line x1="518" y1="82" x2="544" y2="82" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwR)"/>
+      </svg>
+      <div class="diag-cap"><span>Fig 10.1 — Flujo de revocación por evento de dominio <code>UsuarioEstadoCambiadoEvent</code>.</span><span>Queue durable</span></div>
+    </div>
+
+    <div class="grid2" style="margin-top:8px">
+      <div class="card pur">
+        <h3 class="h3" style="margin-top:0">¿Por qué usar AMQP aquí y no Polling HTTP?</h3>
+        <p style="font-size:10.6px;line-height:1.45">
+          Si <code>ms-auth</code> consultara a <code>ms-usuarios</code> en cada petición para saber si la cuenta fue bloqueada, perdería por completo las ventajas de escalabilidad <em>stateless</em> del JWT. Con el evento <code>UsuarioEstadoCambiadoEvent(usuarioId, nuevoEstado)</code>, solo existe escritura en Redis cuando ocurre un cambio administrativo (<code>BLOQUEADA</code> o <code>INACTIVA</code>).
+        </p>
+      </div>
+      <div class="card warn" style="background:#FFFBF2;border-color:#F5D08A">
+        <h3 class="h3" style="margin-top:0;color:#B45309">Alcance Real Confirmado en QA</h3>
+        <p style="font-size:10.6px;line-height:1.45">
+          Por confirmación directa del equipo, <strong>ni <code>ms-auth</code> ni <code>ms-stores</code> se conectan por ahora al broker compartido de notificaciones AMQPS en QA</strong>. Por ello, durante las pruebas locales (<code>SwaggerOpenApiTest</code>) Spring AMQP registra un intento inofensivo a <code>localhost:5672</code> sin afectar el funcionamiento HTTP/OTP, y no se almacenan credenciales de broker en el repositorio.
+        </p>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:8px">
+      <strong>Nota de Alineación Documental:</strong> El antiguo <code>README.md</code> mencionaba el exchange <code>styleradar.auth.events</code> como propuesta inicial, mientras el código real declara <code>DirectExchange("styleradar.usuarios", true, false)</code> y cola durable <code>auth.usuario.estado.cambiado</code>. La actualización del README en la siguiente tarea reflejará exactamente este contrato de código.
+    </div>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>Mensajería Asíncrona y Estado Broker</span><span>Pág. 10</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 11: SEGURIDAD EN PROFUNDIDAD ==================== -->
+<div class="p-slot" data-p="11">
+  <section class="p r-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">11</span> Seguridad en Profundidad</div>
+      <div class="ph-sub">SecurityConfig · JwtAuthenticationFilter</div>
+    </div>
+
+    <h2 class="st">Blindaje <em>Stateless</em>, Filtro JWT y RBAC</h2>
+    <p class="lead">La arquitectura de seguridad protege los endpoints sin almacenar sesiones HTTP de servidor y aplica validación en dos capas antes de autorizar cualquier petición autenticada.</p>
+
+    <div class="diag-box">
+      <svg viewBox="0 0 720 128" xmlns="http://www.w3.org/2000/svg" aria-label="Cadena de Seguridad HTTP ms-auth">
+        <defs><marker id="arwSec" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#48119A"/></marker></defs>
+        <rect x="6" y="6" width="708" height="116" rx="9" fill="#FCF9FE" stroke="#E8DCCB"/>
+        <rect x="18" y="34" width="110" height="58" rx="6" fill="#E4DBF0" stroke="#48119A"/><text x="73" y="60" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700">CORS + CSRF Off</text><text x="73" y="76" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#48119A">STATELESS</text>
+        <rect x="152" y="34" width="128" height="58" rx="6" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/><text x="216" y="58" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700">1. Firma &amp; Exp JWT</text><text x="216" y="75" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#5A5468">HS256 · Bearer</text>
+        <rect x="304" y="34" width="144" height="58" rx="6" fill="#48119A"/><text x="376" y="57" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700" fill="#fff">2. Doble Chequeo Redis</text><text x="376" y="75" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.2" fill="#E4DBF0">blacklist + revocado</text>
+        <rect x="472" y="34" width="118" height="58" rx="6" fill="#E4DBF0" stroke="#48119A"/><text x="531" y="58" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700">SecurityContext</text><text x="531" y="75" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#48119A">ROLE_&lt;ROL&gt;</text>
+        <rect x="614" y="34" width="88" height="58" rx="6" fill="#DCFCE7" stroke="#15803D"/><text x="658" y="60" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700" fill="#15803D">Endpoint</text><text x="658" y="75" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#15803D">Autorizado</text>
+        <line x1="128" y1="63" x2="148" y2="63" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwSec)"/>
+        <line x1="280" y1="63" x2="300" y2="63" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwSec)"/>
+        <line x1="448" y1="63" x2="468" y2="63" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwSec)"/>
+        <line x1="590" y1="63" x2="610" y2="63" stroke="#15803D" stroke-width="1.5" marker-end="url(#arwSec)"/>
+      </svg>
+      <div class="diag-cap"><span>Fig 11.1 — Verificación por petición en <code>JwtAuthenticationFilter</code>.</span><span>401 inmediato si revocado</span></div>
+    </div>
+
+    <h3 class="h3">Justificación de Controles de Seguridad Implementados</h3>
+    <div class="grid2">
+      <div class="card">
+        <strong style="color:var(--pur);font-size:10.8px">¿Por qué deshabilitar CSRF y usar STATELESS?</strong>
+        <p style="font-size:10.5px;margin-top:4px;line-height:1.42">
+          CSRF protege contra ataques sobre cookies de sesión enviadas automáticamente por el navegador. Como <code>ms-auth</code> exige cabecera explícita <code>Authorization: Bearer &lt;jwt&gt;</code> y define <code>SessionCreationPolicy.STATELESS</code>, los ataques CSRF clásicos no aplican y el servidor no retiene memoria de sesión.
+        </p>
+      </div>
+      <div class="card">
+        <strong style="color:var(--pur);font-size:10.8px">Regla Anti-Replay tras Bloqueo Administrativo</strong>
+        <p style="font-size:10.5px;margin-top:4px;line-height:1.42">
+          <code>JwtAuthenticationFilter</code> compara el claim <code>issuedAt</code> del JWT contra el sello epoch guardado en <code>usuario:revocado:&lt;usuarioId&gt;</code>. Si <code>issuedAt &lt;= revocacionTs</code>, el filtro retorna <code>401 Unauthorized</code> aunque la firma HMAC siga siendo criptográficamente válida.
+        </p>
+      </div>
+    </div>
+
+    <h3 class="h3">Matriz de Rutas y Autoridades RBAC (<code>SecurityConfig</code>)</h3>
+    <table class="dt">
+      <thead><tr><th>Recurso / Patrón</th><th>Acceso en <code>SecurityConfig</code></th><th>Justificación de Exposición</th></tr></thead>
+      <tbody>
+        <tr><td><code>/api/v1/auth/login</code>, <code>/registro</code>, <code>/otp/**</code>, <code>/refresh</code></td><td><code>permitAll()</code></td><td>Puntos de entrada previos a poseer un token válido</td></tr>
+        <tr><td><code>/api/v1/auth/logout</code> y rutas protegidas</td><td>Requiere JWT válido + autoridad <code>ROLE_*</code></td><td>Exige identificar exactamente el token que ingresa a <code>blacklist</code></td></tr>
+        <tr><td><code>/swagger-ui/**</code>, <code>/v3/api-docs/**</code>, <code>/actuator/**</code></td><td><code>permitAll()</code> (QA/Dev)</td><td>Inspección OpenAPI y sondas de infraestructura Azure App Service</td></tr>
+        <tr><td>Cliente saliente hacia <code>ms-usuarios</code></td><td>HTTP Basic Auth (<code>ms-auth</code> + secreto env)</td><td>Autenticación servicio-a-servicio de canal interno <code>/internal/**</code></td></tr>
+      </tbody>
+    </table>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>Seguridad Stateless, JWT y RBAC</span><span>Pág. 11</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 12: INTEGRACIÓN, FINOPS & DEUDA TÉCNICA ==================== -->
+<div class="p-slot" data-p="12">
+  <section class="p l-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">12</span> Integraciones, FinOps &amp; Deuda Técnica</div>
+      <div class="ph-sub">TCO y Hoja de Ruta</div>
+    </div>
+
+    <h2 class="st">Integraciones Externas, <em>FinOps</em> y Hoja de Ruta</h2>
+    <p class="lead">Consolidación de puntos de contacto del microservicio, estimación de costos operativos Azure declarada por el squad y plan priorizado de cierre técnico.</p>
+
+    <table class="dt" style="margin-bottom:9px">
+      <thead><tr><th>Sistema Externo</th><th>Protocolo / Puerto</th><th>Configuración en <code>application*.yml</code></th><th>Manejo de Falla</th></tr></thead>
+      <tbody>
+        <tr><td><code>ms-usuarios</code></td><td>HTTP Basic / <code>:8120</code></td><td><code>styleradar.usuarios.base-url</code></td><td>Fallback sintético en perfil <code>dev</code></td></tr>
+        <tr><td><code>Redis 7</code></td><td>RESP / <code>:6379</code></td><td><code>spring.data.redis.*</code></td><td>Conmuta a <code>ConcurrentHashMap</code> local</td></tr>
+        <tr><td><code>Gmail SMTP</code></td><td>STARTTLS / <code>:587</code></td><td><code>smtp.gmail.com</code> (<code>styleradar1@gmail.com</code>)</td><td>Rollback OTP en Redis + error <code>500</code></td></tr>
+        <tr><td><code>PostgreSQL 16*</code></td><td>JDBC / <code>:5432</code></td><td><code>styleradar_auth</code> (excluido en <code>dev/test</code>)</td><td><em>Diferido hasta activar migraciones Flyway</em></td></tr>
+      </tbody>
+    </table>
+
+    <div class="grid2">
+      <div class="card pur">
+        <h3 class="h3" style="margin-top:0">Modelo FinOps / TCO Referencial (<code>README.md</code>)</h3>
+        <div class="grid2" style="margin-top:4px">
+          <div class="kpi"><div class="v">$33</div><div class="k">USD / mes MVP</div><div class="d">App Service B1 + Redis básico QA</div></div>
+          <div class="kpi"><div class="v">$226</div><div class="k">USD / mes Prod</div><div class="d">Alta disponibilidad, PG Flexible + TLS</div></div>
+        </div>
+        <p style="font-size:10px;color:var(--muted);margin-top:6px">Justificación FinOps: usar Redis compartido para estado temporal reduce requerimientos de IOPS en PostgreSQL y permite escalar contenedores Java sin estado.</p>
+      </div>
+
+      <div class="card">
+        <h3 class="h3" style="margin-top:0">Deuda Técnica Auditada (Backlog Próximas Tareas)</h3>
+        <ol style="padding-left:16px;font-size:10.3px;line-height:1.42;margin-top:4px">
+          <li><strong>Stack Java 21 LTS:</strong> Actualizar <code>pom.xml</code> (<code>17</code> &rarr; <code>21</code>) y <code>Dockerfile</code> (<code>temurin-21-alpine</code>).</li>
+          <li><strong>Artefactos UML &amp; README:</strong> Alinear PNGs en <code>docs/uml/</code> con formato hexagonal minimalista y plantilla oficial README.</li>
+          <li><strong>Swagger vs Handler:</strong> Corregir código <code>422 &rarr; 429</code> en anotaciones <code>AuthApi</code> y revisar <code>/actuator/health</code> en QA.</li>
+          <li><strong>PostgreSQL 16 + Registro:</strong> Sustituir stub <code>id=12L</code> de <code>/registro</code> al habilitar Flyway y persistencia real.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="callout ok" style="margin-top:9px">
+      <strong>Valor de Documentar la Deuda Hoy:</strong> Evita falsas afirmaciones ante auditoría del curso ("documentar la verdad observable") y deja un plan ejecutable tarea por tarea para elevar <code>ms-auth</code> al 100% del estándar StyleRadar.
+    </div>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>Integración, Costos FinOps y Deuda Priorizada</span><span>Pág. 12</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 13: CALIDAD, PRUEBAS & JACOCO ==================== -->
+<div class="p-slot" data-p="13">
+  <section class="p r-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">13</span> Calidad de Código y Pruebas Verificadas</div>
+      <div class="ph-sub">Maven Verify + JaCoCo + SpotBugs</div>
+    </div>
+
+    <h2 class="st">Evidencia Empírica: <em>56 Tests, 85.89% JaCoCo, 0 Bugs</em></h2>
+    <p class="lead">Resultados exactos obtenidos tras ejecutar <code>mvn -B clean verify spotbugs:check</code> sobre la base actual (<code>develop</code> @ <code>6f237e6</code>) en <code>38.755 s</code>.</p>
+
+    <div class="grid4" style="margin-bottom:9px">
+      <div class="kpi"><div class="v">56 / 56</div><div class="k">Tests Totales</div><div class="d">0 fallos · 0 omitidos</div></div>
+      <div class="kpi"><div class="v">85.89%</div><div class="k">JaCoCo Instr.</div><div class="d">1650 / 1921 (Mín 85%)</div></div>
+      <div class="kpi"><div class="v">90.62%</div><div class="k">Métodos Cubiertos</div><div class="d">87 / 96 · Branch 70.59%</div></div>
+      <div class="kpi"><div class="v">0 Bugs</div><div class="k">SpotBugs 4.8.6.6</div><div class="d">Error size: 0 · Clean</div></div>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <h3 class="h3">Desglose de Suites Surefire (6 Clases)</h3>
+        <table class="dt">
+          <thead><tr><th>Suite de Prueba</th><th>Casos</th><th>Fallos</th><th>Tiempo</th></tr></thead>
+          <tbody>
+            <tr><td><code>OtpServiceTest</code></td><td>24</td><td>0</td><td>0.746 s</td></tr>
+            <tr><td><code>AuthControllerTest</code></td><td>15</td><td>0</td><td>4.639 s</td></tr>
+            <tr><td><code>UsuarioClientTest</code></td><td>8</td><td>0</td><td>0.104 s</td></tr>
+            <tr><td><code>JwtServiceTest</code></td><td>6</td><td>0</td><td>0.937 s</td></tr>
+            <tr><td><code>SwaggerOpenApiTest</code></td><td>2</td><td>0</td><td>5.349 s</td></tr>
+            <tr><td><code>EmailServiceTest</code></td><td>1</td><td>0</td><td>2.048 s</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:9.8px;color:var(--muted);margin-top:5px">Cobertura global líneas: <code>84.62%</code> (<code>396 / 468</code>) sobre <code>24</code> clases analizadas.</p>
+      </div>
+
+      <div class="card">
+        <h3 class="h3" style="margin-top:0">Cobertura por Clase (<code>jacoco.csv</code>)</h3>
+        <div class="bar-row"><span class="bar-lbl">SecurityConfig</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><span class="bar-val">100.0%</span></div>
+        <div class="bar-row"><span class="bar-lbl">RabbitMQConfig</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><span class="bar-val">100.0%</span></div>
+        <div class="bar-row"><span class="bar-lbl">UsuarioClient</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><span class="bar-val">100.0%</span></div>
+        <div class="bar-row"><span class="bar-lbl">SwaggerConfig</span><div class="bar-track"><div class="bar-fill" style="width:99.1%"></div></div><span class="bar-val">99.1%</span></div>
+        <div class="bar-row"><span class="bar-lbl">OtpServiceImpl</span><div class="bar-track"><div class="bar-fill" style="width:96.4%"></div></div><span class="bar-val">96.4%</span></div>
+        <div class="bar-row"><span class="bar-lbl">AuthController</span><div class="bar-track"><div class="bar-fill" style="width:85.6%"></div></div><span class="bar-val">85.6%</span></div>
+        <div class="bar-row"><span class="bar-lbl">JwtServiceImpl</span><div class="bar-track"><div class="bar-fill" style="width:81.2%"></div></div><span class="bar-val">81.2%</span></div>
+        <div class="bar-row"><span class="bar-lbl">EmailServiceImpl</span><div class="bar-track"><div class="bar-fill" style="width:73.5%"></div></div><span class="bar-val">73.5%</span></div>
+        <div class="bar-row"><span class="bar-lbl">JwtAuthFilter</span><div class="bar-track"><div class="bar-fill" style="width:69.0%"></div></div><span class="bar-val">69.0%</span></div>
+        <div class="bar-row"><span class="bar-lbl">GlobalExHandler</span><div class="bar-track"><div class="bar-fill" style="width:61.9%"></div></div><span class="bar-val">61.9%</span></div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:8px">
+      <strong>Oportunidad de Cobertura Detectada:</strong> Aunque el umbral global de <code>85%</code> se cumple holgadamente en la lógica crítica (<code>OtpServiceImpl 96.4%</code>, <code>UsuarioClient 100%</code>), clases como <code>UsuarioEstadoCambiadoConsumer</code> (<code>6/20</code> instr.), <code>JwtAuthenticationFilter</code> (<code>69.0%</code>) y <code>GlobalExceptionHandler</code> (<code>61.9%</code>) son candidatas prioritarias para pruebas unitarias adicionales en la fase de endurecimiento.
+    </div>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>Calidad, Surefire, JaCoCo y SpotBugs</span><span>Pág. 13</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 14: CI/CD, DESPLIEGUE AZURE & ACTA ==================== -->
+<div class="p-slot" data-p="14">
+  <section class="p l-side">
+    <div class="ph">
+      <div class="ph-tag"><span class="num">14</span> CI/CD, Azure &amp; Acta de Conformidad</div>
+      <div class="ph-sub">GitHub Actions · App Service</div>
+    </div>
+
+    <h2 class="st">Pipeline CI/CD, Estado en Azure y <em>Checklist</em></h2>
+    <p class="lead">Flujo automatizado definido en <code>.github/workflows/ci.yml</code> junto con el diagnóstico HTTP real verificado en la nube de StyleRadar.</p>
+
+    <div class="diag-box">
+      <svg viewBox="0 0 720 96" xmlns="http://www.w3.org/2000/svg" aria-label="Pipeline CI/CD ms-auth">
+        <defs><marker id="arwP" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#48119A"/></marker></defs>
+        <rect x="6" y="6" width="708" height="84" rx="8" fill="#FAF6FE" stroke="#DFD2F2"/>
+        <rect x="18" y="22" width="146" height="52" rx="6" fill="#FFFFFF" stroke="#48119A"/><text x="91" y="45" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700">1. Build &amp; Quality</text><text x="91" y="61" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.2" fill="#48119A">Maven + JaCoCo 85%</text>
+        <rect x="194" y="22" width="146" height="52" rx="6" fill="#E4DBF0" stroke="#48119A"/><text x="267" y="45" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700">2. SAST SonarCloud</text><text x="267" y="61" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.2" fill="#48119A">StyleRadar1_CADCHE</text>
+        <rect x="370" y="22" width="152" height="52" rx="6" fill="#FFFFFF" stroke="#48119A"/><text x="446" y="45" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700">3. Docker Hub Push</text><text x="446" y="61" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.2" fill="#48119A">styleradar-auth:qa/prod</text>
+        <rect x="552" y="22" width="148" height="52" rx="6" fill="#48119A"/><text x="626" y="45" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700" fill="#fff">4. Azure App Service</text><text x="626" y="61" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.2" fill="#E4DBF0">qa / prod azurewebsites</text>
+        <line x1="164" y1="48" x2="190" y2="48" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwP)"/>
+        <line x1="340" y1="48" x2="366" y2="48" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwP)"/>
+        <line x1="522" y1="48" x2="548" y2="48" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwP)"/>
+      </svg>
+    </div>
+
+    <div class="grid2" style="margin-top:6px">
+      <div class="card">
+        <h3 class="h3" style="margin-top:0">Diagnóstico Real en Azure (Observado)</h3>
+        <table class="dt">
+          <thead><tr><th>Endpoint Cloud</th><th>Resultado Real</th></tr></thead>
+          <tbody>
+            <tr><td><code>styleradar-auth-qa.../swagger-ui/index.html</code></td><td><span class="badge b-ok">HTTP 200 OK</span></td></tr>
+            <tr><td><code>styleradar-auth-qa.../actuator/health</code></td><td><span class="badge b-warn">HTTP 503 Unavailable</span></td></tr>
+            <tr><td><code>styleradar-auth-prod.../actuator/health</code></td><td><span class="badge b-bad">Timeout / Sin resp.</span></td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:10px;color:var(--muted);margin-top:5px">El proceso JVM responde en QA (<code>Swagger 200</code>), mientras <code>/actuator/health</code> marca <code>503</code> cuando un health-indicator dependiente (p. ej. Redis/Mail/RabbitMQ) no está disponible en la instancia.</p>
+      </div>
+
+      <div class="card pur">
+        <h3 class="h3" style="margin-top:0">Checklist de Arquitectura del Curso</h3>
+        <ul style="padding-left:15px;font-size:10.3px;line-height:1.45;margin-top:4px">
+          <li><strong>C4 L1/L2 + Hexagonal Minimalista:</strong> <span class="badge b-ok">Cumple</span></li>
+          <li><strong>Porqué de cada decisión (ADRs 01–06):</strong> <span class="badge b-ok">Cumple</span></li>
+          <li><strong>Modelo de Clases y Datos Redis/SQL:</strong> <span class="badge b-ok">Cumple</span></li>
+          <li><strong>Métricas Surefire, JaCoCo y SpotBugs:</strong> <span class="badge b-ok">Cumple</span></li>
+          <li><strong>Migración Java 21 LTS &amp; UML PNGs:</strong> <span class="badge b-warn">Siguiente Tarea</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="h3">Equipo Responsable — Squad CADche (StyleRadar)</h3>
+    <div class="card" style="font-size:10.4px;line-height:1.5">
+      <strong>Integrantes:</strong> Julian Camilo Giral (<code>@jcobos548</code>) · Juan Diego Gaitan (<code>@mamagege</code>) · Juan Diego Valderrama Gaviria · Juan Nicolás Álvarez · Camilo Ortiz · Daniel Valero · Paula Alejandra Díaz.<br>
+      <span style="color:var(--muted)">Nota editable:</span> <span data-ed="true">Documento técnico validado contra el estado real del repositorio <code>CADCHE-Authentication-Service</code> previo a la fase de nivelación Java 21 LTS y actualización de diagramas UML/README.</span>
+    </div>
+
+    <div class="pf"><span>StyleRadar · ms-auth</span><span>CI/CD, Observabilidad Azure y Acta CADche</span><span>Pág. 14</span></div>
+  </section>
+</div>
+
+<!-- ==================== PAGE 15: CONTRAPORTADA ==================== -->
+<div class="p-slot" data-p="15">
+  <section class="p dark r-side" style="justify-content:space-between;padding:46px 40px 48px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:#C4B5FD;text-transform:uppercase">StyleRadar Engineering Docs</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#E4DBF0">docs/DocumentoTecnico.html</span>
+    </div>
+
+    <div style="text-align:center;max-width:560px;margin:0 auto">
+      <svg width="78" height="78" viewBox="0 0 78 78" style="margin-bottom:18px" aria-hidden="true">
+        <polygon points="39,4 71,21.5 71,56.5 39,74 7,56.5 7,21.5" fill="rgba(228,219,240,.1)" stroke="#C4B5FD" stroke-width="2.2"/>
+        <text x="39" y="47" text-anchor="middle" fill="#FBF7F0" font-family="Anton,sans-serif" font-size="24" letter-spacing="1.4">AUTH</text>
+      </svg>
+      <h2 style="font-family:'Anton','Poppins',sans-serif;font-size:40px;letter-spacing:1px;color:#FBF7F0;margin-bottom:12px">FIN DEL DOCUMENTO DE ARQUITECTURA</h2>
+      <p style="font-size:13px;line-height:1.6;color:rgba(251,247,240,.82);margin-bottom:22px">
+        Artefacto oficial de la tarea Jira <strong>CADCHE · ms-auth | Documento de arquitectura</strong>. Incluye el análisis honesto de arquitectura hexagonal, ADRs con justificación técnica, modelo de datos real en Redis 7, estado transitorio de PostgreSQL/RabbitMQ y evidencia empírica Maven/JaCoCo/SpotBugs.
+      </p>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button type="button" onclick="go(0)" style="background:#FBF7F0;color:#48119A;border:none;border-radius:999px;padding:10px 20px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">↺ Volver a Portada</button>
+        <button type="button" onclick="window.print()" style="background:rgba(255,255,255,.12);color:#FBF7F0;border:1px solid rgba(228,219,240,.35);border-radius:999px;padding:10px 20px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit">⎙ Exportar a PDF A4</button>
+      </div>
+    </div>
+
+    <div style="background:rgba(14,10,22,.56);border:1px solid rgba(228,219,240,.22);border-radius:12px;padding:14px 18px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:#C4B5FD;margin-bottom:6px">Evidencia Sugerida para Cierre ("Hecho") en Jira CADCHE</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10.3px;line-height:1.5;color:#FBF7F0">
+        Documento técnico completo en docs/DocumentoTecnico.html con vistas C4, arquitectura hexagonal minimalista, modelo de clases y Redis TTL, ADRs (porqué de las decisiones), métricas verificadas (56/56 tests, JaCoCo 85.89%, SpotBugs 0) y hoja de ruta a Java 21 LTS.
+      </div>
+    </div>
+
+    <div class="pf" style="position:static;padding-top:10px">
+      <span>CADCHE-Authentication-Service</span>
+      <span>Squad CADche · StyleRadar</span>
+      <span>Pág. 15</span>
+    </div>
+  </section>
+</div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  var slots = Array.prototype.slice.call(document.querySelectorAll('.p-slot'));
+  var totalPages = slots.length;
+  var book = document.getElementById('book');
+  var fit = document.getElementById('fit');
+  var vp = document.getElementById('vp');
+  var prevBtn = document.getElementById('prevBtn');
+  var nextBtn = document.getElementById('nextBtn');
+  var pgInd = document.getElementById('pgInd');
+  var pgRange = document.getElementById('pgRange');
+  var modeBtn = document.getElementById('modeBtn');
+  var fpSel = document.getElementById('fpSel');
+  var edBtn = document.getElementById('edBtn');
+  var rsBtn = document.getElementById('rsBtn');
+  var prBtn = document.getElementById('prBtn');
+
+  var singleMode = window.innerWidth < 960;
+  var currentSpread = 0; // pair index in 2-up, page index in 1-up
+  var STORE_KEY = 'sr_ms_auth_doc_edits_v1';
+
+  var originalEdits = [];
+  var edNodes = Array.prototype.slice.call(document.querySelectorAll('[data-ed]'));
+  edNodes.forEach(function(n, idx){ originalEdits[idx] = n.innerHTML; });
+  try {
+    var saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+    if (Array.isArray(saved)) {
+      edNodes.forEach(function(n, idx){ if (typeof saved[idx] === 'string') n.innerHTML = saved[idx]; });
+    }
+  } catch (e) {}
+
+  function maxIdx(){
+    return singleMode ? totalPages - 1 : Math.ceil(totalPages / 2) - 1;
+  }
+
+  function render(){
+    if (singleMode) {
+      book.classList.add('single');
+      modeBtn.textContent = '1 Pág';
+      if (currentSpread >= totalPages) currentSpread = totalPages - 1;
+      slots.forEach(function(s, i){
+        s.classList.toggle('hidden', i !== currentSpread);
+      });
+      pgInd.textContent = 'Pág ' + currentSpread + ' / ' + (totalPages - 1);
+    } else {
+      book.classList.remove('single');
+      modeBtn.textContent = '2 Pág';
+      var maxS = Math.ceil(totalPages / 2) - 1;
+      if (currentSpread > maxS) currentSpread = maxS;
+      var left = currentSpread * 2;
+      var right = left + 1;
+      slots.forEach(function(s, i){
+        s.classList.toggle('hidden', i !== left && i !== right);
+      });
+      pgInd.textContent = 'Pág ' + left + '–' + Math.min(right, totalPages - 1) + ' / ' + (totalPages - 1);
+    }
+    pgRange.max = String(maxIdx());
+    pgRange.value = String(currentSpread);
+    prevBtn.disabled = currentSpread <= 0;
+    nextBtn.disabled = currentSpread >= maxIdx();
+    scaleToFit();
+  }
+
+  function scaleToFit(){
+    var w = singleMode ? 794 : 1592;
+    var h = 1123;
+    var vw = Math.max(300, vp.clientWidth - 12);
+    var vh = Math.max(300, vp.clientHeight - 12);
+    var sc = Math.min(vw / w, vh / h, 1.08);
+    fit.style.transform = 'scale(' + sc.toFixed(4) + ')';
+  }
+
+  window.go = function(pageNum){
+    var p = Math.max(0, Math.min(totalPages - 1, Number(pageNum) || 0));
+    currentSpread = singleMode ? p : Math.floor(p / 2);
+    render();
+  };
+
+  prevBtn.addEventListener('click', function(){ if (currentSpread > 0){ currentSpread--; render(); } });
+  nextBtn.addEventListener('click', function(){ if (currentSpread < maxIdx()){ currentSpread++; render(); } });
+  pgRange.addEventListener('input', function(){ currentSpread = Number(pgRange.value) || 0; render(); });
+  modeBtn.addEventListener('click', function(){
+    var anchorPage = singleMode ? currentSpread : currentSpread * 2;
+    singleMode = !singleMode;
+    currentSpread = singleMode ? anchorPage : Math.floor(anchorPage / 2);
+    render();
+  });
+  fpSel.addEventListener('change', function(){
+    document.documentElement.style.setProperty('--fs-scale', fpSel.value);
+  });
+  edBtn.addEventListener('click', function(){
+    var on = document.body.classList.toggle('editing');
+    edBtn.classList.toggle('act', on);
+    edNodes.forEach(function(n){ n.contentEditable = on ? 'true' : 'false'; });
+    if (!on) {
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(edNodes.map(function(n){ return n.innerHTML; }))); } catch(e){}
+    }
+  });
+  rsBtn.addEventListener('click', function(){
+    edNodes.forEach(function(n, idx){ n.innerHTML = originalEdits[idx]; });
+    try { localStorage.removeItem(STORE_KEY); } catch(e){}
+  });
+  prBtn.addEventListener('click', function(){ window.print(); });
+
+  document.addEventListener('keydown', function(ev){
+    if (document.body.classList.contains('editing') && document.activeElement && document.activeElement.hasAttribute('data-ed')) return;
+    if (ev.key === 'ArrowRight' || ev.key === 'PageDown'){ if (currentSpread < maxIdx()){ currentSpread++; render(); } }
+    else if (ev.key === 'ArrowLeft' || ev.key === 'PageUp'){ if (currentSpread > 0){ currentSpread--; render(); } }
+  });
+
+  window.addEventListener('resize', scaleToFit);
+  render();
+})();
+</script>
+</body>
+</html>
