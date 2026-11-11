@@ -3,16 +3,19 @@ package edu.dosw.styleradar.auth.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
 
 import edu.dosw.styleradar.auth.application.service.impl.JwtServiceImpl;
 import edu.dosw.styleradar.auth.domain.model.Rol;
 
-@DisplayName("Pruebas Unitarias de JwtService - SR-RF-02 / SR-RNF-01")
+@DisplayName("Pruebas Unitarias de JwtService - SR-RF-02 / SR-RNF-01 / OWASP A04-A08:2025")
 class JwtServiceTest {
 
     private JwtServiceImpl jwtService;
@@ -42,39 +45,63 @@ class JwtServiceTest {
 
         assertThat(jwtService.validarToken(token)).isNotNull();
         assertThat(jwtService.validarToken(token).getSubject()).isEqualTo("99");
+        assertThat(jwtService.validarToken(token).getIssuedAt()).isNotNull();
     }
 
     @Test
-    @DisplayName("Debe rechazar tokens corruptos, nulos o con firmas incorrectas")
-    void debeRechazarTokensInvalidos() {
+    @DisplayName("Debe rechazar tokens corruptos, nulos o con firma alterada (OWASP A08:2025)")
+    void debeRechazarTokensInvalidosOAlterados() {
+        String validToken = jwtService.generarToken(99L, Set.of(Rol.COMPRADOR));
+        String[] parts = validToken.split("\\.");
+        String tamperedPayload = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString("{\"sub\":\"1\",\"roles\":[\"ADMIN_STYLERADAR\"]}".getBytes(StandardCharsets.UTF_8));
+        String tamperedToken = parts[0] + "." + tamperedPayload + "." + parts[2];
+
+        assertThatThrownBy(() -> jwtService.validarToken(tamperedToken))
+                .isInstanceOf(RuntimeException.class);
         assertThatThrownBy(() -> jwtService.validarToken("token.invalido.falso"))
                 .isInstanceOf(RuntimeException.class);
-
         assertThatThrownBy(() -> jwtService.validarToken(""))
                 .isInstanceOf(RuntimeException.class);
-
         assertThatThrownBy(() -> jwtService.validarToken(null))
                 .isInstanceOf(RuntimeException.class);
     }
 
     @Test
-    @DisplayName("Debe extraer correctamente el usuarioId desde el subject del JWT")
-    void debeExtraerUsuarioId() {
-        String token = jwtService.generarToken(456L, Set.of(Rol.ADMIN_STYLERADAR));
+    @DisplayName("Debe rechazar secretos vacíos, no Base64 o menores a 256 bits (OWASP A04:2025)")
+    void debeRechazarSecretosDebiles() {
+        String shortSecret = Base64.getEncoder().encodeToString("demasiado-corto".getBytes(StandardCharsets.UTF_8));
 
-        Long usuarioId = jwtService.obtenerUsuarioId(token);
-
-        assertThat(usuarioId).isEqualTo(456L);
+        assertThatThrownBy(() -> new JwtServiceImpl("", duration))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new JwtServiceImpl("no_es_base64!!!", duration))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new JwtServiceImpl(shortSecret, duration))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("256 bits");
     }
 
     @Test
-    @DisplayName("Debe extraer los roles asignados desde los claims del JWT")
-    void debeExtraerRoles() {
-        String token = jwtService.generarToken(789L, Set.of(Rol.REPRESENTANTE_FUNDACION));
+    @DisplayName("Debe rechazar el secreto de ejemplo de desarrollo en perfiles prod y qa (OWASP A04:2025)")
+    void debeRechazarSecretoDeEjemploEnProdYQa() {
+        MockEnvironment prodEnv = new MockEnvironment();
+        prodEnv.setActiveProfiles("prod");
+        MockEnvironment qaEnv = new MockEnvironment();
+        qaEnv.setActiveProfiles("qa");
 
-        Set<Rol> roles = jwtService.obtenerRoles(token);
+        assertThatThrownBy(() -> new JwtServiceImpl(secretBase64, duration, prodEnv))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> new JwtServiceImpl(secretBase64, duration, qaEnv))
+                .isInstanceOf(IllegalStateException.class);
+    }
 
-        assertThat(roles).containsExactly(Rol.REPRESENTANTE_FUNDACION);
+    @Test
+    @DisplayName("Debe extraer correctamente el usuarioId y los roles desde el JWT")
+    void debeExtraerUsuarioIdYRoles() {
+        String token = jwtService.generarToken(456L, Set.of(Rol.REPRESENTANTE_FUNDACION));
+
+        assertThat(jwtService.obtenerUsuarioId(token)).isEqualTo(456L);
+        assertThat(jwtService.obtenerRoles(token)).containsExactly(Rol.REPRESENTANTE_FUNDACION);
     }
 
     @Test
@@ -87,4 +114,3 @@ class JwtServiceTest {
         assertThat(tiempoRestante).isGreaterThan(86300L).isLessThanOrEqualTo(86400L);
     }
 }
-

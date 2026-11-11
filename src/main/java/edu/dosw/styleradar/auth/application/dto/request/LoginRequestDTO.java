@@ -18,6 +18,7 @@ public class LoginRequestDTO {
 
     @NotBlank(message = "El correo electrónico es obligatorio")
     @Email(message = "El formato del correo electrónico es inválido")
+    @Size(max = 254, message = "El correo electrónico excede la longitud máxima permitida")
     @Schema(description = "Correo electrónico registrado del usuario", example = "comprador@styleradar.com", requiredMode = Schema.RequiredMode.REQUIRED)
     private String email;
 
@@ -26,4 +27,3 @@ public class LoginRequestDTO {
     @Schema(description = "Contraseña de la cuenta en texto plano transmitida sobre TLS", example = "StyleRadar2026*", requiredMode = Schema.RequiredMode.REQUIRED)
     private String password;
 }
-

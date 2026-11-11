@@ -2,6 +2,11 @@ server:
   port: ${SERVER_PORT:${PORT:8100}}
   forward-headers-strategy: framework
   shutdown: graceful
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
 
 spring:
   application:
@@ -11,29 +16,41 @@ spring:
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/styleradar_auth}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:validate}
-    show-sql: true
+    show-sql: false
     open-in-view: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
 
   flyway:
     enabled: ${FLYWAY_ENABLED:false}
     locations: classpath:db/migration
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:}
+    password: ${RABBITMQ_PASSWORD:}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
 springdoc:
   api-docs:
-    enabled: true
+    enabled: ${SWAGGER_ENABLED:true}
     path: /v3/api-docs
   swagger-ui:
-    enabled: true
+    enabled: ${SWAGGER_ENABLED:true}
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
@@ -44,13 +61,31 @@ management:
       exposure:
         include: health,info
 
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
+styleradar:
+  usuarios:
+    base-url: ${USUARIOS_SERVICE_URL:https://ms-usuarios-internal}
+    username: ${USUARIOS_INTERNAL_USERNAME:}
+    password: ${USUARIOS_INTERNAL_PASSWORD:}
+    dev-fallback-enabled: false
 
-data:
-  redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
+  mail:
+    dev-console-fallback-enabled: false
+
+  security:
+    jwt:
+      secret-base64: ${JWT_SECRET_BASE64:}
+      duration: ${JWT_DURATION:PT24H}
+    otp:
+      ttl-seconds: 300
+      max-attempts: 3
+      max-resends: 3
+    redis-local-fallback-enabled: false
+    registration:
+      stub-enabled: false
+    rate-limit:
+      enabled: ${RATE_LIMIT_ENABLED:true}
+      max-requests: ${RATE_LIMIT_MAX_REQUESTS:15}
+      window-seconds: ${RATE_LIMIT_WINDOW_SECONDS:60}
+
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:https://styleradar.com,https://*.styleradar.com,https://*.azurewebsites.net}

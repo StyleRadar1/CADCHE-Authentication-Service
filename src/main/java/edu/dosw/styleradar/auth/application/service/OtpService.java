@@ -19,4 +19,6 @@ public interface OtpService {
     void invalidarToken(String token, long ttlSegundos);
 
     boolean esTokenInvalido(String token);
+
+    boolean estaUsuarioRevocado(Long usuarioId, long fechaEmisionMillis);
 }

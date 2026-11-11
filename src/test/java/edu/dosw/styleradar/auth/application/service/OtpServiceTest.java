@@ -9,13 +9,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -27,9 +27,10 @@ import edu.dosw.styleradar.auth.application.service.impl.OtpServiceImpl;
 import edu.dosw.styleradar.auth.domain.exception.OtpExpiradoException;
 import edu.dosw.styleradar.auth.domain.exception.OtpIntentosAgotadosException;
 import edu.dosw.styleradar.auth.domain.exception.OtpInvalidoException;
+import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Pruebas Unitarias de OtpService - SR-RF-92")
+@DisplayName("Pruebas Unitarias de OtpService - SR-RF-92 / OWASP A04-A06-A07-A10:2025")
 class OtpServiceTest {
 
     @Mock
@@ -49,28 +50,34 @@ class OtpServiceTest {
         otpService = new OtpServiceImpl(redisTemplate);
         ReflectionTestUtils.setField(otpService, "ttlSeconds", 300L);
         ReflectionTestUtils.setField(otpService, "maxAttempts", 3);
+        ReflectionTestUtils.setField(otpService, "maxResends", 3);
     }
 
     @Test
-    @DisplayName("Debe generar OTP de 6 dígitos y guardar 4 claves en Redis")
-    void debeGenerarOtpDe6DigitosYGuardarEnRedis() {
+    @DisplayName("Debe generar OTP de 6 dígitos, almacenarlo con hash SHA-256 salteado y guardar claves en Redis")
+    void debeGenerarOtpDe6DigitosYGuardarHashEnRedis() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
-        String otp = otpService.generarOtp(email, usuarioId, rol);
+        String otp = otpService.generarOtp("  Usuario@StyleRadar.COM ", usuarioId, rol);
 
         assertThat(otp).isNotNull().matches("^\\d{6}$");
 
-        verify(valueOperations).set(eq("otp:" + email), eq(otp), eq(300L), eq(TimeUnit.SECONDS));
+        ArgumentCaptor<String> hashCaptor = ArgumentCaptor.forClass(String.class);
+        verify(valueOperations).set(eq("otp:" + email), hashCaptor.capture(), eq(300L), eq(TimeUnit.SECONDS));
+        assertThat(hashCaptor.getValue())
+                .isNotEqualTo(otp)
+                .contains("$");
+
         verify(valueOperations).set(eq("otp:intentos:" + email), eq("3"), eq(300L), eq(TimeUnit.SECONDS));
         verify(valueOperations).set(eq("otp:usuario:" + email), eq("42"), eq(300L), eq(TimeUnit.SECONDS));
         verify(valueOperations).set(eq("otp:rol:" + email), eq("COMPRADOR"), eq(300L), eq(TimeUnit.SECONDS));
     }
 
     @Test
-    @DisplayName("Debe verificar exitosamente cuando el código coincide")
+    @DisplayName("Debe verificar exitosamente cuando el código coincide con el hash almacenado")
     void debeVerificarOtpExitosamente() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("otp:" + email)).thenReturn("123456");
+        when(valueOperations.get("otp:" + email)).thenReturn(otpService.hashearOtp("123456"));
 
         otpService.verificarOtp(email, "123456");
 
@@ -92,7 +99,7 @@ class OtpServiceTest {
     @DisplayName("Debe decrementar intentos cuando el código es incorrecto")
     void debeDecrementarIntentosCuandoCodigoEsIncorrecto() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("otp:" + email)).thenReturn("999999");
+        when(valueOperations.get("otp:" + email)).thenReturn(otpService.hashearOtp("999999"));
         when(valueOperations.decrement("otp:intentos:" + email)).thenReturn(2L);
 
         assertThatThrownBy(() -> otpService.verificarOtp(email, "000000"))
@@ -104,10 +111,10 @@ class OtpServiceTest {
     }
 
     @Test
-    @DisplayName("Debe eliminar las claves cuando se agotan los intentos")
+    @DisplayName("Debe eliminar todas las claves OTP cuando se agotan los intentos")
     void debeLanzarOtpIntentosAgotadosExceptionAlTercerFallo() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("otp:" + email)).thenReturn("999999");
+        when(valueOperations.get("otp:" + email)).thenReturn(otpService.hashearOtp("999999"));
         when(valueOperations.decrement("otp:intentos:" + email)).thenReturn(0L);
 
         assertThatThrownBy(() -> otpService.verificarOtp(email, "000000"))
@@ -118,13 +125,14 @@ class OtpServiceTest {
         verify(redisTemplate).delete("otp:intentos:" + email);
         verify(redisTemplate).delete("otp:usuario:" + email);
         verify(redisTemplate).delete("otp:rol:" + email);
+        verify(redisTemplate).delete("otp:reenvios:" + email);
     }
 
     @Test
     @DisplayName("Debe agotar los intentos cuando Redis devuelve null al decrementar")
     void debeAgotarIntentosCuandoDecrementoDevuelveNull() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("otp:" + email)).thenReturn("999999");
+        when(valueOperations.get("otp:" + email)).thenReturn(otpService.hashearOtp("999999"));
         when(valueOperations.decrement("otp:intentos:" + email)).thenReturn(null);
 
         assertThatThrownBy(() -> otpService.verificarOtp(email, "000000"))
@@ -134,20 +142,39 @@ class OtpServiceTest {
     }
 
     @Test
-    @DisplayName("Debe reenviar OTP cuando existe una sesión activa")
+    @DisplayName("Debe reenviar OTP con hash SHA-256 cuando existe una sesión activa y reenvíos disponibles")
     void debeReenviarOtpSiSesionActivaExiste() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("otp:usuario:" + email)).thenReturn("42");
         when(valueOperations.get("otp:rol:" + email)).thenReturn("COMPRADOR");
+        when(valueOperations.increment("otp:reenvios:" + email)).thenReturn(1L);
 
         String nuevoCodigo = otpService.reenviarOtp(email);
 
         assertThat(nuevoCodigo).isNotNull().matches("^\\d{6}$");
 
-        verify(valueOperations).set(eq("otp:" + email), eq(nuevoCodigo), eq(300L), eq(TimeUnit.SECONDS));
+        ArgumentCaptor<String> hashCaptor = ArgumentCaptor.forClass(String.class);
+        verify(valueOperations).set(eq("otp:" + email), hashCaptor.capture(), eq(300L), eq(TimeUnit.SECONDS));
+        assertThat(hashCaptor.getValue())
+                .isNotEqualTo(nuevoCodigo)
+                .contains("$");
+
         verify(valueOperations).set(eq("otp:intentos:" + email), eq("3"), eq(300L), eq(TimeUnit.SECONDS));
         verify(valueOperations).set(eq("otp:usuario:" + email), eq("42"), eq(300L), eq(TimeUnit.SECONDS));
         verify(valueOperations).set(eq("otp:rol:" + email), eq("COMPRADOR"), eq(300L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    @DisplayName("Debe bloquear reenvío de OTP al superar el máximo permitido (OWASP A06:2025)")
+    void debeBloquearReenvioCuandoSeAgotaLimite() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("otp:usuario:" + email)).thenReturn("42");
+        when(valueOperations.get("otp:rol:" + email)).thenReturn("COMPRADOR");
+        when(valueOperations.increment("otp:reenvios:" + email)).thenReturn(4L);
+
+        assertThatThrownBy(() -> otpService.reenviarOtp(email))
+                .isInstanceOf(OtpIntentosAgotadosException.class)
+                .hasMessageContaining("máximo de reenvíos");
     }
 
     @Test
@@ -174,98 +201,51 @@ class OtpServiceTest {
     }
 
     @Test
-    @DisplayName("Debe obtener el ID del usuario desde Redis")
-    void debeObtenerUsuarioId() {
+    @DisplayName("Debe rechazar correo con caracteres de control (OWASP A05:2025)")
+    void debeRechazarCorreoConCaracteresDeControl() {
+        assertThatThrownBy(() -> otpService.generarOtp("bad\r\n@styleradar.com", usuarioId, rol))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("Debe obtener el ID, rol e intentos restantes desde Redis")
+    void debeObtenerDatosDesdeRedis() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("otp:usuario:" + email)).thenReturn("42");
-
-        assertThat(otpService.obtenerUsuarioId(email)).isEqualTo(42L);
-    }
-
-    @Test
-    @DisplayName("Debe retornar null cuando no existe el ID del usuario")
-    void debeRetornarNullCuandoNoExisteUsuarioId() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("otp:usuario:" + email)).thenReturn(null);
-
-        assertThat(otpService.obtenerUsuarioId(email)).isNull();
-    }
-
-    @Test
-    @DisplayName("Debe obtener el rol del usuario desde Redis")
-    void debeObtenerRol() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("otp:rol:" + email)).thenReturn("COMPRADOR");
-
-        assertThat(otpService.obtenerRol(email)).isEqualTo("COMPRADOR");
-    }
-
-    @Test
-    @DisplayName("Debe retornar null cuando no existe el rol")
-    void debeRetornarNullCuandoNoExisteRol() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("otp:rol:" + email)).thenReturn(null);
-
-        assertThat(otpService.obtenerRol(email)).isNull();
-    }
-
-    @Test
-    @DisplayName("Debe obtener los intentos restantes desde Redis")
-    void debeObtenerIntentosRestantes() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("otp:intentos:" + email)).thenReturn("2");
 
+        assertThat(otpService.obtenerUsuarioId(email)).isEqualTo(42L);
+        assertThat(otpService.obtenerRol(email)).isEqualTo("COMPRADOR");
         assertThat(otpService.obtenerIntentosRestantes(email)).isEqualTo(2);
     }
 
     @Test
-    @DisplayName("Debe retornar cero cuando no existen intentos registrados")
-    void debeRetornarCeroCuandoNoHayIntentos() {
+    @DisplayName("Debe retornar valores vacíos cuando las claves no existen en Redis")
+    void debeRetornarValoresPorDefectoCuandoClavesNoExisten() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("otp:usuario:" + email)).thenReturn(null);
+        when(valueOperations.get("otp:rol:" + email)).thenReturn(null);
         when(valueOperations.get("otp:intentos:" + email)).thenReturn(null);
 
+        assertThat(otpService.obtenerUsuarioId(email)).isNull();
+        assertThat(otpService.obtenerRol(email)).isNull();
         assertThat(otpService.obtenerIntentosRestantes(email)).isZero();
     }
 
     @Test
-    @DisplayName("Debe eliminar las cuatro claves OTP de Redis")
-    void debeEliminarOtp() {
-        otpService.eliminarOtp(email);
-
-        verify(redisTemplate).delete("otp:" + email);
-        verify(redisTemplate).delete("otp:intentos:" + email);
-        verify(redisTemplate).delete("otp:usuario:" + email);
-        verify(redisTemplate).delete("otp:rol:" + email);
-    }
-
-    @Test
-    @DisplayName("Debe guardar un token revocado en Redis")
-    void debeInvalidarTokenEnBlacklist() {
+    @DisplayName("Debe guardar y consultar token revocado en blacklist de Redis")
+    void debeInvalidarYConsultarTokenEnBlacklist() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         otpService.invalidarToken("token_jwt_ejemplo", 3600L);
-
         verify(valueOperations).set(
                 eq("blacklist:token_jwt_ejemplo"),
                 eq("revoked"),
                 eq(3600L),
                 eq(TimeUnit.SECONDS)
         );
-    }
 
-    @Test
-    @DisplayName("No debe guardar un token cuando es null o el TTL no es positivo")
-    void noDebeInvalidarTokenConParametrosInvalidos() {
-        otpService.invalidarToken(null, 3600L);
-        otpService.invalidarToken("token", 0L);
-        otpService.invalidarToken("token", -1L);
-
-        verify(redisTemplate, never()).opsForValue();
-    }
-
-    @Test
-    @DisplayName("Debe comprobar si un token está en la lista negra")
-    void debeComprobarSiTokenEstaEnListaNegra() {
         when(redisTemplate.hasKey("blacklist:token_revocado")).thenReturn(true);
         when(redisTemplate.hasKey("blacklist:token_valido")).thenReturn(false);
 
@@ -275,72 +255,94 @@ class OtpServiceTest {
     }
 
     @Test
-    @DisplayName("Debe utilizar memoria local cuando Redis no está disponible")
-    void debeUsarMemoriaLocalCuandoRedisNoEstaDisponible() {
-        when(redisTemplate.opsForValue())
-                .thenThrow(new DataAccessResourceFailureException("Redis no disponible"));
+    @DisplayName("No debe guardar token en blacklist con parámetros nulos o TTL no positivo")
+    void noDebeInvalidarTokenConParametrosInvalidos() {
+        otpService.invalidarToken(null, 3600L);
+        otpService.invalidarToken("token", 0L);
+        otpService.invalidarToken("token", -1L);
 
-        String otp = otpService.generarOtp(email, usuarioId, rol);
-
-        assertThat(otp).isNotNull().matches("^\\d{6}$");
-        assertThat(otpService.obtenerUsuarioId(email)).isEqualTo(usuarioId);
-        assertThat(otpService.obtenerRol(email)).isEqualTo(rol);
-        assertThat(otpService.obtenerIntentosRestantes(email)).isEqualTo(3);
+        verify(redisTemplate, never()).opsForValue();
     }
 
     @Test
-    @DisplayName("Debe utilizar memoria local para decrementar intentos cuando Redis falla")
-    void debeDecrementarIntentosEnMemoriaLocal() {
-        when(redisTemplate.opsForValue())
-                .thenThrow(new DataAccessResourceFailureException("Redis no disponible"));
+    @DisplayName("Debe evaluar correctamente la revocación global por timestamp de usuario (OWASP A07:2025)")
+    void debeValidarRevocacionGlobalDeUsuario() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("usuario:revocado:42")).thenReturn("1000");
 
-        otpService.generarOtp(email, usuarioId, rol);
+        assertThat(otpService.estaUsuarioRevocado(42L, 900L)).isTrue();
+        assertThat(otpService.estaUsuarioRevocado(42L, 1000L)).isTrue();
+        assertThat(otpService.estaUsuarioRevocado(42L, 1500L)).isFalse();
+        assertThat(otpService.estaUsuarioRevocado(null, 1500L)).isTrue();
 
-        assertThatThrownBy(() -> otpService.verificarOtp(email, "000000"))
-                .isInstanceOf(OtpInvalidoException.class)
-                .hasMessageContaining("2");
-
-        assertThat(otpService.obtenerIntentosRestantes(email)).isEqualTo(2);
+        when(valueOperations.get("usuario:revocado:99")).thenReturn("corrupto");
+        assertThat(otpService.estaUsuarioRevocado(99L, 1500L)).isTrue();
     }
 
     @Test
-    @DisplayName("Debe eliminar las claves de memoria local cuando Redis falla")
-    void debeEliminarClavesLocalesCuandoRedisFalla() {
+    @DisplayName("Debe fallar cerrado (fail-closed) fuera de perfil dev cuando Redis no está disponible (OWASP A10:2025)")
+    void debeFallarCerradoCuandoRedisNoEstaDisponiblePorDefecto() {
+        when(redisTemplate.opsForValue())
+                .thenThrow(new DataAccessResourceFailureException("Redis caído"));
+        when(redisTemplate.hasKey("blacklist:token_any"))
+                .thenThrow(new DataAccessResourceFailureException("Redis caído"));
+
+        assertThatThrownBy(() -> otpService.generarOtp(email, usuarioId, rol))
+                .isInstanceOf(ServicioExternoNoDisponibleException.class);
+        assertThatThrownBy(() -> otpService.verificarOtp(email, "123456"))
+                .isInstanceOf(ServicioExternoNoDisponibleException.class);
+        assertThatThrownBy(() -> otpService.invalidarToken("token_any", 60L))
+                .isInstanceOf(ServicioExternoNoDisponibleException.class);
+        assertThatThrownBy(() -> otpService.esTokenInvalido("token_any"))
+                .isInstanceOf(ServicioExternoNoDisponibleException.class);
+        assertThatThrownBy(() -> otpService.estaUsuarioRevocado(usuarioId, 100L))
+                .isInstanceOf(ServicioExternoNoDisponibleException.class);
+    }
+
+    @Test
+    @DisplayName("Debe utilizar memoria local cuando fallback dev explícito está habilitado y Redis falla")
+    void debeUsarMemoriaLocalCuandoFallbackDevExplicitoEstaActivo() {
+        OtpServiceImpl devOtpService = new OtpServiceImpl(redisTemplate, true);
+        ReflectionTestUtils.setField(devOtpService, "ttlSeconds", 300L);
+        ReflectionTestUtils.setField(devOtpService, "maxAttempts", 3);
+        ReflectionTestUtils.setField(devOtpService, "maxResends", 3);
+
         when(redisTemplate.opsForValue())
                 .thenThrow(new DataAccessResourceFailureException("Redis no disponible"));
-
         doThrow(new DataAccessResourceFailureException("Redis no disponible"))
                 .when(redisTemplate).delete(anyString());
-
-        otpService.generarOtp(email, usuarioId, rol);
-        otpService.eliminarOtp(email);
-
-        assertThat(otpService.obtenerUsuarioId(email)).isNull();
-        assertThat(otpService.obtenerRol(email)).isNull();
-        assertThat(otpService.obtenerIntentosRestantes(email)).isZero();
-    }
-
-    @Test
-    @DisplayName("Debe comprobar la lista negra usando memoria local cuando Redis falla")
-    void debeConsultarBlacklistEnMemoriaLocalCuandoRedisFalla() {
-        when(redisTemplate.opsForValue())
-                .thenThrow(new DataAccessResourceFailureException("Redis no disponible"));
-
         when(redisTemplate.hasKey("blacklist:token_local"))
                 .thenThrow(new DataAccessResourceFailureException("Redis no disponible"));
 
-        otpService.invalidarToken("token_local", 3600L);
+        String otp = devOtpService.generarOtp(email, usuarioId, rol);
 
-        assertThat(otpService.esTokenInvalido("token_local")).isTrue();
-        assertThat(otpService.esTokenInvalido("otro_token")).isFalse();
+        assertThat(otp).isNotNull().matches("^\\d{6}$");
+        assertThat(devOtpService.obtenerUsuarioId(email)).isEqualTo(usuarioId);
+        assertThat(devOtpService.obtenerRol(email)).isEqualTo(rol);
+        assertThat(devOtpService.obtenerIntentosRestantes(email)).isEqualTo(3);
+
+        assertThatThrownBy(() -> devOtpService.verificarOtp(email, "000000"))
+                .isInstanceOf(OtpInvalidoException.class)
+                .hasMessageContaining("2");
+        assertThat(devOtpService.obtenerIntentosRestantes(email)).isEqualTo(2);
+
+        devOtpService.verificarOtp(email, otp);
+
+        devOtpService.invalidarToken("token_local", 3600L);
+        assertThat(devOtpService.esTokenInvalido("token_local")).isTrue();
+        assertThat(devOtpService.esTokenInvalido("otro_token")).isFalse();
+
+        devOtpService.eliminarOtp(email);
+        assertThat(devOtpService.obtenerUsuarioId(email)).isNull();
+        assertThat(devOtpService.obtenerRol(email)).isNull();
+        assertThat(devOtpService.obtenerIntentosRestantes(email)).isZero();
     }
 
     @Test
-    @DisplayName("Debe retornar falso cuando Redis no encuentra un token en la lista negra")
+    @DisplayName("Debe retornar falso cuando Redis devuelve null al consultar lista negra")
     void debeRetornarFalseCuandoRedisNoEncuentraToken() {
         when(redisTemplate.hasKey("blacklist:token_valido")).thenReturn(null);
 
         assertThat(otpService.esTokenInvalido("token_valido")).isFalse();
     }
 }
-

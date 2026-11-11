@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,7 @@ public class VerificarOtpRequestDTO {
 
     @NotBlank(message = "El correo electrónico es obligatorio")
     @Email(message = "El formato del correo electrónico es inválido")
+    @Size(max = 254, message = "El correo electrónico excede la longitud máxima permitida")
     @Schema(description = "Correo electrónico asociado al desafío OTP activo", example = "comprador@styleradar.com", requiredMode = Schema.RequiredMode.REQUIRED)
     private String email;
 
@@ -26,4 +28,3 @@ public class VerificarOtpRequestDTO {
     @Schema(description = "Código numérico de un solo uso de 6 dígitos con vigencia de 5 minutos", example = "482915", requiredMode = Schema.RequiredMode.REQUIRED)
     private String codigoOtp;
 }
-

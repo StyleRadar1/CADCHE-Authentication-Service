@@ -45,6 +45,7 @@ import edu.dosw.styleradar.auth.application.service.OtpService;
 import edu.dosw.styleradar.auth.domain.exception.OtpExpiradoException;
 import edu.dosw.styleradar.auth.domain.exception.OtpIntentosAgotadosException;
 import edu.dosw.styleradar.auth.domain.exception.OtpInvalidoException;
+import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
 import edu.dosw.styleradar.auth.domain.model.Rol;
 import edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioClient;
 import edu.dosw.styleradar.auth.infrastructure.config.SecurityConfig;
@@ -343,5 +344,97 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.nombre", is("Carlos Pérez")))
                 .andExpect(jsonPath("$.email", is("carlos@styleradar.com")))
                 .andExpect(jsonPath("$.roles[0]", is("COMPRADOR")));
+    }
+
+    @Test
+    @DisplayName("Login cuando ms-usuarios no está disponible debe fallar cerrado con 503 Service Unavailable")
+    void login_conServicioExternoNoDisponible_debeRetornar503() throws Exception {
+        LoginRequestDTO request = new LoginRequestDTO("comprador@styleradar.com", "Password123*");
+
+        when(usuarioClient.verificarCredenciales("comprador@styleradar.com", "Password123*"))
+                .thenThrow(new ServicioExternoNoDisponibleException("ms-usuarios caído"));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status", is(503)));
+    }
+
+    @Test
+    @DisplayName("Login cuando falla el envío SMTP debe hacer rollback del OTP en Redis y retornar 503")
+    void login_conFalloSmtp_debeHacerRollbackOtpYRetornar503() throws Exception {
+        LoginRequestDTO request = new LoginRequestDTO("comprador@styleradar.com", "Password123*");
+
+        when(usuarioClient.verificarCredenciales("comprador@styleradar.com", "Password123*"))
+                .thenReturn(new VerificarCredencialesResponseDTO(10L, "comprador@styleradar.com", "COMPRADOR", "ACTIVA"));
+        when(otpService.generarOtp("comprador@styleradar.com", 10L, "COMPRADOR"))
+                .thenReturn("123456");
+        doThrow(new ServicioExternoNoDisponibleException("SMTP caído"))
+                .when(emailService).enviarOtp("comprador@styleradar.com", "123456");
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status", is(503)));
+
+        verify(otpService).eliminarOtp("comprador@styleradar.com");
+    }
+
+    @Test
+    @DisplayName("Refresh válido debe rotar e invalidar el token anterior en blacklist")
+    void refresh_conTiempoRestantePositivo_debeRotarTokenAnterior() throws Exception {
+        RefreshTokenRequestDTO request = new RefreshTokenRequestDTO("token.antiguo.jwt");
+        Claims claims = Jwts.claims()
+                .subject("10")
+                .issuedAt(new Date())
+                .build();
+
+        when(otpService.esTokenInvalido("token.antiguo.jwt")).thenReturn(false);
+        when(jwtService.validarToken("token.antiguo.jwt")).thenReturn(claims);
+        when(jwtService.obtenerUsuarioId("token.antiguo.jwt")).thenReturn(10L);
+        when(jwtService.obtenerRoles("token.antiguo.jwt")).thenReturn(Set.of(Rol.COMPRADOR));
+        when(otpService.estaUsuarioRevocado(eq(10L), org.mockito.ArgumentMatchers.anyLong())).thenReturn(false);
+        when(jwtService.obtenerTiempoRestanteSegundos("token.antiguo.jwt")).thenReturn(1800L);
+        when(jwtService.generarToken(eq(10L), anySet())).thenReturn("token.rotado.jwt");
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken", is("token.rotado.jwt")));
+
+        verify(otpService).invalidarToken("token.antiguo.jwt", 1800L);
+    }
+
+    @Test
+    @DisplayName("Refresh de usuario revocado globalmente debe retornar 401 Unauthorized")
+    void refresh_conUsuarioRevocadoGlobalmente_debeRetornar401() throws Exception {
+        RefreshTokenRequestDTO request = new RefreshTokenRequestDTO("token.usuario.revocado");
+        Claims claims = Jwts.claims()
+                .subject("10")
+                .issuedAt(new Date(1000L))
+                .build();
+
+        when(otpService.esTokenInvalido("token.usuario.revocado")).thenReturn(false);
+        when(jwtService.validarToken("token.usuario.revocado")).thenReturn(claims);
+        when(jwtService.obtenerUsuarioId("token.usuario.revocado")).thenReturn(10L);
+        when(jwtService.obtenerRoles("token.usuario.revocado")).thenReturn(Set.of(Rol.COMPRADOR));
+        when(otpService.estaUsuarioRevocado(10L, 1000L)).thenReturn(true);
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status", is(401)));
+    }
+
+    @Test
+    @DisplayName("Logout sin cabecera Authorization Bearer debe retornar 401 Unauthorized")
+    void logout_sinAuthorizationBearer_debeRetornar401() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/logout"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status", is(401)));
     }
 }
