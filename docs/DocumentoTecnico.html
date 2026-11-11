@@ -354,7 +354,7 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
     </table>
 
     <div class="callout warn" style="margin-top:9px">
-      <strong>Transparencia de Alcance Actual:</strong> Aunque <code>README.md</code> proyecta una base propia <code>styleradar_auth</code> y endpoint <code>POST /registro</code> completo, en la rama <code>develop</code> actual <code>POST /api/v1/auth/registro</code> opera como <em>stub controlado</em> (retorna <code>id=12L</code> con estado <code>INACTIVA</code> y envía OTP) mientras se consolida la sincronización transaccional con <code>ms-usuarios</code>.
+      <strong>Transparencia de Alcance Actual:</strong> Mientras se consolida la sincronización transaccional con <code>ms-usuarios</code>, <code>POST /api/v1/auth/registro</code> opera como <em>stub de contrato controlado</em> (retorna <code>201 Created</code> con <code>id=12L</code> y <code>Rol.COMPRADOR</code>, sin escritura en <code>styleradar_auth</code> ni envío OTP todavía) y las migraciones SQL permanecen en <code>.gitkeep</code>.
     </div>
 
     <div class="pf"><span>StyleRadar · ms-auth</span><span>Ecosistema y Delimitación de Contexto</span><span>Pág. 02</span></div>
@@ -679,7 +679,7 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
 
     <div class="adr">
       <div class="adr-h"><span class="adr-id">ADR-03</span><span class="adr-ti">JWT HS256 (<code>PT24H</code>) con Doble Revocación (Token + Usuario)</span><span class="badge b-ok">Implementado</span></div>
-      <div class="adr-b"><strong>Alternativa descartada:</strong> Sesiones opacas puras o JWT sin blacklist. <strong>Porqué:</strong> Los 12 microservicios pares verifican firma sin latencia de red; al cerrar sesión (<code>/logout</code>) o cambiar estado en Usuarios, <code>blacklist:&lt;token&gt;</code> y <code>usuario:revocado:&lt;id&gt;</code> invalidan de inmediato todo token emitido antes del timestamp de revocación.</div>
+      <div class="adr-b"><strong>Alternativa descartada:</strong> Sesiones opacas puras o JWT sin blacklist. <strong>Porqué:</strong> Los 12 microservicios pares verifican firma sin latencia de red; al cerrar sesión (<code>/logout</code> retorna <code>204</code>), <code>blacklist:&lt;token&gt;</code> bloquea su uso en <code>/refresh</code>, y al cambiar estado en Usuarios <code>usuario:revocado:&lt;id&gt;</code> rechaza JWT emitidos hasta ese epoch.</div>
     </div>
 
     <div class="adr">
@@ -854,7 +854,7 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
     </div>
 
     <h2 class="st">Estructura de Almacenamiento en <em>Redis 7</em></h2>
-    <p class="lead">El almacenamiento operativo vivo de <code>ms-auth</code> se articula sobre <strong>6 espacios de claves en Redis</strong> con expiración automática, asegurando limpieza sin trabajos cron ni bloqueos de disco.</p>
+    <p class="lead">Modelado en <a href="uml/DiagramaBaseDatos.drawio"><code>docs/uml/DiagramaBaseDatos.drawio</code></a> (<a href="uml/DiagramaBaseDatos.png"><code>.png</code></a> · estilo <code>EstiloDiagramas.xml</code>), el almacenamiento vivo de <code>ms-auth</code> articula <strong>6 espacios de claves en Redis 7</strong> con respaldo en RAM y contrato HTTP con <code>ms-usuarios (:8120)</code>.</p>
 
     <div class="diag-box">
       <svg viewBox="0 0 720 148" xmlns="http://www.w3.org/2000/svg" aria-label="Modelo de Claves Redis 7">
@@ -880,7 +880,7 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
         <text x="502" y="90" font-family="Poppins,sans-serif" font-size="9.5" fill="#5A5468">Valor: epoch ms de bloqueo</text>
         <text x="502" y="108" font-family="Poppins,sans-serif" font-size="9.5" fill="#5A5468">Bloquea JWT si issuedAt &lt;= ts</text>
       </svg>
-      <div class="diag-cap"><span>Fig 7.1 — Familias de claves verificadas en <code>OtpServiceImpl</code> y <code>JwtAuthenticationFilter</code>.</span><span>Redis + RAM fallback</span></div>
+      <div class="diag-cap"><span>Fig 7.1 — Síntesis de <code>DiagramaBaseDatos.png</code>: claves en Redis 7 + fallback RAM (<code>OtpServiceImpl</code> / Filtros).</span><span>Ver <code>uml/DiagramaBaseDatos.png</code></span></div>
     </div>
 
     <h3 class="h3">Catálogo Detallado de Claves &amp; Reglas de Expiración</h3>
@@ -891,8 +891,8 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
         <tr><td><code>otp:intentos:{email}</code></td><td>Contador descendente desde <code>3</code></td><td><code>300 s</code></td><td><code>OtpServiceImpl</code></td><td><code>OtpServiceImpl</code></td></tr>
         <tr><td><code>otp:usuario:{email}</code></td><td>ID numérico del usuario</td><td><code>300 s</code></td><td><code>OtpServiceImpl</code></td><td><code>OtpServiceImpl</code></td></tr>
         <tr><td><code>otp:rol:{email}</code></td><td>Nombre del enum <code>Rol</code></td><td><code>300 s</code></td><td><code>OtpServiceImpl</code></td><td><code>OtpServiceImpl</code></td></tr>
-        <tr><td><code>blacklist:{token}</code></td><td><code>"revoked"</code></td><td>Restante del JWT (máx <code>24h</code>)</td><td><code>OtpServiceImpl</code></td><td><code>JwtAuthenticationFilter</code></td></tr>
-        <tr><td><code>usuario:revocado:{id}</code></td><td>Timestamp epoch (ms)</td><td>Persistente / hasta reactivar</td><td><code>UsuarioEstadoConsumer</code></td><td><code>JwtAuthenticationFilter</code></td></tr>
+        <tr><td><code>blacklist:{token}</code></td><td><code>"revoked"</code></td><td>Restante del JWT (máx <code>24h</code>)</td><td><code>OtpServiceImpl</code></td><td><code>OtpServiceImpl</code> (<code>/refresh</code>)</td></tr>
+        <tr><td><code>usuario:revocado:{id}</code></td><td>Timestamp epoch (ms)</td><td>Persistente / hasta reactivar</td><td><code>UsuarioEstadoCambiadoConsumer</code></td><td><code>JwtAuthenticationFilter</code></td></tr>
       </tbody>
     </table>
 
@@ -913,7 +913,7 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
     </div>
 
     <div class="callout ok" style="margin-top:8px">
-      <strong>Justificación de Limpieza de Esquema:</strong> Activar Flyway prematuramente con migraciones vacías induciría falsa sensación de persistencia. El esquema <code>styleradar_auth</code> permanece desacoplado hasta implementar la tabla local de auditoría/credenciales y eliminar el stub de <code>/registro</code>.
+      <strong>Justificación del Modelo de Datos (<code>DiagramaBaseDatos.png</code>):</strong> Redis provee expiración automática sin trabajos cron ni bloqueo de disco, mientras <code>ms-usuarios</code> evita duplicar credenciales. Activar Flyway prematuramente induciría falsa persistencia; <code>styleradar_auth</code> sigue desacoplado hasta sustituir el stub de <code>/registro</code>.
     </div>
 
     <div class="pf"><span>StyleRadar · ms-auth</span><span>Modelo de Datos Redis y Estado SQL</span><span>Pág. 07</span></div>
@@ -934,7 +934,7 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
     <table class="dt" style="margin-bottom:10px">
       <thead><tr><th class="nw">ID Req.</th><th>Descripción Funcional / No Funcional</th><th>Implementación en <code>ms-auth</code></th><th>Estado</th></tr></thead>
       <tbody>
-        <tr><td class="nw"><code>SR-RF-01</code></td><td>Registro inicial con verificación de correo</td><td><code>POST /registro</code> valida DTO, genera OTP y envía correo (ID stub <code>12L</code>)</td><td class="nw"><span class="badge b-warn">Parcial (Stub)</span></td></tr>
+        <tr><td class="nw"><code>SR-RF-01</code></td><td>Registro inicial con verificación de correo</td><td><code>POST /registro</code> valida DTO y devuelve stub de contrato (ID <code>12L</code>, sin BD ni OTP aún)</td><td class="nw"><span class="badge b-warn">Parcial (Stub)</span></td></tr>
         <tr><td class="nw"><code>SR-RF-02</code></td><td>Inicio de sesión con segundo factor OTP y JWT</td><td><code>POST /login</code> valida en <code>ms-usuarios</code>, envía OTP; <code>/otp/verificar</code> emite JWT</td><td class="nw"><span class="badge b-ok">Completo</span></td></tr>
         <tr><td class="nw"><code>SR-RF-92</code></td><td>Renovación y cierre seguro de sesión</td><td><code>POST /refresh</code> emite nuevo JWT; <code>POST /logout</code> registra en <code>blacklist</code></td><td class="nw"><span class="badge b-ok">Completo</span></td></tr>
         <tr><td class="nw"><code>SR-RNF-01</code></td><td>Seguridad basada en roles y expiración estricta</td><td><code>4</code> roles <code>ROLE_*</code>, JWT <code>24h</code>, OTP <code>300s</code> máx <code>3</code> intentos</td><td class="nw"><span class="badge b-ok">Completo</span></td></tr>
@@ -947,11 +947,11 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
       <thead><tr><th class="nw">Método &amp; Ruta</th><th>Request DTO</th><th>Response DTO (Exitoso)</th><th>Errores HTTP Mapeados</th></tr></thead>
       <tbody>
         <tr><td class="nw"><code>POST /login</code></td><td><code>LoginRequestDTO</code></td><td><span class="nw"><code>200</code> ·</span> <code>OtpMensajeResponseDTO</code></td><td><code>400</code> BeanVal, <code>401</code> Credenciales, <code>403</code> Cuenta Inactiva</td></tr>
-        <tr><td class="nw"><code>POST /registro</code></td><td><code>RegistroAuthRequestDTO</code></td><td><span class="nw"><code>201</code> ·</span> <code>UsuarioAuthResponseDTO</code></td><td><code>400</code> BeanVal, <code>500</code> Fallo SMTP (rollback OTP)</td></tr>
+        <tr><td class="nw"><code>POST /registro</code></td><td><code>RegistroAuthRequestDTO</code></td><td><span class="nw"><code>201</code> ·</span> <code>UsuarioAuthResponseDTO</code></td><td><code>400</code> BeanVal (stub sin persistencia ni SMTP aún)</td></tr>
         <tr><td class="nw"><code>POST /otp/verificar</code></td><td><code>VerificarOtpRequestDTO</code></td><td><span class="nw"><code>200</code> ·</span> <code>LoginResponseDTO</code> (JWT)</td><td><code>400</code> OTP inválido, <code>401</code> OTP expirado, <code>429</code> Intentos agotados*</td></tr>
         <tr><td class="nw"><code>POST /otp/reenviar</code></td><td><code>ReenviarOtpRequestDTO</code></td><td><span class="nw"><code>200</code> ·</span> <code>OtpMensajeResponseDTO</code></td><td><code>400</code> Validación / Datos OTP previos expirados</td></tr>
-        <tr><td class="nw"><code>POST /refresh</code></td><td><code>RefreshTokenRequestDTO</code></td><td><span class="nw"><code>200</code> ·</span> <code>LoginResponseDTO</code></td><td><code>401</code> Token inválido, expirado o revocado</td></tr>
-        <tr><td class="nw"><code>POST /logout</code></td><td>Header <code>Authorization: Bearer</code></td><td><span class="nw"><code>200</code> ·</span> <code>OtpMensajeResponseDTO</code></td><td><code>401</code> Token ausente / inválido en filtro de seguridad</td></tr>
+        <tr><td class="nw"><code>POST /refresh</code></td><td><code>RefreshTokenRequestDTO</code></td><td><span class="nw"><code>200</code> ·</span> <code>LoginResponseDTO</code></td><td><code>401</code> Token inválido, expirado o en <code>blacklist</code></td></tr>
+        <tr><td class="nw"><code>POST /logout</code></td><td>Header <code>Authorization: Bearer</code></td><td><span class="nw"><code>204</code> ·</span> <code>No Content</code> (sin body)</td><td><code>401</code> Token ausente / inválido en filtro de seguridad</td></tr>
       </tbody>
     </table>
 
@@ -1135,7 +1135,7 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
     </div>
 
     <h2 class="st">Blindaje <em>Stateless</em>, Filtro JWT y RBAC</h2>
-    <p class="lead">La arquitectura de seguridad protege los endpoints sin almacenar sesiones HTTP de servidor y aplica validación en dos capas antes de autorizar cualquier petición autenticada.</p>
+    <p class="lead">La arquitectura de seguridad protege los endpoints sin almacenar sesiones HTTP de servidor y verifica firma HMAC, vigencia y estado de usuario en Redis antes de autorizar peticiones.</p>
 
     <div class="diag-box">
       <svg viewBox="0 0 720 128" xmlns="http://www.w3.org/2000/svg" aria-label="Cadena de Seguridad HTTP ms-auth">
@@ -1143,7 +1143,7 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
         <rect x="6" y="6" width="708" height="116" rx="9" fill="#FCF9FE" stroke="#E8DCCB"/>
         <rect x="18" y="34" width="110" height="58" rx="6" fill="#E4DBF0" stroke="#48119A"/><text x="73" y="60" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700">CORS + CSRF Off</text><text x="73" y="76" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#48119A">STATELESS</text>
         <rect x="152" y="34" width="128" height="58" rx="6" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/><text x="216" y="58" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700">1. Firma &amp; Exp JWT</text><text x="216" y="75" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#5A5468">HS256 · Bearer</text>
-        <rect x="304" y="34" width="144" height="58" rx="6" fill="#48119A"/><text x="376" y="57" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700" fill="#fff">2. Doble Chequeo Redis</text><text x="376" y="75" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.2" fill="#E4DBF0">blacklist + revocado</text>
+        <rect x="304" y="34" width="144" height="58" rx="6" fill="#48119A"/><text x="376" y="57" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700" fill="#fff">2. Chequeo Redis</text><text x="376" y="75" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.2" fill="#E4DBF0">usuario:revocado:{id}</text>
         <rect x="472" y="34" width="118" height="58" rx="6" fill="#E4DBF0" stroke="#48119A"/><text x="531" y="58" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700">SecurityContext</text><text x="531" y="75" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#48119A">ROLE_&lt;ROL&gt;</text>
         <rect x="614" y="34" width="88" height="58" rx="6" fill="#DCFCE7" stroke="#15803D"/><text x="658" y="60" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700" fill="#15803D">Endpoint</text><text x="658" y="75" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#15803D">Autorizado</text>
         <line x1="128" y1="63" x2="148" y2="63" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwSec)"/>

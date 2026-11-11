@@ -77,7 +77,7 @@
 * **Identificador de Servicio:** `ms-auth` (`CADCHE-Authentication-Service`)
 * **Paquete Arquitectónico:** `Paquete 1: Identidad`
 * **Puerto de Escucha Oficial:** `8100` (definido en la matriz de puertos sin colisión)
-* **Base de Datos Asignada:** `PostgreSQL 16` (`styleradar_auth`) para credenciales y sesiones + `Redis 7.x` para códigos OTP efímeros (TTL 5 min) y lista negra de JWT revocados, aislada bajo el patrón *Database-per-Service*.
+* **Base de Datos Asignada:** `Redis 7` (`:6379`, almacenamiento operativo activo para códigos OTP TTL `300 s`, blacklist JWT de `/logout`/`/refresh` y revocación global de usuario, con respaldo en memoria `ConcurrentHashMap`) + `PostgreSQL 16` (`styleradar_auth`, configurado en YAML/Docker pero excluido en perfiles `dev`/`test` sin entidades ni migraciones SQL desplegadas hoy, pues la verificación de credenciales se delega síncronamente vía HTTP Basic a `ms-usuarios` en `:8120`). Ver diseño completo en [docs/DocumentoTecnico.html](docs/DocumentoTecnico.html) y [DiagramaBaseDatos.png](docs/uml/DiagramaBaseDatos.png).
 * **Bounded Context:** `Autenticación, Identidad y Control de Acceso (IAM)`
 
 ### Responsabilidades del Dominio
@@ -89,7 +89,7 @@ Este microservicio encapsula exclusivamente la lógica de negocio correspondient
 | • Autentica de forma unificada a los cuatro roles (`COMPRADOR`, `ADMIN_ALMACEN`, `REPRESENTANTE_FUNDACION`, `ADMIN_STYLERADAR`) y emite tokens JWT (`accessToken` y `refreshToken`) firmados (`SR-RF-02`). | • NO gestiona preferencias de estilo, tallas habituales ni búsquedas guardadas del comprador (delegado a `ms-usuarios` en `:8082`). |
 | • Genera, valida y reenvía códigos OTP de 6 dígitos con vigencia estricta de 5 minutos (`300s`) y bloqueo tras 3 intentos fallidos (`SR-RF-92`). | • NO administra almacenes aliados, verificación de RUT ni fundaciones aliadas (delegado a `ms-tiendas` en `:8083`). |
 | • Registra credenciales de usuario comprador con cifrado `BCrypt` (costo ≥ 10), valida la aceptación expresa de Habeas Data (`SR-RF-01`, `SR-RNF-02`) y revoca sesiones en logout (`SR-RNF-01`, Deuda Técnica #2). | • NO envía correos electrónicos ni WebSockets de forma directa (publica eventos hacia `ms-notificaciones` en `:8092`). |
-| • Garantiza persistencia ACID e idempotencia en su base de datos (`styleradar_auth`). | • NO accede directamente a bases de datos de otros microservicios. |
+| • Gestiona su estado efímero de autenticación exclusivamente sobre su motor `Redis 7` y consulta credenciales mediante contrato HTTP explícito hacia `ms-usuarios` (`VerificarCredencialesResponseDTO`). | • NO accede directamente a bases de datos de otros microservicios. |
 
 ### Arquetipos de Moda y Personajes de StyleRadar
 
@@ -230,49 +230,40 @@ El diagrama de clases de `ms-auth` modela el núcleo de autenticación y segurid
 
 ---
 
-#### 7.2 Diagrama de Base de Datos Relacional y No Relacional (`ms-auth`)
+#### 7.2 Diagrama de Base de Datos (`ms-auth` — Redis 7 Activo + Contrato `ms-usuarios`)
 
 <div align="center">
   <img src="docs/uml/DiagramaBaseDatos.png" width="95%" alt="Diagrama de Base de Datos ms-auth" /><br />
-  <sub>Figura 7.2: Esquema de base de datos relacional PostgreSQL 15 y motor NoSQL Redis para ms-auth (Draw.io editable en <a href="docs/uml/DiagramaBaseDatos.drawio"><code>docs/uml/DiagramaBaseDatos.drawio</code></a>).</sub>
+  <sub>Figura 7.2: Modelo real de almacenamiento activo en Redis 7 y fuente externa <code>ms-usuarios (:8120)</code> en formato StyleRadar (Draw.io editable en <a href="docs/uml/DiagramaBaseDatos.drawio"><code>docs/uml/DiagramaBaseDatos.drawio</code></a> · Explicación arquitectónica y estado diferido de PostgreSQL 16 en <a href="docs/DocumentoTecnico.html"><code>docs/DocumentoTecnico.html</code></a>, Pág. 07).</sub>
 </div>
 
-##### Justificación del Modelo Híbrido (Database-per-Service & Polyglot Persistence)
-El microservicio `ms-auth` implementa una estrategia de persistencia políglota para resolver dos requisitos con naturalezas operativas completamente opuestas:
-- **Base de Datos Relacional (PostgreSQL 15)**: La identidad y las credenciales de los usuarios constituyen el activo más crítico de StyleRadar. Se requiere consistencia ACID estricta, integridad referencial y aislamiento transaccional para garantizar que no existan duplicados de cuentas, que los registros de consentimiento legal de Habeas Data no puedan quedar huérfanos y que el historial de auditoría de logins sea persistente e inmutable.
-- **Motor NoSQL / En Memoria (Redis 7)**: La verificación de tokens revocados (Blacklist de JWT al cerrar sesión) y la gestión de códigos OTP de autenticación en dos pasos requieren latencia sub-milisegundo. Consultar una base de datos relacional en cada petición HTTP authenticated para comprobar si el JWT fue revocado degradaría severamente el throughput. Redis permite lecturas ultra-rápidas mediante almacenamiento clave-valor en memoria RAM y dispone de expiración nativa mediante TTL (Time-To-Live), eliminando la necesidad de procesos batch para purgar tokens vencidos u OTPs obsoletos.
+##### Justificación Arquitectónica del Modelo de Datos Real (ADR-02 y ADR-04)
 
-##### Explicación Detallada del Esquema de Datos
-1. **Esquema Relacional PostgreSQL (`styleradar_auth`)**:
-   - **Tabla `credenciales`**:
-     - `id (UUID, PK)`: Identificador primario no secuencial.
-     - `email (VARCHAR(150), UNIQUE, NOT NULL)`: Correo electrónico con índice único para búsquedas rápidas en el login.
-     - `password_hash (VARCHAR(255), NOT NULL)`: Hash seguro de la contraseña.
-     - `rol (VARCHAR(30), NOT NULL)`: Rol de autorización RBAC.
-     - `estado (VARCHAR(30), NOT NULL)`: Estado operativo de la cuenta.
-     - `intentos_fallidos (INT, DEFAULT 0)`: Control de fuerza bruta.
-     - `bloqueado_hasta (TIMESTAMP WITH TIME ZONE, NULL)`: Fin del bloqueo temporal.
-     - `created_at, updated_at (TIMESTAMP WITH TIME ZONE, NOT NULL)`: Auditoría temporal.
-   - **Tabla `consentimientos_habeas_data`**:
-     - `id (UUID, PK)`: Identificador primario.
-     - `credencial_id (UUID, FK, NOT NULL)`: Referencia con clave foránea a `credenciales(id)` con `ON DELETE CASCADE`.
-     - `version_politica (VARCHAR(20), NOT NULL)`: Versión de términos aceptada.
-     - `ip_registro (VARCHAR(45), NOT NULL)`: Registro legal de IP de aceptación.
-     - `fecha_consentimiento (TIMESTAMP WITH TIME ZONE, NOT NULL)`: Marca temporal de aceptación.
-   - **Tabla `historial_autenticacion`**:
-     - `id (UUID, PK)`: Identificador de evento.
-     - `credencial_id (UUID, FK, NOT NULL)`: Referencia a la credencial.
-     - `tipo_evento (VARCHAR(50), NOT NULL)`: `LOGIN_EXITOSO`, `LOGIN_FALLIDO`, `OTP_ENVIADO`, `PASSWORD_RESET`.
-     - `direccion_ip (VARCHAR(45), NOT NULL)`: IP de la solicitud.
-     - `user_agent (VARCHAR(255), NOT NULL)`: Navegador o dispositivo origen.
-     - `fecha_evento (TIMESTAMP WITH TIME ZONE, NOT NULL)`: Momento del evento.
-2. **Estructura NoSQL Clave-Valor en Redis**:
-   - **Namespace `blacklist:{jti}`**:
-     - Estructura: String o Set con clave `blacklist:<jti>` (identificador único del JWT) y valor `REVOKED`.
-     - TTL: Configurado exactamente con los segundos restantes para la expiración natural del token JWT. Una vez transcurrido este tiempo, Redis desaloca la memoria automáticamente.
-   - **Namespace `otp:{email}`**:
-     - Estructura: Hash con campos `code_hash` (código de 6 dígitos hasheado), `attempts` (contador de intentos realizados, máximo 3) y `created_at`.
-     - TTL: 300 segundos (5 minutos). Si el usuario no valida el código dentro de esa ventana temporal, la clave desaparece sin intervención manual.
+Contrario a esquemas teóricos tempranos, la auditoría directa del código fuente (`OtpServiceImpl`, `JwtAuthenticationFilter`, `UsuarioEstadoCambiadoConsumer`, `UsuarioClient` y perfiles YAML) demuestra una arquitectura enfocada en latencia sub-milisegundo y cero duplicación de credenciales:
+
+- **Motor Activo Clave-Valor (`Redis 7` en `:6379` vía `StringRedisTemplate`):** Almacena exclusivamente estado efímero de seguridad que requiere expiración automática por **TTL** o validación en memoria en cada petición (`/refresh`, filtro JWT), evitando sobrecarga transaccional en disco o trabajos *cron* de limpieza. Ante fallos de conectividad (`DataAccessException`), `OtpServiceImpl` conmuta de forma transparente a mapas concurrentes en memoria (`localMemoryStore` y `localExpiryStore` sobre `ConcurrentHashMap`) conservando la ventana temporal de `300 s`.
+- **Fuente Externa de Credenciales (`ms-usuarios` en `:8120` vía HTTP Basic):** `ms-auth` no duplica perfiles ni hashes de contraseña en base local. Durante `POST /api/v1/auth/login`, `UsuarioClient` invoca `POST /internal/api/v1/usuarios/verificar-credenciales` y recibe `VerificarCredencialesResponseDTO(id, email, rol, estado)` (con fallback sintético en perfil `dev`).
+- **Estado Real de `PostgreSQL 16` (`styleradar_auth`) y `Flyway 10.20.1`:** Aunque `pom.xml`, `application.yml` (`jdbc:postgresql://localhost:5432/styleradar_auth`, `ddl-auto: validate`, `flyway.enabled: false`) y `docker-compose.yml` (`auth-db` sobre `postgres:16-alpine`, puerto `5434:5432`) declaran la base relacional, tanto `application-dev.yml` como `application-test.yml` excluyen `DataSourceAutoConfiguration`, `HibernateJpaAutoConfiguration` y `FlywayAutoConfiguration`. Los directorios `infrastructure/adapter/out/persistence/{entity,repository}/` y `src/main/resources/db/migration/` solo contienen `.gitkeep` mientras `POST /api/v1/auth/registro` opera como stub controlado (`201 Created`, `id=12L`, `Rol.COMPRADOR`), evitando falsa sensación de persistencia hasta implementar entidades JPA reales.
+
+##### Catálogo Exacto de Claves en Redis 7 (`StringRedisTemplate`)
+
+| Espacio de Clave (Grupo Diagrama) | Prefijo Exacto en Código | Tipo / Formato de Valor | TTL Configurado | Escrita Por | Leída / Validada Por |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`otp_sesion_redis`** | `otp:{email}` | `STRING` (6 dígitos `"%06d"`) | `300 s` (`otp.ttl-seconds`) | `OtpServiceImpl` | `OtpServiceImpl` (`/otp/verificar`) |
+| **`otp_sesion_redis`** | `otp:intentos:{email}` | `STRING` (`"3"` → `"0"` decremento) | `300 s` | `OtpServiceImpl` | `OtpServiceImpl` (máx. 3 intentos) |
+| **`otp_sesion_redis`** | `otp:usuario:{email}` | `STRING` (`Long usuarioId` desde `ms-usuarios`) | `300 s` | `OtpServiceImpl` | `OtpServiceImpl` (para claim `sub`) |
+| **`otp_sesion_redis`** | `otp:rol:{email}` | `STRING` (`Enum Rol.name()`) | `300 s` | `OtpServiceImpl` | `OtpServiceImpl` (para claim `roles`) |
+| **`jwt_blacklist_redis`** | `blacklist:{token}` | `STRING` (`"revoked"`) | Restante del JWT (hasta `PT24H`) | `OtpServiceImpl` (en `AuthController.logout()`) | `OtpServiceImpl.esTokenInvalido()` (en `/refresh`) |
+| **`usuario_revocado_redis`** | `usuario:revocado:{usuarioId}` | `STRING` (epoch ms `evento.fechaCambio()`) | Sin TTL (persistente en Redis) | `UsuarioEstadoCambiadoConsumer` (`auth.usuario.estado.cambiado`) | `JwtAuthenticationFilter` (`issuedAt <= epoch`) |
+
+##### Contrato Upstream (`ms-usuarios`) y Parámetros Relacionales Diferidos
+
+| Elemento / Grupo | Campo / Propiedad | Detalle Exacto Verificado en Código y Configuración |
+| :--- | :--- | :--- |
+| **`ms_usuarios` (`VerificarCredencialesResponseDTO`)** | `id`, `email`, `rol`, `estado` | `Long id`, `String email`, `String rol` → `Enum Rol` (`COMPRADOR`, `ADMIN_ALMACEN`, `REPRESENTANTE_FUNDACION`, `ADMIN_STYLERADAR`), `String estado` → `Enum EstadoCuenta` (`ACTIVA`, `INACTIVA`, `BLOQUEADA`). |
+| **`PostgreSQL 16` + `Flyway 10` (Diferido en `dev`/`test`)** | `datasource.url`, `ddl-auto`, `flyway.enabled` | `jdbc:postgresql://localhost:5432/styleradar_auth` (`docker-compose`: `auth-db` `5434:5432`), `validate` (`0` `@Entity`), `false` (`db/migration/.gitkeep`); autoconfiguraciones SQL excluidas en `dev` y `test`. |
+
+> Documentación arquitectónica y decisiones de diseño ampliadas en [docs/DocumentoTecnico.html](docs/DocumentoTecnico.html) (Sección **05 ADR-04** y Sección **07 Modelo de Datos Real**).
 
 ---
 
