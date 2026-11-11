@@ -13,10 +13,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main' }}
+
 jobs:
   build-and-test:
     name: Build, Tests, Analisis Estatico y Sonar
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Descargar codigo
@@ -36,7 +41,7 @@ jobs:
 
       - name: Analisis estatico con SpotBugs
         run: >
-          mvn -B
+          mvn -B --no-transfer-progress
           com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check
           "-Dspotbugs.excludeFilterFile=spotbugs-exclude.xml"
 
@@ -49,9 +54,34 @@ jobs:
             exit 1
           fi
 
-          mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+          mvn -B --no-transfer-progress \
+            org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.projectKey=StyleRadar1_CADCHE-Authentication-Service \
             -Dsonar.qualitygate.wait=true
+
+      - name: Resumen de cobertura JaCoCo
+        if: always()
+        run: |
+          if [ -f target/site/jacoco/jacoco.csv ]; then
+            awk -F',' '
+              NR > 1 {
+                im += $4; ic += $5; bm += $6; bc += $7; lm += $8; lc += $9; mm += $12; mc += $13
+              }
+              END {
+                it = im + ic; bt = bm + bc; lt = lm + lc; mt = mm + mc;
+                printf "### Cobertura JaCoCo (ms-auth)\n\n"
+                printf "| Métrica | Cubierto | Total | Porcentaje |\n"
+                printf "| :--- | ---: | ---: | ---: |\n"
+                if (it > 0) printf "| Instrucciones (umbral >= 85%%) | %d | %d | %.2f%% |\n", ic, it, (100.0 * ic / it)
+                if (bt > 0) printf "| Ramas | %d | %d | %.2f%% |\n", bc, bt, (100.0 * bc / bt)
+                if (lt > 0) printf "| Líneas | %d | %d | %.2f%% |\n", lc, lt, (100.0 * lc / lt)
+                if (mt > 0) printf "| Métodos | %d | %d | %.2f%% |\n", mc, mt, (100.0 * mc / mt)
+                printf "\n- Reporte publicado en SonarCloud: https://sonarcloud.io/component_measures?id=StyleRadar1_CADCHE-Authentication-Service&metric=coverage\n"
+              }
+            ' target/site/jacoco/jacoco.csv >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Cobertura JaCoCo: reporte no generado en target/site/jacoco/jacoco.csv" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Guardar reporte JaCoCo
         if: always()
@@ -76,6 +106,7 @@ jobs:
     needs: build-and-test
     if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     outputs:
       image: ${{ steps.meta.outputs.image }}
@@ -129,6 +160,7 @@ jobs:
     needs: docker-publish
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Desplegar en QA
@@ -143,6 +175,7 @@ jobs:
     needs: docker-publish
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Desplegar en PROD

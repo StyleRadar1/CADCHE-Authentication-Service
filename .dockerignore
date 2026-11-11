@@ -2,6 +2,11 @@ target/
 .idea/
 *.iml
 .git/
+.github/
 .gitignore
 .env
 *.log
+*.md
+docs/
+docker-compose.yml
+spotbugs-exclude.xml

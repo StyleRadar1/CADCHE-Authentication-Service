@@ -30,10 +30,10 @@
     <a href="https://styleradar-backend-qa.azurewebsites.net/swagger-ui/index.html">
       <img src="https://img.shields.io/badge/QA-Active-5600EF?style=for-the-badge&logo=azure-app-services&logoColor=white" alt="QA Deployment" />
     </a>
-    <a href="https://sonarcloud.io/organizations/styleradar/projects">
+    <a href="https://sonarcloud.io/project/overview?id=StyleRadar1_CADCHE-Authentication-Service">
       <img src="https://img.shields.io/badge/SonarQube-Quality_Gate_Passed-16A34A?style=for-the-badge&logo=sonarqube&logoColor=white" alt="Quality Gate" />
     </a>
-    <a href="target/site/jacoco/index.html">
+    <a href="https://sonarcloud.io/component_measures?id=StyleRadar1_CADCHE-Authentication-Service&metric=coverage">
       <img src="https://img.shields.io/badge/JaCoCo_Coverage-%E2%89%A5_85%25-16A34A?style=for-the-badge&logo=codecov&logoColor=white" alt="Coverage" />
     </a>
     <a href="#6-tecnologías-y-dependencias">
@@ -745,7 +745,8 @@ mvn clean verify
 mvn jacoco:report
 ```
 
-* **Ruta del Reporte HTML:** `target/site/jacoco/index.html`
+* **Ruta del Reporte HTML / XML local:** `target/site/jacoco/index.html` y `target/site/jacoco/jacoco.xml`
+* **Reporte publicado en CI/CD:** Artefacto `coverage-report-auth` en cada ejecución de [GitHub Actions](https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions) (además del resumen en el *Workflow Summary*) y métricas en línea en [SonarQube Cloud (Coverage)](https://sonarcloud.io/component_measures?id=StyleRadar1_CADCHE-Authentication-Service&metric=coverage).
 
 <div align="center">
   <table width="100%" style="margin: 18px 0; border: 2px dashed #5600EF; border-radius: 8px; background-color: #FBFBFE;">
@@ -794,7 +795,7 @@ El ciclo de vida del software implementa integración continua y entrega continu
 | :--- | :--- | :--- | :--- | :---: |
 | **CI - Staging / QA** | Calidad (`QA`) | Pull Request o Push a rama `develop` | Build OK + Tests Unitarios/Integración + JaCoCo ≥ 85% + SonarQube OK | [![QA Pipeline](https://img.shields.io/badge/Pipeline_QA-Passing-5600EF?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions) |
 | **CD - Producción (PROD)** | Producción (`PROD`) | Merge a rama `main` / `master` tras validación QA | Aprobación manual + Imagen OCI desplegada en Azure App Service | [![PROD Pipeline](https://img.shields.io/badge/Pipeline_PROD-Passing-16A34A?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions) |
-| **Quality Gate SonarQube** | Transversal | Ejecutado en cada build de CI | 0 Vulnerabilidades, 0 Bugs, Deuda Técnica &lt; 5% | [![Quality Gate](https://img.shields.io/badge/SonarQube-Quality_Gate_Passed-16A34A?style=for-the-badge&logo=sonarqube&logoColor=white)](https://sonarcloud.io/organizations/styleradar/projects) |
+| **Quality Gate SonarQube** | Transversal | Ejecutado en cada build de CI | 0 Vulnerabilidades, 0 Bugs, Calificaciones en A (Reliability, Security, Maintainability, Security Review), Cobertura ≥ 80% en New Code (JaCoCo ≥ 85% global) y SpotBugs 0 hallazgos | [![Quality Gate](https://img.shields.io/badge/SonarQube-Quality_Gate_Passed-16A34A?style=for-the-badge&logo=sonarqube&logoColor=white)](https://sonarcloud.io/project/overview?id=StyleRadar1_CADCHE-Authentication-Service) |
 
 ### Diagrama del Flujo Automatizado (Pipeline Stages)
 
