@@ -65,7 +65,7 @@ jobs:
   docker-publish:
     name: Construir y publicar imagen Docker
     needs: build-and-test
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
 
     outputs:
@@ -94,7 +94,13 @@ jobs:
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
           echo "tags<<EOF" >> "$GITHUB_OUTPUT"
           echo "$IMAGE" >> "$GITHUB_OUTPUT"
-          echo "${DOCKERHUB_USERNAME}/styleradar-auth:test-latest" >> "$GITHUB_OUTPUT"
+
+          if [ "$GITHUB_REF" = "refs/heads/develop" ]; then
+            echo "${DOCKERHUB_USERNAME}/styleradar-auth:qa-latest" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            echo "${DOCKERHUB_USERNAME}/styleradar-auth:prod-latest" >> "$GITHUB_OUTPUT"
+          fi
+
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Construir y publicar imagen Docker
@@ -110,7 +116,7 @@ jobs:
   deploy-qa:
     name: Desplegar en Azure App Service QA
     needs: docker-publish
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
 
     steps:
@@ -124,7 +130,7 @@ jobs:
   deploy-prod:
     name: Desplegar en Azure App Service PROD
     needs: docker-publish
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
