@@ -1,364 +1,232 @@
-<mxGraphModel dx="1420" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1850" pageHeight="1200" math="0" shadow="0">
-  <root>
-    <mxCell id="0" />
-    <mxCell id="1" parent="0" />
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net">
+  <diagram id="DiagramaClases_ms_auth" name="Diagrama de Clases ms-auth">
+    <mxGraphModel dx="1320" dy="680" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1220" pageHeight="540" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
 
-    <!-- ==================== GRUPO AZUL: HANDLERS DE VALIDACION Y APLICACION (ms-auth) ==================== -->
-    <mxCell id="auth_val_abs" value="&amp;lt;&amp;lt;abstract&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;AuthValidationHandler&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=38;fillColor=#e1e6fa;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#4d4dff;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="620" y="40" width="260" height="78" as="geometry" />
-    </mxCell>
-    <mxCell id="auth_val_abs_a1" value="# siguiente: AuthValidationHandler" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="auth_val_abs">
-      <mxGeometry y="38" width="260" height="40" as="geometry" />
-    </mxCell>
+        <!-- ==================== COL 1: DOMINIO PURO (Enums & Evento) ==================== -->
+        <mxCell id="enum_rol" value="&lt;div&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;«enum»&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;Rol" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=38;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;fillColor=#E4DBF0;swimlaneFillColor=#FFFFFF;strokeWidth=2;perimeterSpacing=0;swimlaneLine=0;strokeColor=#48119A;fontColor=#48119A;" vertex="1" parent="1">
+          <mxGeometry x="28" y="28" width="232" height="122" as="geometry" />
+        </mxCell>
+        <mxCell id="enum_rol_l" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;rotatable=0;points=[];portConstraint=eastwest;strokeColor=#48119A;connectable=0;" vertex="1" parent="enum_rol">
+          <mxGeometry y="38" width="232" height="1" as="geometry" />
+        </mxCell>
+        <mxCell id="enum_rol_b" value="COMPRADOR&lt;div&gt;ADMIN_ALMACEN&lt;/div&gt;&lt;div&gt;REPRESENTANTE_FUNDACION&lt;/div&gt;&lt;div&gt;ADMIN_STYLERADAR&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=4;overflow=hidden;whiteSpace=wrap;html=1;connectable=0;fontFamily=poppins;fontSize=10.5;fontColor=#12063A;" vertex="1" parent="enum_rol">
+          <mxGeometry y="39" width="232" height="83" as="geometry" />
+        </mxCell>
 
-    <!-- Auto-referencia siguiente -->
-    <mxCell id="edge_self_next" value="&lt;i&gt;siguiente&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;endArrow=open;endFill=0;" edge="1" parent="1" source="auth_val_abs" target="auth_val_abs">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="930" y="60" />
-          <mxPoint x="930" y="98" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell id="edge_self_next_m1" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="edge_self_next">
-      <mxGeometry x="-0.75" y="-10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-    <mxCell id="edge_self_next_m2" value="&lt;b&gt;0..1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="edge_self_next">
-      <mxGeometry x="0.75" y="12" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
+        <mxCell id="enum_estado" value="&lt;div&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;«enum»&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;EstadoCuenta" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=38;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;fillColor=#E4DBF0;swimlaneFillColor=#FFFFFF;strokeWidth=2;perimeterSpacing=0;swimlaneLine=0;strokeColor=#48119A;fontColor=#48119A;" vertex="1" parent="1">
+          <mxGeometry x="28" y="186" width="232" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="enum_estado_l" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;rotatable=0;points=[];portConstraint=eastwest;strokeColor=#48119A;connectable=0;" vertex="1" parent="enum_estado">
+          <mxGeometry y="38" width="232" height="1" as="geometry" />
+        </mxCell>
+        <mxCell id="enum_estado_b" value="ACTIVA&lt;div&gt;INACTIVA&lt;/div&gt;&lt;div&gt;BLOQUEADA&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=4;overflow=hidden;whiteSpace=wrap;html=1;connectable=0;fontFamily=poppins;fontSize=10.5;fontColor=#12063A;" vertex="1" parent="enum_estado">
+          <mxGeometry y="39" width="232" height="63" as="geometry" />
+        </mxCell>
 
-    <!-- Subclase 1: OtpRateLimitHandler -->
-    <mxCell id="otp_handler" value="&lt;b&gt;OtpValidationHandler&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#e1e6fa;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#4d4dff;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="220" y="130" width="280" height="88" as="geometry" />
-    </mxCell>
-    <mxCell id="otp_handler_a1" value="- MAX_INTENTOS_OTP: int = 3&lt;br&gt;&lt;br&gt;- TTL_SEGUNDOS: int = 300" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="otp_handler">
-      <mxGeometry y="28" width="280" height="60" as="geometry" />
-    </mxCell>
+        <mxCell id="evt_usuario" value="&lt;div&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;«domain event · record»&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;UsuarioEstadoCambiadoEvent" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=38;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;fillColor=#E4DBF0;swimlaneFillColor=#FFFFFF;strokeWidth=2;perimeterSpacing=0;swimlaneLine=0;strokeColor=#48119A;fontColor=#48119A;fontSize=11.5;" vertex="1" parent="1">
+          <mxGeometry x="28" y="338" width="232" height="172" as="geometry" />
+        </mxCell>
+        <mxCell id="evt_usuario_l" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;rotatable=0;points=[];portConstraint=eastwest;strokeColor=#48119A;connectable=0;" vertex="1" parent="evt_usuario">
+          <mxGeometry y="38" width="232" height="1" as="geometry" />
+        </mxCell>
+        <mxCell id="evt_usuario_b" value="- usuarioId: Long&lt;div&gt;- estadoAnterior: EstadoCuenta&lt;/div&gt;&lt;div&gt;- estadoNuevo: EstadoCuenta&lt;/div&gt;&lt;div&gt;- administradorId: Long&lt;/div&gt;&lt;div&gt;- motivo: String&lt;/div&gt;&lt;div&gt;- fechaCambio: Instant&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=4;overflow=hidden;whiteSpace=wrap;html=1;connectable=0;fontFamily=poppins;fontSize=10.2;fontColor=#12063A;" vertex="1" parent="evt_usuario">
+          <mxGeometry y="39" width="232" height="133" as="geometry" />
+        </mxCell>
 
-    <!-- Subclase 2: CredentialStateHandler -->
-    <mxCell id="cred_handler" value="&lt;b&gt;CredentialStateHandler&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#e1e6fa;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#4d4dff;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="410" y="270" width="240" height="68" as="geometry" />
-    </mxCell>
-    <mxCell id="cred_handler_a1" value="- BCRYPT_STRENGTH: int = 10" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="cred_handler">
-      <mxGeometry y="28" width="240" height="40" as="geometry" />
-    </mxCell>
+        <!-- ==================== COL 2: INTERFACES DE APLICACION ==================== -->
+        <mxCell id="if_otp" value="&lt;div&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;«interface»&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;OtpService" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=38;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;fillColor=#E4DBF0;swimlaneFillColor=#FFFFFF;strokeWidth=2;perimeterSpacing=0;swimlaneLine=0;strokeColor=#48119A;fontColor=#48119A;" vertex="1" parent="1">
+          <mxGeometry x="318" y="28" width="292" height="214" as="geometry" />
+        </mxCell>
+        <mxCell id="if_otp_l" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;rotatable=0;points=[];portConstraint=eastwest;strokeColor=#48119A;connectable=0;" vertex="1" parent="if_otp">
+          <mxGeometry y="38" width="292" height="1" as="geometry" />
+        </mxCell>
+        <mxCell id="if_otp_b" value="+ generarOtp(email, usuarioId, rol): String&lt;div&gt;+ verificarOtp(email, codigo): void&lt;/div&gt;&lt;div&gt;+ reenviarOtp(email): String&lt;/div&gt;&lt;div&gt;+ obtenerUsuarioId(email): Long&lt;/div&gt;&lt;div&gt;+ obtenerRol(email): String&lt;/div&gt;&lt;div&gt;+ obtenerIntentosRestantes(email): int&lt;/div&gt;&lt;div&gt;+ eliminarOtp(email): void&lt;/div&gt;&lt;div&gt;+ invalidarToken(token, ttlSegundos): void&lt;/div&gt;&lt;div&gt;+ esTokenInvalido(token): boolean&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=4;overflow=hidden;whiteSpace=wrap;html=1;connectable=0;fontFamily=poppins;fontSize=10;fontColor=#12063A;" vertex="1" parent="if_otp">
+          <mxGeometry y="39" width="292" height="175" as="geometry" />
+        </mxCell>
 
-    <!-- Subclase 3: HabeasDataHandler -->
-    <mxCell id="habeas_handler" value="&lt;b&gt;HabeasDataValidationHandler&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#e1e6fa;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#4d4dff;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="740" y="300" width="240" height="68" as="geometry" />
-    </mxCell>
-    <mxCell id="habeas_handler_a1" value="- NORMA: String = &quot;Ley 1581/2012&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="habeas_handler">
-      <mxGeometry y="28" width="240" height="40" as="geometry" />
-    </mxCell>
+        <mxCell id="if_jwt" value="&lt;div&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;«interface»&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;JwtService" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=38;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;fillColor=#E4DBF0;swimlaneFillColor=#FFFFFF;strokeWidth=2;perimeterSpacing=0;swimlaneLine=0;strokeColor=#48119A;fontColor=#48119A;" vertex="1" parent="1">
+          <mxGeometry x="318" y="266" width="292" height="142" as="geometry" />
+        </mxCell>
+        <mxCell id="if_jwt_l" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;rotatable=0;points=[];portConstraint=eastwest;strokeColor=#48119A;connectable=0;" vertex="1" parent="if_jwt">
+          <mxGeometry y="38" width="292" height="1" as="geometry" />
+        </mxCell>
+        <mxCell id="if_jwt_b" value="+ generarToken(usuarioId, roles): String&lt;div&gt;+ validarToken(token): Claims&lt;/div&gt;&lt;div&gt;+ obtenerUsuarioId(token): Long&lt;/div&gt;&lt;div&gt;+ obtenerRoles(token): Set&amp;lt;Rol&amp;gt;&lt;/div&gt;&lt;div&gt;+ obtenerTiempoRestanteSegundos(token): long&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=4;overflow=hidden;whiteSpace=wrap;html=1;connectable=0;fontFamily=poppins;fontSize=10;fontColor=#12063A;" vertex="1" parent="if_jwt">
+          <mxGeometry y="39" width="292" height="103" as="geometry" />
+        </mxCell>
 
-    <!-- Subclase 4: TokenBlacklistHandler -->
-    <mxCell id="blacklist_handler" value="&lt;b&gt;TokenBlacklistHandler&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#e1e6fa;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#4d4dff;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="1040" y="210" width="260" height="68" as="geometry" />
-    </mxCell>
-    <mxCell id="blacklist_handler_a1" value="- TOKENS_REVOCADOS: Set&amp;lt;String&amp;gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="blacklist_handler">
-      <mxGeometry y="28" width="260" height="40" as="geometry" />
-    </mxCell>
+        <mxCell id="if_email" value="&lt;div&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;«interface»&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;EmailService" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=38;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;fillColor=#E4DBF0;swimlaneFillColor=#FFFFFF;strokeWidth=2;perimeterSpacing=0;swimlaneLine=0;strokeColor=#48119A;fontColor=#48119A;" vertex="1" parent="1">
+          <mxGeometry x="318" y="434" width="292" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="if_email_l" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;rotatable=0;points=[];portConstraint=eastwest;strokeColor=#48119A;connectable=0;" vertex="1" parent="if_email">
+          <mxGeometry y="38" width="292" height="1" as="geometry" />
+        </mxCell>
+        <mxCell id="if_email_b" value="+ enviarOtp(email, codigo): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=6;overflow=hidden;whiteSpace=wrap;html=1;connectable=0;fontFamily=poppins;fontSize=10.2;fontColor=#12063A;" vertex="1" parent="if_email">
+          <mxGeometry y="39" width="292" height="37" as="geometry" />
+        </mxCell>
 
-    <!-- Subclase 5: AuthUseCaseHandler / AuthServiceImpl -->
-    <mxCell id="auth_service_handler" value="&lt;b&gt;AuthServiceImpl&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#e1e6fa;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#4d4dff;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="1220" y="100" width="320" height="68" as="geometry" />
-    </mxCell>
-    <mxCell id="auth_service_handler_a1" value="- ADAPTADORES_SALIDA: Map&amp;lt;String, AuthOutputPort&amp;gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="auth_service_handler">
-      <mxGeometry y="28" width="320" height="40" as="geometry" />
-    </mxCell>
+        <!-- ==================== COL 3: IMPLEMENTACIONES ==================== -->
+        <mxCell id="impl_otp" value="OtpServiceImpl" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;fillColor=#E4DBF0;swimlaneFillColor=#FFFFFF;strokeWidth=2;perimeterSpacing=0;swimlaneLine=0;strokeColor=#48119A;fontColor=#48119A;" vertex="1" parent="1">
+          <mxGeometry x="662" y="28" width="234" height="126" as="geometry" />
+        </mxCell>
+        <mxCell id="impl_otp_l" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;rotatable=0;points=[];portConstraint=eastwest;strokeColor=#48119A;connectable=0;" vertex="1" parent="impl_otp">
+          <mxGeometry y="28" width="234" height="1" as="geometry" />
+        </mxCell>
+        <mxCell id="impl_otp_b" value="- redisTemplate: StringRedisTemplate&lt;div&gt;- localMemoryStore: Map&amp;lt;String, String&amp;gt;&lt;/div&gt;&lt;div&gt;- ttlSeconds: long&lt;/div&gt;&lt;div&gt;- maxAttempts: int&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=4;overflow=hidden;whiteSpace=wrap;html=1;connectable=0;fontFamily=poppins;fontSize=10;fontColor=#12063A;" vertex="1" parent="impl_otp">
+          <mxGeometry y="29" width="234" height="97" as="geometry" />
+        </mxCell>
 
-    <!-- Herencia hacia AuthValidationHandler -->
-    <mxCell id="inh_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="otp_handler" target="auth_val_abs">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="750" y="174" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell id="inh_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="cred_handler" target="auth_val_abs">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="530" y="210" />
-          <mxPoint x="750" y="210" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell id="inh_3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="habeas_handler" target="auth_val_abs">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="860" y="210" />
-          <mxPoint x="750" y="210" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell id="inh_4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="blacklist_handler" target="auth_val_abs">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="1170" y="190" />
-          <mxPoint x="750" y="190" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell id="inh_5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="auth_service_handler" target="auth_val_abs">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="750" y="134" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
+        <mxCell id="impl_jwt" value="JwtServiceImpl" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;fillColor=#E4DBF0;swimlaneFillColor=#FFFFFF;strokeWidth=2;perimeterSpacing=0;swimlaneLine=0;strokeColor=#48119A;fontColor=#48119A;" vertex="1" parent="1">
+          <mxGeometry x="662" y="266" width="234" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="impl_jwt_l" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;rotatable=0;points=[];portConstraint=eastwest;strokeColor=#48119A;connectable=0;" vertex="1" parent="impl_jwt">
+          <mxGeometry y="28" width="234" height="1" as="geometry" />
+        </mxCell>
+        <mxCell id="impl_jwt_b" value="- secretKey: SecretKey&lt;div&gt;- duration: Duration&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=6;overflow=hidden;whiteSpace=wrap;html=1;connectable=0;fontFamily=poppins;fontSize=10.2;fontColor=#12063A;" vertex="1" parent="impl_jwt">
+          <mxGeometry y="29" width="234" height="55" as="geometry" />
+        </mxCell>
 
-    <!-- ==================== GRUPO NARANJA: MODELO DE DOMINIO Y SOLICITUDES (ms-auth) ==================== -->
-    <mxCell id="auth_req" value="&lt;b&gt;SolicitudAutenticacion&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#ffe6cc;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#d79b00;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="40" y="450" width="290" height="248" as="geometry" />
-    </mxCell>
-    <mxCell id="auth_req_a1" value="- nombre: String&lt;br&gt;&lt;br&gt;- correo: String&lt;br&gt;&lt;br&gt;- password: String&lt;br&gt;&lt;br&gt;- telefono: String&lt;br&gt;&lt;br&gt;- codigoOtp: String&lt;br&gt;&lt;br&gt;- refreshToken: String&lt;br&gt;&lt;br&gt;- aceptaHabeasData: Boolean&lt;br&gt;&lt;br&gt;- rolSolicitado: Rol" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=4;spacingTop=6;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="auth_req">
-      <mxGeometry y="28" width="290" height="220" as="geometry" />
-    </mxCell>
+        <mxCell id="impl_email" value="EmailServiceImpl" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;fillColor=#E4DBF0;swimlaneFillColor=#FFFFFF;strokeWidth=2;perimeterSpacing=0;swimlaneLine=0;strokeColor=#48119A;fontColor=#48119A;" vertex="1" parent="1">
+          <mxGeometry x="662" y="426" width="234" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="impl_email_l" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;rotatable=0;points=[];portConstraint=eastwest;strokeColor=#48119A;connectable=0;" vertex="1" parent="impl_email">
+          <mxGeometry y="28" width="234" height="1" as="geometry" />
+        </mxCell>
+        <mxCell id="impl_email_b" value="- mailSender: JavaMailSender&lt;div&gt;- correoEmisor: String&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=6;overflow=hidden;whiteSpace=wrap;html=1;connectable=0;fontFamily=poppins;fontSize=10.2;fontColor=#12063A;" vertex="1" parent="impl_email">
+          <mxGeometry y="29" width="234" height="55" as="geometry" />
+        </mxCell>
 
-    <mxCell id="cred_reg" value="&lt;b&gt;CredencialRegistry&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#ffe6cc;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#d79b00;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="380" y="450" width="260" height="68" as="geometry" />
-    </mxCell>
-    <mxCell id="cred_reg_a1" value="- CREDENCIALES: List&amp;lt;CredencialUsuario&amp;gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="cred_reg">
-      <mxGeometry y="28" width="260" height="40" as="geometry" />
-    </mxCell>
+        <!-- ==================== COL 4: EXCEPCIONES DE DOMINIO & DTOS CLAVE ==================== -->
+        <mxCell id="ex_rt" value="RuntimeException" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#48119A;strokeWidth=2;fillColor=#E4DBF0;fontFamily=poppins;fontStyle=1;fontSize=11;fontColor=#48119A;" vertex="1" parent="1">
+          <mxGeometry x="946" y="28" width="246" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ex_1" value="CredencialesIncorrectasException" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#48119A;strokeWidth=1.8;fillColor=#FFFFFF;fontFamily=poppins;fontSize=10.2;fontColor=#12063A;" vertex="1" parent="1">
+          <mxGeometry x="974" y="72" width="218" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="ex_2" value="CuentaNoActivaException" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#48119A;strokeWidth=1.8;fillColor=#FFFFFF;fontFamily=poppins;fontSize=10.2;fontColor=#12063A;" vertex="1" parent="1">
+          <mxGeometry x="974" y="108" width="218" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="ex_3" value="OtpExpiradoException" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#48119A;strokeWidth=1.8;fillColor=#FFFFFF;fontFamily=poppins;fontSize=10.2;fontColor=#12063A;" vertex="1" parent="1">
+          <mxGeometry x="974" y="144" width="218" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="ex_4" value="OtpIntentosAgotadosException" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#48119A;strokeWidth=1.8;fillColor=#FFFFFF;fontFamily=poppins;fontSize=10.2;fontColor=#12063A;" vertex="1" parent="1">
+          <mxGeometry x="974" y="180" width="218" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="ex_5" value="OtpInvalidoException" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#48119A;strokeWidth=1.8;fillColor=#FFFFFF;fontFamily=poppins;fontSize=10.2;fontColor=#12063A;" vertex="1" parent="1">
+          <mxGeometry x="974" y="216" width="218" height="28" as="geometry" />
+        </mxCell>
 
-    <mxCell id="otp_cat" value="&lt;b&gt;OtpSessionCatalog&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#ffe6cc;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#d79b00;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="690" y="450" width="270" height="68" as="geometry" />
-    </mxCell>
-    <mxCell id="otp_cat_a1" value="- CODIGOS_OTP: Map&amp;lt;String, CodigoOtp&amp;gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="otp_cat">
-      <mxGeometry y="28" width="270" height="40" as="geometry" />
-    </mxCell>
+        <mxCell id="dto_login" value="&lt;div&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;&lt;font style=&quot;font-size: 10.5px;&quot;&gt;«record · dto»&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;LoginResponseDTO" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=36;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=poppins;fillColor=#E4DBF0;swimlaneFillColor=#FFFFFF;strokeWidth=2;perimeterSpacing=0;swimlaneLine=0;strokeColor=#48119A;fontColor=#48119A;fontSize=11.5;" vertex="1" parent="1">
+          <mxGeometry x="946" y="268" width="246" height="122" as="geometry" />
+        </mxCell>
+        <mxCell id="dto_login_l" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;rotatable=0;points=[];portConstraint=eastwest;strokeColor=#48119A;connectable=0;" vertex="1" parent="dto_login">
+          <mxGeometry y="36" width="246" height="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dto_login_b" value="- accessToken: String&lt;div&gt;- expiresIn: long · tokenType: String&lt;/div&gt;&lt;div&gt;- usuarioId: Long · roles: Set&amp;lt;Rol&amp;gt;&lt;/div&gt;&lt;div&gt;- requiereOtp: Boolean · intentosOtpRestantes&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=4;overflow=hidden;whiteSpace=wrap;html=1;connectable=0;fontFamily=poppins;fontSize=9.8;fontColor=#12063A;" vertex="1" parent="dto_login">
+          <mxGeometry y="37" width="246" height="85" as="geometry" />
+        </mxCell>
 
-    <mxCell id="codigo_otp" value="&lt;b&gt;CodigoOtp&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#ffe6cc;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#d79b00;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="690" y="650" width="270" height="158" as="geometry" />
-    </mxCell>
-    <mxCell id="codigo_otp_a1" value="- correo: String&lt;br&gt;&lt;br&gt;- codigoOtp: String&lt;br&gt;&lt;br&gt;- intentosRestantes: int&lt;br&gt;&lt;br&gt;- expiraEnSegundos: long&lt;br&gt;&lt;br&gt;- verificado: boolean" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=4;spacingTop=6;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="codigo_otp">
-      <mxGeometry y="28" width="270" height="130" as="geometry" />
-    </mxCell>
+        <mxCell id="dto_verif" value="&lt;div&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;&lt;font style=&quot;font-size: 10.5px;&quot;&gt;«record · dto»&lt;/font&gt;&lt;/span&gt;&lt;/div&gt;VerificarCredencialesResponseDTO" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=36;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=poppins;fillColor=#E4DBF0;swimlaneFillColor=#FFFFFF;strokeWidth=2;perimeterSpacing=0;swimlaneLine=0;strokeColor=#48119A;fontColor=#48119A;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="946" y="406" width="246" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="dto_verif_l" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;rotatable=0;points=[];portConstraint=eastwest;strokeColor=#48119A;connectable=0;" vertex="1" parent="dto_verif">
+          <mxGeometry y="36" width="246" height="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dto_verif_b" value="- id: Long&lt;div&gt;- email: String&lt;/div&gt;&lt;div&gt;- rol: String · estado: String&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=6;overflow=hidden;whiteSpace=wrap;html=1;connectable=0;fontFamily=poppins;fontSize=10;fontColor=#12063A;" vertex="1" parent="dto_verif">
+          <mxGeometry y="37" width="246" height="67" as="geometry" />
+        </mxCell>
 
-    <mxCell id="cred_usuario" value="&lt;b&gt;CredencialUsuario&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#ffe6cc;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#d79b00;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="360" y="880" width="290" height="208" as="geometry" />
-    </mxCell>
-    <mxCell id="cred_usuario_a1" value="- id: Long&lt;br&gt;&lt;br&gt;- nombre: String&lt;br&gt;&lt;br&gt;- correo: String&lt;br&gt;&lt;br&gt;- passwordHash: String&lt;br&gt;&lt;br&gt;- roles: Set&amp;lt;Rol&amp;gt;&lt;br&gt;&lt;br&gt;- otpVerificado: boolean&lt;br&gt;&lt;br&gt;- aceptaHabeasData: boolean" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=4;spacingTop=6;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="cred_usuario">
-      <mxGeometry y="28" width="290" height="180" as="geometry" />
-    </mxCell>
+        <!-- ==================== RELACIONES UML ==================== -->
+        <!-- UsuarioEstadoCambiadoEvent -> EstadoCuenta (Asociacion) -->
+        <mxCell id="rel_evt_est" value="" style="endArrow=open;endFill=0;endSize=10;html=1;rounded=0;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;strokeColor=#48119A;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="144" y="338" as="sourcePoint" />
+            <mxPoint x="144" y="288" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
 
-    <mxCell id="enum_rol" value="&amp;lt;&amp;lt;enumeration&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;Rol&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=38;fillColor=#ffe6cc;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#d79b00;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="720" y="900" width="250" height="158" as="geometry" />
-    </mxCell>
-    <mxCell id="enum_rol_a1" value="- COMPRADOR&lt;br&gt;&lt;br&gt;- ADMIN_ALMACEN&lt;br&gt;&lt;br&gt;- REPRESENTANTE_FUNDACION&lt;br&gt;&lt;br&gt;- ADMIN_STYLERADAR" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=4;spacingTop=6;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="enum_rol">
-      <mxGeometry y="38" width="250" height="120" as="geometry" />
-    </mxCell>
+        <!-- JwtService -> Rol (Asociacion) -->
+        <mxCell id="rel_jwt_rol" value="" style="endArrow=open;endFill=0;endSize=10;html=1;rounded=0;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;strokeColor=#48119A;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="318" y="294" as="sourcePoint" />
+            <mxPoint x="260" y="94" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="288" y="294" />
+              <mxPoint x="288" y="94" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
 
-    <!-- ==================== GRUPO VERDE: PUERTOS DE SALIDA, ADAPTADORES Y RESPUESTAS (ms-auth) ==================== -->
-    <mxCell id="iface_auth_port" value="&amp;lt;&amp;lt;interface&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;InterfaceAuthOutputPort&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=38;fillColor=#d5e8d4;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#00994d;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="1250" y="440" width="260" height="68" as="geometry" />
-    </mxCell>
-    <mxCell id="iface_auth_port_a1" value="+ ejecutarOperacion(req: SolicitudAutenticacion)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=10;" vertex="1" parent="iface_auth_port">
-      <mxGeometry y="38" width="260" height="30" as="geometry" />
-    </mxCell>
+        <!-- Implementaciones -> Interfaces -->
+        <mxCell id="rel_otp_impl" value="" style="endArrow=block;endFill=0;endSize=12;html=1;rounded=0;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;strokeColor=#48119A;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="662" y="92" as="sourcePoint" />
+            <mxPoint x="610" y="92" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_jwt_impl" value="" style="endArrow=block;endFill=0;endSize=12;html=1;rounded=0;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;strokeColor=#48119A;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="662" y="308" as="sourcePoint" />
+            <mxPoint x="610" y="308" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_email_impl" value="" style="endArrow=block;endFill=0;endSize=12;html=1;rounded=0;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;strokeColor=#48119A;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="662" y="472" as="sourcePoint" />
+            <mxPoint x="610" y="472" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
 
-    <mxCell id="login_resp" value="&lt;b&gt;LoginResponseDTO&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#d5e8d4;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#00994d;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="1570" y="420" width="250" height="158" as="geometry" />
-    </mxCell>
-    <mxCell id="login_resp_a1" value="- accessToken: String&lt;br&gt;&lt;br&gt;- refreshToken: String&lt;br&gt;&lt;br&gt;- tokenType: String&lt;br&gt;&lt;br&gt;- expiresIn: long&lt;br&gt;&lt;br&gt;- usuario: UsuarioAuthResponseDTO" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=8;spacingRight=4;spacingTop=6;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="login_resp">
-      <mxGeometry y="28" width="250" height="130" as="geometry" />
-    </mxCell>
-
-    <!-- 4 Adaptadores verdes -->
-    <mxCell id="adp_jwt" value="&lt;b&gt;JwtTokenAdapter&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#d5e8d4;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#00994d;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="990" y="680" width="200" height="60" as="geometry" />
-    </mxCell>
-    <mxCell id="adp_jwt_a1" value="- algoritmo: String = &quot;HS256&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="adp_jwt">
-      <mxGeometry y="28" width="200" height="32" as="geometry" />
-    </mxCell>
-
-    <mxCell id="adp_redis" value="&lt;b&gt;RedisOtpBlacklistAdapter&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#d5e8d4;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#00994d;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="1210" y="680" width="210" height="60" as="geometry" />
-    </mxCell>
-    <mxCell id="adp_redis_a1" value="- ttlSegundos: long = 300" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="adp_redis">
-      <mxGeometry y="28" width="210" height="32" as="geometry" />
-    </mxCell>
-
-    <mxCell id="adp_postgres" value="&lt;b&gt;PostgresCredencialAdapter&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#d5e8d4;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#00994d;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="1440" y="680" width="210" height="60" as="geometry" />
-    </mxCell>
-    <mxCell id="adp_postgres_a1" value="- db: String = &quot;styleradar_auth&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="adp_postgres">
-      <mxGeometry y="28" width="210" height="32" as="geometry" />
-    </mxCell>
-
-    <mxCell id="adp_rabbit" value="&lt;b&gt;RabbitMqAuthEventAdapter&lt;/b&gt;" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#d5e8d4;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#00994d;swimlaneFillColor=#ffffff;fontSize=12;" vertex="1" parent="1">
-      <mxGeometry x="1670" y="680" width="210" height="60" as="geometry" />
-    </mxCell>
-    <mxCell id="adp_rabbit_a1" value="- exchange: String = &quot;auth.events&quot;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontFamily=Courier New;fontSize=11;" vertex="1" parent="adp_rabbit">
-      <mxGeometry y="28" width="210" height="32" as="geometry" />
-    </mxCell>
-
-    <!-- ==================== RELACIONES Y MULTIPLICIDADES ==================== -->
-    <!-- AuthValidationHandler procesa SolicitudAutenticacion -->
-    <mxCell id="rel_procesa" value="&lt;i&gt;procesa&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="auth_val_abs" target="auth_req">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="185" y="79" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell id="rel_procesa_m1" value="&lt;b&gt;1..*&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_procesa">
-      <mxGeometry x="-0.88" y="-12" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-    <mxCell id="rel_procesa_m2" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_procesa">
-      <mxGeometry x="0.92" y="-12" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-
-    <!-- CredentialStateHandler consulta CredencialRegistry -->
-    <mxCell id="rel_cons_cred" value="&lt;i&gt;consulta&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cred_handler" target="cred_reg">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="rel_cons_cred_m1" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_cons_cred">
-      <mxGeometry x="-0.7" y="10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-    <mxCell id="rel_cons_cred_m2" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_cons_cred">
-      <mxGeometry x="0.7" y="-10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-
-    <!-- TokenBlacklistHandler consulta OtpSessionCatalog -->
-    <mxCell id="rel_cons_otp" value="&lt;i&gt;consulta&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="blacklist_handler" target="otp_cat">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="1170" y="390" />
-          <mxPoint x="825" y="390" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell id="rel_cons_otp_m1" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_cons_otp">
-      <mxGeometry x="-0.85" y="10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-    <mxCell id="rel_cons_otp_m2" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_cons_otp">
-      <mxGeometry x="0.85" y="-10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-
-    <!-- OtpSessionCatalog gestiona CodigoOtp -->
-    <mxCell id="rel_cat_otp" value="&lt;i&gt;Gestiona&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="otp_cat" target="codigo_otp">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="rel_cat_otp_m1" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_cat_otp">
-      <mxGeometry x="-0.75" y="-10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-    <mxCell id="rel_cat_otp_m2" value="&lt;b&gt;1..*&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_cat_otp">
-      <mxGeometry x="0.75" y="12" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-
-    <!-- SolicitudAutenticacion solicita CodigoOtp -->
-    <mxCell id="rel_req_otp" value="&lt;i&gt;solicita&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;exitX=1;exitY=0.55;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="auth_req" target="codigo_otp">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="580" y="586" />
-          <mxPoint x="580" y="729" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell id="rel_req_otp_m1" value="&lt;b&gt;*&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_req_otp">
-      <mxGeometry x="-0.85" y="10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-    <mxCell id="rel_req_otp_m2" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_req_otp">
-      <mxGeometry x="0.85" y="10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-
-    <!-- SolicitudAutenticacion autentica CredencialUsuario -->
-    <mxCell id="rel_req_cred" value="&lt;i&gt;autentica&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;exitX=1;exitY=0.85;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="auth_req" target="cred_usuario">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="350" y="661" />
-          <mxPoint x="350" y="780" />
-          <mxPoint x="310" y="780" />
-          <mxPoint x="310" y="984" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell id="rel_req_cred_m1" value="&lt;b&gt;*&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_req_cred">
-      <mxGeometry x="-0.9" y="10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-    <mxCell id="rel_req_cred_m2" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_req_cred">
-      <mxGeometry x="0.9" y="-10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-
-    <!-- CredencialRegistry Registra CredencialUsuario -->
-    <mxCell id="rel_reg_cred" value="&lt;i&gt;Registra&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cred_reg" target="cred_usuario">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="rel_reg_cred_m1" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_reg_cred">
-      <mxGeometry x="-0.85" y="10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-    <mxCell id="rel_reg_cred_m2" value="&lt;b&gt;1..*&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_reg_cred">
-      <mxGeometry x="0.85" y="12" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-
-    <!-- CredencialUsuario posee Rol -->
-    <mxCell id="rel_cred_rol" value="&lt;i&gt;posee&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="cred_usuario" target="enum_rol">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="rel_cred_rol_m1" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_cred_rol">
-      <mxGeometry x="-0.65" y="-10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-    <mxCell id="rel_cred_rol_m2" value="&lt;b&gt;1..*&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_cred_rol">
-      <mxGeometry x="0.65" y="-10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-
-    <!-- AuthServiceImpl usa InterfaceAuthOutputPort -->
-    <mxCell id="rel_srv_port" value="&lt;i&gt;PuertosSalida&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="auth_service_handler" target="iface_auth_port">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="rel_srv_port_m1" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_srv_port">
-      <mxGeometry x="-0.8" y="10" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-    <mxCell id="rel_srv_port_m2" value="&lt;b&gt;1..*&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_srv_port">
-      <mxGeometry x="0.8" y="-12" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-
-    <!-- InterfaceAuthOutputPort retorna LoginResponseDTO -->
-    <mxCell id="rel_port_resp" value="&lt;i&gt;retorna&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="iface_auth_port" target="login_resp">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="rel_port_resp_m1" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_port_resp">
-      <mxGeometry x="-0.7" y="-12" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-    <mxCell id="rel_port_resp_m2" value="&lt;b&gt;1&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rel_port_resp">
-      <mxGeometry x="0.7" y="12" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
-    </mxCell>
-
-    <!-- Realizacion de los 4 Adaptadores hacia InterfaceAuthOutputPort -->
-    <mxCell id="real_1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=block;endFill=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="adp_jwt" target="iface_auth_port">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="1090" y="580" />
-          <mxPoint x="1380" y="580" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell id="real_2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=block;endFill=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="adp_redis" target="iface_auth_port">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="1315" y="580" />
-          <mxPoint x="1380" y="580" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell id="real_3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=block;endFill=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="adp_postgres" target="iface_auth_port">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="1545" y="580" />
-          <mxPoint x="1380" y="580" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-    <mxCell id="real_4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=block;endFill=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="adp_rabbit" target="iface_auth_port">
-      <mxGeometry relative="1" as="geometry">
-        <Array as="points">
-          <mxPoint x="1775" y="580" />
-          <mxPoint x="1380" y="580" />
-        </Array>
-      </mxGeometry>
-    </mxCell>
-  </root>
-</mxGraphModel>
-
+        <!-- Herencia excepciones -> RuntimeException -->
+        <mxCell id="rel_ex_1" value="" style="endArrow=block;endFill=0;endSize=11;html=1;rounded=0;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;strokeColor=#48119A;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="974" y="86" as="sourcePoint" />
+            <mxPoint x="958" y="58" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="958" y="86" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_ex_2" value="" style="endArrow=none;endFill=0;html=1;rounded=0;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;strokeColor=#48119A;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="974" y="122" as="sourcePoint" />
+            <mxPoint x="958" y="86" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="958" y="122" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_ex_3" value="" style="endArrow=none;endFill=0;html=1;rounded=0;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;strokeColor=#48119A;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="974" y="158" as="sourcePoint" />
+            <mxPoint x="958" y="86" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="958" y="158" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_ex_4" value="" style="endArrow=none;endFill=0;html=1;rounded=0;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;strokeColor=#48119A;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="974" y="194" as="sourcePoint" />
+            <mxPoint x="958" y="86" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="958" y="194" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_ex_5" value="" style="endArrow=none;endFill=0;html=1;rounded=0;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;strokeColor=#48119A;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="974" y="230" as="sourcePoint" />
+            <mxPoint x="958" y="86" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="958" y="230" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

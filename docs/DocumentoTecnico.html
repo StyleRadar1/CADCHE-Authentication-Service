@@ -480,176 +480,188 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
     </div>
 
     <h2 class="st">Diagrama de Componentes Específico (<em>Hexagonal</em>)</h2>
-    <p class="lead">Siguiendo la convención UML del curso y el formato visual <strong>StyleRadar</strong>, el diagrama de componentes prescinde de entidades de dominio (que pertenecen al modelo de clases) y expone únicamente las piezas ejecutables y sus interfaces de acoplamiento.</p>
+    <p class="lead">Modelado en <a href="uml/DiagramaComponentesEspecifico.drawio"><code>docs/uml/DiagramaComponentesEspecifico.drawio</code></a> (<a href="uml/DiagramaComponentesEspecifico.png"><code>.png</code></a> · referencia <code>CADCHE-Stores-Service</code> y <code>EstiloDiagramas.xml</code>), expone solo los componentes ejecutables reales sin referencias a dominio ni entidades.</p>
 
-    <div class="diag-box" style="padding:12px 10px">
-      <!-- Minimalist Hexagonal Component Diagram (StyleRadar #48119A / #E4DBF0 + Lollipop Ball-and-Socket) -->
-      <svg viewBox="0 0 720 355" xmlns="http://www.w3.org/2000/svg" aria-label="Diagrama de Componentes Hexagonal ms-auth">
+    <div class="diag-box" style="padding:10px 10px">
+      <!-- Specific Hexagonal Component Diagram (StyleRadar #48119A / #E4DBF0 + Ball-and-Socket Lollipops) -->
+      <svg viewBox="0 0 720 322" xmlns="http://www.w3.org/2000/svg" aria-label="Diagrama de Componentes Hexagonal ms-auth">
         <defs>
           <marker id="arwH" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-            <path d="M0,0 L7,3.5 L0,7 z" fill="#48119A"/>
+            <path d="M1,0.8 L6,3.5 L1,6.2" fill="none" stroke="#48119A" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </marker>
         </defs>
+        <rect x="2" y="2" width="716" height="318" rx="8" fill="#FFFFFF" stroke="#E8DCCB"/>
 
-        <!-- Subtle Hexagonal Core Zone Hint (no heavy text or clutter) -->
-        <polygon points="240,18 465,18 508,177 465,336 240,336 196,177" fill="#FAF6FE" stroke="#D8C8F0" stroke-width="1.4" stroke-dasharray="6 4"/>
+        <!-- Connectors (rendered behind boxes) -->
+        <!-- AuthController -> UsuarioClient -> ms-usuarios -->
+        <polyline points="77,72 77,32 419,32" fill="none" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
+        <line x1="554" y1="32" x2="599" y2="32" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
 
-        <!-- ROW 1: AuthController -(o- OtpServiceImpl -> EmailServiceImpl -> JavaMailSender -> SMTP -->
-        <!-- AuthController (Driving REST) -->
-        <g transform="translate(22,38)">
-          <rect x="8" y="0" width="128" height="48" rx="4" fill="#E4DBF0" stroke="#48119A" stroke-width="1.6"/>
-          <rect x="0" y="9" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
-          <rect x="0" y="29" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
-          <text x="74" y="29" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#262626">AuthController</text>
+        <!-- Bus Entrada -> Interfaces Core (EmailService, OtpService, JwtService) -->
+        <line x1="138" y1="91" x2="168" y2="91" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="168" y1="91" x2="168" y2="203" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="148" y1="203" x2="168" y2="203" stroke="#48119A" stroke-width="1.5"/>
+
+        <!-- Lollipop 1: EmailService -->
+        <line x1="168" y1="91" x2="187" y2="91" stroke="#48119A" stroke-width="1.5"/>
+        <path d="M193,85 A6,6 0 0 0 193,97" fill="none" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="196.2" y1="91" x2="222" y2="91" stroke="#48119A" stroke-width="1.5"/>
+        <circle cx="193" cy="91" r="3.2" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
+
+        <!-- Lollipop 2: OtpService -->
+        <line x1="168" y1="147" x2="187" y2="147" stroke="#48119A" stroke-width="1.5"/>
+        <path d="M193,141 A6,6 0 0 0 193,153" fill="none" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="196.2" y1="147" x2="222" y2="147" stroke="#48119A" stroke-width="1.5"/>
+        <circle cx="193" cy="147" r="3.2" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
+
+        <!-- Lollipop 3: JwtService -->
+        <line x1="168" y1="203" x2="187" y2="203" stroke="#48119A" stroke-width="1.5"/>
+        <path d="M193,197 A6,6 0 0 0 193,209" fill="none" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="196.2" y1="203" x2="222" y2="203" stroke="#48119A" stroke-width="1.5"/>
+        <circle cx="193" cy="203" r="3.2" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
+
+        <!-- EmailServiceImpl -> JavaMailSender -> SMTP Gmail -->
+        <line x1="354" y1="91" x2="419" y2="91" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
+        <line x1="554" y1="91" x2="599" y2="91" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
+
+        <!-- Bus Colector Redis -> StringRedisTemplate -> Redis 7 -->
+        <line x1="354" y1="147" x2="388" y2="147" stroke="#48119A" stroke-width="1.5"/>
+        <polyline points="82,222 82,244 388,244" fill="none" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="188" y1="279" x2="388" y2="279" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="388" y1="147" x2="388" y2="279" stroke="#48119A" stroke-width="1.5"/>
+        <line x1="388" y1="203" x2="419" y2="203" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
+        <line x1="558" y1="203" x2="613" y2="203" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
+
+        <!-- Async RabbitMQ -> UsuarioEstadoCambiadoConsumer -->
+        <line x1="602" y1="294" x2="191" y2="294" stroke="#48119A" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arwH)"/>
+
+        <!-- Col 1: Driving IN -->
+        <g transform="translate(16,72)">
+          <rect width="122" height="38" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="107" y="4" width="9" height="11" fill="#E4DBF0" stroke="#48119A" stroke-width="1.1"/>
+          <rect x="104" y="6" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <rect x="104" y="10.5" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <text x="53" y="23" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.5" font-weight="700" fill="#48119A">AuthController</text>
         </g>
 
-        <!-- OtpServiceImpl (Application Core Top) -->
-        <g transform="translate(262,38)">
-          <rect x="8" y="0" width="132" height="48" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.8"/>
-          <rect x="0" y="9" width="16" height="9" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
-          <rect x="0" y="29" width="16" height="9" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
-          <text x="74" y="29" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#262626">OtpServiceImpl</text>
+        <g transform="translate(16,184)">
+          <rect width="132" height="38" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="117" y="4" width="9" height="11" fill="#E4DBF0" stroke="#48119A" stroke-width="1.1"/>
+          <rect x="114" y="6" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <rect x="114" y="10.5" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <text x="58" y="23" text-anchor="middle" font-family="Poppins,sans-serif" font-size="8.6" font-weight="700" fill="#48119A">JwtAuthenticationFilter</text>
         </g>
 
-        <!-- UsuarioClient (Driven HTTP Adapter) -->
-        <g transform="translate(466,38)">
-          <rect x="8" y="0" width="120" height="48" rx="4" fill="#E4DBF0" stroke="#48119A" stroke-width="1.6"/>
-          <rect x="0" y="9" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
-          <rect x="0" y="29" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
-          <text x="68" y="29" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#262626">UsuarioClient</text>
+        <g transform="translate(16,268)">
+          <rect width="172" height="38" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="157" y="4" width="9" height="11" fill="#E4DBF0" stroke="#48119A" stroke-width="1.1"/>
+          <rect x="154" y="6" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <rect x="154" y="10.5" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <text x="78" y="23" text-anchor="middle" font-family="Poppins,sans-serif" font-size="7.6" font-weight="700" fill="#48119A">UsuarioEstadoCambiadoConsumer</text>
         </g>
 
-        <!-- External Cylinder: ms-usuarios -->
-        <g transform="translate(632,35)">
-          <path d="M0,10 C0,4 72,4 72,10 L72,46 C72,52 0,52 0,46 Z" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
-          <ellipse cx="36" cy="10" rx="36" ry="6" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
-          <text x="36" y="34" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700" fill="#262626">ms-usuarios</text>
+        <!-- Col 2: Application Core -->
+        <g transform="translate(222,72)">
+          <rect width="132" height="38" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="117" y="4" width="9" height="11" fill="#E4DBF0" stroke="#48119A" stroke-width="1.1"/>
+          <rect x="114" y="6" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <rect x="114" y="10.5" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <text x="58" y="23" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.5" font-weight="700" fill="#48119A">EmailServiceImpl</text>
         </g>
 
-        <!-- EmailServiceImpl (Center Upper-Mid) -->
-        <g transform="translate(262,126)">
-          <rect x="8" y="0" width="132" height="48" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.8"/>
-          <rect x="0" y="9" width="16" height="9" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
-          <rect x="0" y="29" width="16" height="9" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
-          <text x="74" y="29" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#262626">EmailServiceImpl</text>
+        <g transform="translate(222,128)">
+          <rect width="132" height="38" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="117" y="4" width="9" height="11" fill="#E4DBF0" stroke="#48119A" stroke-width="1.1"/>
+          <rect x="114" y="6" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <rect x="114" y="10.5" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <text x="58" y="23" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.5" font-weight="700" fill="#48119A">OtpServiceImpl</text>
         </g>
 
-        <!-- JavaMailSender (Driven SMTP Adapter) -->
-        <g transform="translate(466,126)">
-          <rect x="8" y="0" width="120" height="48" rx="4" fill="#E4DBF0" stroke="#48119A" stroke-width="1.6"/>
-          <rect x="0" y="9" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
-          <rect x="0" y="29" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
-          <text x="68" y="29" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#262626">JavaMailSender</text>
+        <g transform="translate(222,184)">
+          <rect width="132" height="38" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="117" y="4" width="9" height="11" fill="#E4DBF0" stroke="#48119A" stroke-width="1.1"/>
+          <rect x="114" y="6" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <rect x="114" y="10.5" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <text x="58" y="23" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.5" font-weight="700" fill="#48119A">JwtServiceImpl</text>
         </g>
 
-        <!-- External Cylinder: SMTP Gmail -->
-        <g transform="translate(632,123)">
-          <path d="M0,10 C0,4 72,4 72,10 L72,46 C72,52 0,52 0,46 Z" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
-          <ellipse cx="36" cy="10" rx="36" ry="6" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
-          <text x="36" y="34" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700" fill="#262626">SMTP Gmail</text>
+        <!-- Col 3: Driven OUT -->
+        <g transform="translate(422,14)">
+          <rect width="132" height="36" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="117" y="4" width="9" height="11" fill="#E4DBF0" stroke="#48119A" stroke-width="1.1"/>
+          <rect x="114" y="6" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <rect x="114" y="10.5" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <text x="58" y="22" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.5" font-weight="700" fill="#48119A">UsuarioClient</text>
         </g>
 
-        <!-- ROW 2: JwtAuthenticationFilter -(o- JwtServiceImpl -> StringRedisTemplate -> Redis 7 -->
-        <g transform="translate(14,202)">
-          <rect x="8" y="0" width="160" height="48" rx="4" fill="#E4DBF0" stroke="#48119A" stroke-width="1.6"/>
-          <rect x="0" y="9" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
-          <rect x="0" y="29" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
-          <text x="88" y="28" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.6" font-weight="700" fill="#262626">JwtAuthenticationFilter</text>
+        <g transform="translate(422,72)">
+          <rect width="132" height="38" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="117" y="4" width="9" height="11" fill="#E4DBF0" stroke="#48119A" stroke-width="1.1"/>
+          <rect x="114" y="6" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <rect x="114" y="10.5" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <text x="58" y="23" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.2" font-weight="700" fill="#48119A">JavaMailSender</text>
         </g>
 
-        <g transform="translate(262,202)">
-          <rect x="8" y="0" width="132" height="48" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.8"/>
-          <rect x="0" y="9" width="16" height="9" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
-          <rect x="0" y="29" width="16" height="9" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
-          <text x="74" y="29" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#262626">JwtServiceImpl</text>
+        <g transform="translate(422,184)">
+          <rect width="136" height="38" rx="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="121" y="4" width="9" height="11" fill="#E4DBF0" stroke="#48119A" stroke-width="1.1"/>
+          <rect x="118" y="6" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <rect x="118" y="10.5" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <text x="60" y="23" text-anchor="middle" font-family="Poppins,sans-serif" font-size="8.8" font-weight="700" fill="#48119A">StringRedisTemplate</text>
         </g>
 
-        <!-- StringRedisTemplate (Driven Cache Adapter) -->
-        <g transform="translate(460,226)">
-          <rect x="8" y="0" width="138" height="48" rx="4" fill="#E4DBF0" stroke="#48119A" stroke-width="1.6"/>
-          <rect x="0" y="9" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
-          <rect x="0" y="29" width="16" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
-          <text x="77" y="28" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.5" font-weight="700" fill="#262626">StringRedisTemplate</text>
+        <!-- Col 4: External Resources -->
+        <g transform="translate(602,14)">
+          <rect width="104" height="36" rx="4" fill="#F7F3FD" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="89" y="4" width="9" height="11" fill="#E4DBF0" stroke="#48119A" stroke-width="1.1"/>
+          <rect x="86" y="6" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <rect x="86" y="10.5" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <text x="44" y="22" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.2" font-weight="700" fill="#48119A">ms-usuarios</text>
         </g>
 
-        <!-- External Cylinder: Redis 7 -->
-        <g transform="translate(632,223)">
-          <path d="M0,10 C0,4 72,4 72,10 L72,46 C72,52 0,52 0,46 Z" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
-          <ellipse cx="36" cy="10" rx="36" ry="6" fill="#E4DBF0" stroke="#48119A" stroke-width="1.4"/>
-          <text x="36" y="34" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#262626">Redis 7</text>
+        <g transform="translate(602,72)">
+          <rect width="104" height="38" rx="4" fill="#F7F3FD" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="89" y="4" width="9" height="11" fill="#E4DBF0" stroke="#48119A" stroke-width="1.1"/>
+          <rect x="86" y="6" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <rect x="86" y="10.5" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <text x="44" y="23" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.2" font-weight="700" fill="#48119A">SMTP Gmail</text>
         </g>
 
-        <!-- ROW 3: UsuarioEstadoCambiadoConsumer -(o- StringRedisTemplate -->
-        <g transform="translate(12,282)">
-          <rect x="8" y="0" width="192" height="48" rx="4" fill="#E4DBF0" stroke="#48119A" stroke-width="1.6"/>
-          <rect x="0" y="9" width="14" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
-          <rect x="0" y="29" width="14" height="9" fill="#FFFFFF" stroke="#48119A" stroke-width="1.4"/>
-          <text x="108" y="28" text-anchor="middle" font-family="Poppins,sans-serif" font-size="8.2" font-weight="700" fill="#262626">UsuarioEstadoCambiadoConsumer</text>
+        <g transform="translate(616,168)">
+          <path d="M0,10 C0,-1 76,-1 76,10 L76,56 C76,67 0,67 0,56 Z" fill="#FFFFFF" stroke="#48119A" stroke-width="1.6"/>
+          <path d="M0,10 C0,21 76,21 76,10" fill="none" stroke="#48119A" stroke-width="1.4"/>
+          <text x="38" y="42" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="700" fill="#48119A">Redis 7</text>
         </g>
 
-        <!-- Connectors with Ball-and-Socket Lollipops (o -->
-        <!-- AuthController -> OtpServiceImpl -->
-        <line x1="158" y1="62" x2="205" y2="62" stroke="#48119A" stroke-width="1.5"/>
-        <path d="M205,55 A7,7 0 0,1 205,69" fill="none" stroke="#48119A" stroke-width="1.6"/>
-        <circle cx="211" cy="62" r="4.5" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
-        <line x1="216" y1="62" x2="262" y2="62" stroke="#48119A" stroke-width="1.5"/>
-
-        <!-- AuthController -> JwtServiceImpl -->
-        <path d="M90,86 L90,118 L215,118 L215,214 L262,214" fill="none" stroke="#48119A" stroke-width="1.4"/>
-        <circle cx="238" cy="214" r="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
-
-        <!-- OtpServiceImpl -> UsuarioClient -> ms-usuarios -->
-        <line x1="402" y1="62" x2="430" y2="62" stroke="#48119A" stroke-width="1.5"/>
-        <circle cx="435" cy="62" r="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
-        <line x1="439" y1="62" x2="466" y2="62" stroke="#48119A" stroke-width="1.5"/>
-        <line x1="594" y1="62" x2="628" y2="62" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
-
-        <!-- OtpServiceImpl -> EmailServiceImpl -> JavaMailSender -> SMTP -->
-        <line x1="332" y1="86" x2="332" y2="123" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
-        <line x1="402" y1="150" x2="430" y2="150" stroke="#48119A" stroke-width="1.5"/>
-        <circle cx="435" cy="150" r="4" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
-        <line x1="439" y1="150" x2="466" y2="150" stroke="#48119A" stroke-width="1.5"/>
-        <line x1="594" y1="150" x2="628" y2="150" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
-
-        <!-- OtpServiceImpl -> StringRedisTemplate -->
-        <path d="M402,76 L444,76 L444,236 L460,236" fill="none" stroke="#48119A" stroke-width="1.4" marker-end="url(#arwH)"/>
-
-        <!-- JwtAuthFilter -> JwtServiceImpl -> StringRedisTemplate -> Redis 7 -->
-        <line x1="182" y1="226" x2="205" y2="226" stroke="#48119A" stroke-width="1.5"/>
-        <path d="M205,219 A7,7 0 0,1 205,233" fill="none" stroke="#48119A" stroke-width="1.6"/>
-        <circle cx="211" cy="226" r="4.5" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
-        <line x1="216" y1="226" x2="262" y2="226" stroke="#48119A" stroke-width="1.5"/>
-
-        <path d="M402,242 L432,242 L432,250 L460,250" fill="none" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
-        <line x1="606" y1="250" x2="628" y2="250" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
-
-        <!-- JwtAuthFilter -> StringRedisTemplate (revocation check) -->
-        <path d="M98,250 L98,266 L438,266 L438,258 L460,258" fill="none" stroke="#7E57C2" stroke-width="1.3" stroke-dasharray="3 2"/>
-
-        <!-- UsuarioEstadoConsumer -> StringRedisTemplate -->
-        <path d="M212,306 L444,306 L444,266 L460,266" fill="none" stroke="#48119A" stroke-width="1.5" marker-end="url(#arwH)"/>
+        <g transform="translate(602,268)">
+          <rect width="104" height="38" rx="4" fill="#F7F3FD" stroke="#48119A" stroke-width="1.6"/>
+          <rect x="89" y="4" width="9" height="11" fill="#E4DBF0" stroke="#48119A" stroke-width="1.1"/>
+          <rect x="86" y="6" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <rect x="86" y="10.5" width="5" height="2.5" fill="#E4DBF0" stroke="#48119A" stroke-width="1"/>
+          <text x="44" y="23" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9.2" font-weight="700" fill="#48119A">RabbitMQ</text>
+        </g>
       </svg>
-      <div class="diag-cap"><span>Fig 4.1 — Adaptadores IN (izq.), Core Hexagonal (centro punteado), Adaptadores OUT (der.) y Recursos externos.</span><span>Cero entidades de dominio</span></div>
+      <div class="diag-cap"><span>Fig 4.1 — Síntesis de <code>DiagramaComponentesEspecifico.png</code>: piezas y puertos reales.</span><span>Sin dominio · Hexagonal</span></div>
     </div>
 
-    <h3 class="h3">Explicación Arquitectónica: Puertos, Adaptadores y Cohesión</h3>
+    <h3 class="h3">Explicación Arquitectónica: Puertos, Adaptadores y Cohesión Real</h3>
     <div class="grid2">
       <div class="card">
-        <strong style="color:var(--pur);font-size:11px">Adaptadores Primarios (Driving · IN)</strong>
+        <strong style="color:var(--pur);font-size:11px">Adaptadores de Entrada (Driving · IN)</strong>
         <p style="font-size:10.7px;margin-top:4px;line-height:1.4">
-          <code>AuthController</code> expone el contrato HTTP <code>AuthApi</code> y delega inmediatamente sin lógica de negocio. <code>JwtAuthenticationFilter</code> intercepta peticiones HTTP validando firma y revocación antes del controlador. <code>UsuarioEstadoCambiadoConsumer</code> escucha cambios asíncronos de estado en la cola durable.
+          <code>AuthController</code> expone el contrato HTTP <code>AuthApi</code> y coordina credenciales, OTP, correo y JWT. <code>JwtAuthenticationFilter</code> (cableado por <code>SecurityConfig</code>) valida firma HMAC y revocación en Redis antes del endpoint. <code>UsuarioEstadoCambiadoConsumer</code> escucha la cola durable configurada en <code>RabbitMQConfig</code>.
         </p>
       </div>
       <div class="card">
-        <strong style="color:var(--pur);font-size:11px">Core &amp; Adaptadores Secundarios (OUT)</strong>
+        <strong style="color:var(--pur);font-size:11px">Core Hexagonal &amp; Adaptadores OUT</strong>
         <p style="font-size:10.7px;margin-top:4px;line-height:1.4">
-          El hexágono encapsula las interfaces <code>OtpService</code>, <code>JwtService</code> y <code>EmailService</code> con sus implementaciones. Hacia afuera, <code>UsuarioClient</code> encapsula el transporte HTTP <code>RestClient</code> hacia Usuarios, <code>StringRedisTemplate</code> persiste estado temporal y <code>JavaMailSender</code> abstrae SMTP.
+          Los lollipops exponen las interfaces <code>EmailService</code>, <code>OtpService</code> y <code>JwtService</code> (implementación pura sin acceso a BD). Hacia afuera, <code>UsuarioClient</code> encapsula <code>RestClient</code> hacia <code>ms-usuarios</code>, <code>JavaMailSender</code> abstrae SMTP y <code>StringRedisTemplate</code> accede a Redis 7. <code>GlobalExceptionHandler</code> y <code>SwaggerConfig</code> operan transversalmente.
         </p>
       </div>
     </div>
 
     <div class="callout" style="margin-top:8px">
-      <strong>¿Por qué una Hexagonal Pragmática?</strong> Se implementaron interfaces explícitas para los tres servicios nucleares (<code>OtpService</code>, <code>JwtService</code>, <code>EmailService</code>) y separación estricta de paquetes <code>adapter.in/out</code>, pero se evitó duplicar interfaces puerto/adaptador sobre <code>StringRedisTemplate</code> y <code>JavaMailSender</code> porque ya proveen abstracciones Spring fácilmente simulables con Mockito en las <code>56</code> pruebas unitarias.
+      <strong>¿Por qué esta topología fiel al código?</strong> A diferencia del esquema teórico inicial, <code>AuthController</code> invoca directamente a <code>UsuarioClient</code> y cada consumidor o servicio de Redis (<code>OtpServiceImpl</code>, <code>JwtAuthenticationFilter</code>, <code>UsuarioEstadoCambiadoConsumer</code>) usa <code>StringRedisTemplate</code> sin capas puerto/adaptador redundantes. Los directorios <code>domain/port</code> y <code>application/usecase</code> conservan <code>.gitkeep</code> mientras la persistencia SQL siga en <code>ms-usuarios</code>.
     </div>
 
     <div class="pf"><span>StyleRadar · ms-auth</span><span>Arquitectura Hexagonal y Componentes</span><span>Pág. 04</span></div>
@@ -721,7 +733,7 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
     </div>
 
     <h2 class="st">Dominio Actual, Excepciones y <em>Servicios</em></h2>
-    <p class="lead">A diferencia del diagrama de componentes, esta vista expone los tipos del núcleo (<code>domain</code> y <code>application</code>) presentes hoy en <code>src/main/java/edu/dosw/styleradar/auth</code>.</p>
+    <p class="lead">Modelado en <a href="uml/DiagramaClases.drawio"><code>docs/uml/DiagramaClases.drawio</code></a> (<a href="uml/DiagramaClases.png"><code>.png</code></a> · estilo <code>EstiloDiagramas.xml</code>), expone los tipos reales de <code>domain</code> y <code>application</code> en <code>src/main/java/edu/dosw/styleradar/auth</code>.</p>
 
     <div class="diag-box">
       <svg viewBox="0 0 720 350" xmlns="http://www.w3.org/2000/svg" aria-label="Diagrama de Clases Domain y Application ms-auth">
@@ -755,12 +767,11 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
         <g transform="translate(20,232)">
           <rect width="205" height="90" rx="5" fill="#FFFFFF" stroke="#48119A" stroke-width="1.5"/>
           <rect width="205" height="28" rx="5" fill="#E4DBF0" stroke="#48119A" stroke-width="1.5"/>
-          <text x="102" y="13" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#48119A">&lt;&lt;domain event&gt;&gt;</text>
+          <text x="102" y="13" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#48119A">&lt;&lt;domain event · record&gt;&gt;</text>
           <text x="102" y="24" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.2" font-weight="700" fill="#110D1B">UsuarioEstadoCambiadoEvent</text>
-          <text x="10" y="47" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#110D1B">- usuarioId: Long</text>
-          <text x="10" y="62" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#110D1B">- nuevoEstado: EstadoCuenta</text>
-          <line x1="0" y1="70" x2="205" y2="70" stroke="#E8DCCB"/>
-          <text x="10" y="83" font-family="JetBrains Mono,monospace" font-size="9" fill="#5A5468">Serializable · RabbitMQ payload</text>
+          <text x="10" y="46" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">- usuarioId: Long</text>
+          <text x="10" y="60" font-family="JetBrains Mono,monospace" font-size="9" fill="#110D1B">- estadoAnterior/Nuevo: EstadoCuenta</text>
+          <text x="10" y="74" font-family="JetBrains Mono,monospace" font-size="9" fill="#5A5468">- adminId / motivo / fechaCambio</text>
         </g>
 
         <!-- OtpService -->
@@ -769,10 +780,10 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
           <rect width="215" height="28" rx="5" fill="#48119A"/>
           <text x="107" y="13" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#E4DBF0">&lt;&lt;interface / service&gt;&gt;</text>
           <text x="107" y="24" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#FFFFFF">OtpService / Impl</text>
-          <text x="10" y="45" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ login(LoginRequestDTO)</text>
-          <text x="10" y="59" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ registro(RegistroAuthDTO)</text>
-          <text x="10" y="73" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ verificarOtp(VerificarDTO)</text>
-          <text x="10" y="87" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ reenviarOtp / logout()</text>
+          <text x="10" y="45" font-family="JetBrains Mono,monospace" font-size="9.1" fill="#110D1B">+ generarOtp(email, id, rol)</text>
+          <text x="10" y="59" font-family="JetBrains Mono,monospace" font-size="9.1" fill="#110D1B">+ verificarOtp / reenviarOtp()</text>
+          <text x="10" y="73" font-family="JetBrains Mono,monospace" font-size="9.1" fill="#110D1B">+ obtenerUsuarioId / Rol / Intentos</text>
+          <text x="10" y="87" font-family="JetBrains Mono,monospace" font-size="9.1" fill="#110D1B">+ invalidarToken / esTokenInvalido</text>
         </g>
 
         <!-- JwtService -->
@@ -781,9 +792,9 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
           <rect width="215" height="28" rx="5" fill="#48119A"/>
           <text x="107" y="13" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#E4DBF0">&lt;&lt;interface / service&gt;&gt;</text>
           <text x="107" y="24" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#FFFFFF">JwtService / Impl</text>
-          <text x="10" y="45" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ generarToken(id, email, rol)</text>
-          <text x="10" y="59" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ validarToken / extraerClaims()</text>
-          <text x="10" y="73" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ refreshToken(RefreshDTO)</text>
+          <text x="10" y="45" font-family="JetBrains Mono,monospace" font-size="9.1" fill="#110D1B">+ generarToken(usuarioId, roles)</text>
+          <text x="10" y="59" font-family="JetBrains Mono,monospace" font-size="9.1" fill="#110D1B">+ validarToken(token): Claims</text>
+          <text x="10" y="73" font-family="JetBrains Mono,monospace" font-size="9.1" fill="#110D1B">+ obtenerRoles / TiempoRestante</text>
         </g>
 
         <!-- EmailService -->
@@ -792,7 +803,7 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
           <rect width="215" height="28" rx="5" fill="#48119A"/>
           <text x="107" y="13" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#E4DBF0">&lt;&lt;interface / service&gt;&gt;</text>
           <text x="107" y="24" text-anchor="middle" font-family="Poppins,sans-serif" font-size="11" font-weight="700" fill="#FFFFFF">EmailService / Impl</text>
-          <text x="10" y="46" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ enviarOtp(email, codigo)</text>
+          <text x="10" y="46" font-family="JetBrains Mono,monospace" font-size="9.2" fill="#110D1B">+ enviarOtp(email, codigo): void</text>
           <text x="10" y="60" font-family="JetBrains Mono,monospace" font-size="9" fill="#5A5468">JavaMailSender SMTP :587</text>
         </g>
 
@@ -818,27 +829,24 @@ body.editing [data-ed]{outline:1.5px dashed #7C3AED;background:rgba(124,58,237,.
           <text x="97" y="24" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10.5" font-weight="700" fill="#110D1B">Request &amp; Response DTOs</text>
           <text x="10" y="46" font-family="JetBrains Mono,monospace" font-size="9" fill="#110D1B">Login / Registro / Refresh Req</text>
           <text x="10" y="61" font-family="JetBrains Mono,monospace" font-size="9" fill="#110D1B">VerificarOtp / ReenviarOtp Req</text>
-          <text x="10" y="76" font-family="JetBrains Mono,monospace" font-size="9" fill="#110D1B">VerificarCredencialesReq/Res</text>
-          <text x="10" y="94" font-family="JetBrains Mono,monospace" font-size="9" fill="#48119A">LoginResponseDTO</text>
+          <text x="10" y="76" font-family="JetBrains Mono,monospace" font-size="9" fill="#110D1B">VerificarCredenciales Req/Res</text>
+          <text x="10" y="94" font-family="JetBrains Mono,monospace" font-size="9" fill="#48119A">LoginResponseDTO (record)</text>
           <text x="10" y="109" font-family="JetBrains Mono,monospace" font-size="9" fill="#48119A">UsuarioAuthResponseDTO</text>
           <text x="10" y="124" font-family="JetBrains Mono,monospace" font-size="9" fill="#48119A">OtpMensaje / ErrorResponseDTO</text>
         </g>
 
         <!-- Relations -->
         <line x1="122" y1="232" x2="122" y2="218" stroke="#48119A" stroke-width="1.4" marker-end="url(#arwC)"/>
-        <line x1="225" y1="70" x2="258" y2="70" stroke="#48119A" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#arwC)"/>
-        <line x1="225" y1="168" x2="258" y2="168" stroke="#48119A" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#arwC)"/>
-        <line x1="370" y1="126" x2="370" y2="140" stroke="#48119A" stroke-width="1.3" marker-end="url(#arwC)"/>
-        <path d="M262,102 L246,102 L246,278 L258,278" fill="none" stroke="#48119A" stroke-width="1.3" marker-end="url(#arwC)"/>
+        <path d="M262,186 L243,186 L243,70 L229,70" fill="none" stroke="#48119A" stroke-width="1.3" marker-end="url(#arwC)"/>
         <line x1="477" y1="72" x2="502" y2="72" stroke="#B91C1C" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#arwC)"/>
-        <line x1="477" y1="205" x2="502" y2="205" stroke="#48119A" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#arwC)"/>
+        <path d="M477,205 L490,205 L490,248 L502,248" fill="none" stroke="#48119A" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#arwC)"/>
       </svg>
-      <div class="diag-cap"><span>Fig 6.1 — Modelo de clases real (dominio + aplicación + fronteras DTO/excepciones).</span><span>35 fuentes Java</span></div>
+      <div class="diag-cap"><span>Fig 6.1 — Síntesis de <code>DiagramaClases.png</code>: dominio, excepciones y servicios reales (<code>35</code> fuentes Java).</span><span>Ver <code>uml/DiagramaClases.png</code></span></div>
     </div>
 
     <div class="callout">
-      <strong>¿Por qué no existen clases JPA <code>@Entity</code> en <code>domain.model</code> hoy?</strong>
-      Porque las credenciales y el perfil residen actualmente en <code>ms-usuarios</code> y los códigos OTP / listas negras tienen vida máxima de 5 minutos o 24 horas en Redis 7. Modelar <code>Rol</code>, <code>EstadoCuenta</code>, <code>UsuarioEstadoCambiadoEvent</code> y <code>5</code> excepciones tipadas mantiene el dominio expresivo sin inflarlo con ORM artificial. La evolución futura añadirá entidades de auditoría/credencial cuando PostgreSQL 16 se habilite para producción.
+      <strong>¿Por qué no existen agregados ni clases JPA <code>@Entity</code> en <code>domain.model</code> hoy?</strong>
+      Porque el agregado de usuario reside en <code>ms-usuarios</code> y los códigos OTP / listas negras son estado efímero en Redis 7. Modelar <code>Rol</code>, <code>EstadoCuenta</code>, el evento inmutable <code>UsuarioEstadoCambiadoEvent</code> (Java <code>record</code>), <code>5</code> excepciones tipadas y <code>3</code> contratos de servicio (<code>DiagramaClases.png</code>) evita entidades ORM vacías y mantiene el núcleo limpio.
     </div>
 
     <div class="pf"><span>StyleRadar · ms-auth</span><span>Modelo de Dominio y Diagrama de Clases</span><span>Pág. 06</span></div>

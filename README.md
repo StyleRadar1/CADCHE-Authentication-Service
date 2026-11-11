@@ -194,39 +194,32 @@ flowchart TD
 
 <div align="center">
   <img src="docs/uml/DiagramaClases.png" width="95%" alt="Diagrama de Clases ms-auth" /><br />
-  <sub>Figura 7.1: Diagrama de clases del núcleo de dominio puro para ms-auth (Draw.io editable en <a href="docs/uml/DiagramaClases.drawio"><code>docs/uml/DiagramaClases.drawio</code></a>).</sub>
+  <sub>Figura 7.1: Diagrama de clases real del núcleo de dominio, excepciones, servicios de aplicación y DTOs inmutables de <code>ms-auth</code> en estilo StyleRadar (Draw.io editable en <a href="docs/uml/DiagramaClases.drawio"><code>docs/uml/DiagramaClases.drawio</code></a> · Explicación ampliada en <a href="docs/DocumentoTecnico.html"><code>docs/DocumentoTecnico.html</code></a>, Pág. 06).</sub>
 </div>
 
-##### Justificación de Diseño y Principios Arquitecturales
-El diagrama de clases de `ms-auth` modela el núcleo de autenticación y seguridad siguiendo los lineamientos de Domain-Driven Design y el principio de Inversión de Dependencias:
-- **Pureza de Dominio (0% Frameworks)**: Las clases de dominio no contienen anotaciones de persistencia como `@Entity` ni estereotipos de Spring como `@Component` o `@Service`. Esto garantiza que la lógica de seguridad y validación sea agnóstica de la infraestructura y pueda ser probada mediante pruebas unitarias puras sin levantar el contexto de Spring.
-- **Inmutabilidad y Validación de Value Objects**: Los conceptos como `Email`, `PasswordHash`, `TokenJwt` y `SesionOtp` se modelan como Value Objects inmutables que encapsulan sus invariantes en el momento de instanciación, impidiendo la existencia de estados inconsistentes en el sistema.
-- **Segregación de Responsabilidades y Manejo de Políticas**: La lógica de verificación de contraseñas robustas y control de intentos fallidos se delega a validadores de dominio dedicados (`PasswordRequestValidator`, `OtpAttemptValidator`), desacoplando la entidad raíz de algoritmos volátiles de seguridad.
+##### Justificación Arquitectónica y Alcance del Dominio Real
 
-##### Explicación Detallada de los Elementos
-1. **Agregado Raíz `Credencial`**:
-   - `id`: Identificador global único de tipo UUID.
-   - `email`: Value Object que garantiza formato RFC 5322 válido y normalización a minúsculas.
-   - `passwordHash`: Hash criptográfico seguro generado mediante BCrypt o Argon2id.
-   - `rol`: Enumeración de dominio (`COMPRADOR`, `VENDEDOR`, `ADMINISTRADOR`).
-   - `estado`: Estado de la cuenta (`ACTIVO`, `BLOQUEADO`, `PENDIENTE_VERIFICACION`).
-   - `intentosFallidos`: Contador entero de intentos consecutivos fallidos de autenticación.
-   - `bloqueadoHasta`: Marca temporal que rige el bloqueo temporal preventivo tras superar 5 intentos fallidos.
-   - Métodos de negocio: `verificarPassword()`, `registrarIntentoFallido()`, `reiniciarIntentos()`, `bloquearTemporalmente()`, `cambiarPassword()`.
-2. **Entidad `ConsentimientoHabeasData`**:
-   - Modela el cumplimiento legal de la Ley 1581 de 2012 y normativas de privacidad.
-   - Atributos: `versionPolitica`, `fechaAceptacion`, `ipOrigen`, `canalRegistro`, `estado`.
-3. **Value Objects**:
-   - `Email`: Encapsula la dirección de correo y reglas de formato.
-   - `PasswordHash`: Garantiza que nunca transite texto plano en la capa de dominio.
-   - `SesionOtp`: Representa el desafío de autenticación en dos pasos con código hash, expiración y límite de 3 intentos.
-4. **Validadores de Dominio**:
-   - `CredencialValidator`: Verifica integridad de la entidad y coherencia de estados.
-   - `PasswordRequestValidator`: Aplica reglas OWASP sobre longitud mínima, caracteres especiales, números y entropía.
-   - `OtpAttemptValidator`: Valida vigencia temporal y número de reintentos antes del bloqueo.
-5. **Puertos de Entrada y Salida**:
-   - Puertos de Entrada: `LoginUseCase`, `RegisterUserUseCase`, `VerifyOtpUseCase`, `RefreshTokenUseCase`.
-   - Puertos de Salida: `CredencialRepositoryPort`, `TokenProviderPort`, `RedisBlacklistPort`, `EventPublisherPort`.
+La inspección directa de los paquetes `domain` y `application` en `src/main/java/edu/dosw/styleradar/auth` refleja un diseño minimalista alineado con los límites reales del microservicio:
+
+- **Sin `@Entity` ni Agregados JPA Locales (Cero Duplicación con `ms-usuarios`):** El agregado de usuario, sus credenciales y su aceptación legal viven actualmente en `ms-usuarios (:8120)`, mientras códigos OTP (`300 s`), contadores de intentos, blacklist JWT y revocación de sesión residen en `Redis 7 (:6379)`. Los paquetes `domain/repository/` y `infrastructure/adapter/out/persistence/{entity,repository}/` solo conservan `.gitkeep` mientras PostgreSQL 16 permanece diferido, evitando inflar el dominio con entidades ORM artificiales o inactivas.
+- **Pureza de Tipos de Dominio (`domain` libre de frameworks):** Los paquetes `domain.model`, `domain.event` y `domain.exception` dependen exclusivamente de tipos estándar de Java (`enum`, `record`, `Instant`, `RuntimeException`), desacoplados de Spring Web y de la capa de persistencia.
+- **Inmutabilidad y Contratos Segregados (`application`):** El núcleo expone tres contratos explícitos (`OtpService`, `JwtService`, `EmailService`) con sus implementaciones desacopladas (`*ServiceImpl`) y emplea Java `record` inmutables para transportar eventos (`UsuarioEstadoCambiadoEvent`) y respuestas críticas (`LoginResponseDTO`, `VerificarCredencialesResponseDTO`).
+
+##### Inventario Detallado de Clases, Eventos y Servicios Verificados
+
+| Capa / Paquete | Elemento UML | Tipo | Miembros / Responsabilidad Exacta en Código |
+| :--- | :--- | :--- | :--- |
+| **`domain.model`** | `Rol` | `enum` | `COMPRADOR`, `ADMIN_ALMACEN`, `REPRESENTANTE_FUNDACION`, `ADMIN_STYLERADAR`. Modela los roles RBAC embebidos en claims JWT y sesiones OTP. |
+| **`domain.model`** | `EstadoCuenta` | `enum` | `ACTIVA`, `INACTIVA`, `BLOQUEADA`. Valida habilitación de acceso desde `ms-usuarios` y controla eventos de revocación de sesión. |
+| **`domain.event`** | `UsuarioEstadoCambiadoEvent` | `record` | `(Long usuarioId, EstadoCuenta estadoAnterior, EstadoCuenta estadoNuevo, Long administradorId, String motivo, Instant fechaCambio)`. Evento inmutable consumido por `UsuarioEstadoCambiadoConsumer` desde RabbitMQ. |
+| **`domain.exception`** | `CredencialesIncorrectasException`<br>`CuentaNoActivaException`<br>`OtpExpiradoException`<br>`OtpIntentosAgotadosException`<br>`OtpInvalidoException` | `class extends RuntimeException` | Jerarquía de `5` excepciones tipadas de negocio lanzadas durante validación de credenciales y flujo OTP, traducidas a respuestas HTTP uniformes por `GlobalExceptionHandler`. |
+| **`application.service`** + **`impl`** | `OtpService` ← `OtpServiceImpl` | `interface` / `@Service` | `9` métodos: `generarOtp`, `verificarOtp`, `reenviarOtp`, `obtenerUsuarioId`, `obtenerRol`, `obtenerIntentosRestantes`, `eliminarOtp`, `invalidarToken`, `esTokenInvalido`. Usa `StringRedisTemplate`, `localMemoryStore`, `localExpiryStore`, `ttlSeconds` (`300 s`) y `maxAttempts` (`3`). |
+| **`application.service`** + **`impl`** | `JwtService` ← `JwtServiceImpl` | `interface` / `@Service` | `5` métodos: `generarToken(Long, Set<Rol>)`, `validarToken`, `obtenerUsuarioId`, `obtenerRoles`, `obtenerTiempoRestanteSegundos`. Opera con `SecretKey` y `Duration`. |
+| **`application.service`** + **`impl`** | `EmailService` ← `EmailServiceImpl` | `interface` / `@Service` | `enviarOtp(String, String)`. Envía notificaciones OTP vía `JavaMailSender` y `correoEmisor`. |
+| **`application.dto.response`** | `LoginResponseDTO` | `record` | Campos: `accessToken`, `tokenType`, `expiresIn`, `usuarioId`, `roles` (`Set<Rol>`), `requiereOtp`, `otpExpiraEnSegundos`, `intentosOtpRestantes` (con sobrecarga compacta de 5 argumentos cuando no hay desafío pendiente). |
+| **`application.dto.response`** | `VerificarCredencialesResponseDTO` | `record` | Campos: `id` (`Long`), `email`, `rol`, `estado`. Contrato recibido síncronamente desde `ms-usuarios` (`POST /internal/api/v1/usuarios/verificar-credenciales`). |
+
+> También complementan la frontera HTTP el DTO de perfil `UsuarioAuthResponseDTO` y los objetos de petición/respuesta mapeados por `AuthController`. La justificación arquitectónica detallada de este modelo se encuentra en [docs/DocumentoTecnico.html](docs/DocumentoTecnico.html) (Sección **06 Modelo de Dominio y Diagrama de Clases**).
 
 ---
 
@@ -271,40 +264,33 @@ Contrario a esquemas teóricos tempranos, la auditoría directa del código fuen
 
 <div align="center">
   <img src="docs/uml/DiagramaComponentesEspecifico.png" width="95%" alt="Diagrama de Componentes Específico ms-auth" /><br />
-  <sub>Figura 7.3: Diagrama de componentes específico en arquitectura hexagonal para ms-auth (Draw.io editable en <a href="docs/uml/DiagramaComponentesEspecifico.drawio"><code>docs/uml/DiagramaComponentesEspecifico.drawio</code></a>).</sub>
+  <sub>Figura 7.3: Diagrama de componentes específico en arquitectura hexagonal de <code>ms-auth</code> con las piezas ejecutables reales (estilo StyleRadar / referencia <code>CADCHE-Stores-Service</code> · Draw.io editable en <a href="docs/uml/DiagramaComponentesEspecifico.drawio"><code>docs/uml/DiagramaComponentesEspecifico.drawio</code></a> · Explicación en <a href="docs/DocumentoTecnico.html"><code>docs/DocumentoTecnico.html</code></a>, Pág. 04).</sub>
 </div>
 
-##### Justificación del Enfoque Hexagonal (Puertos y Adaptadores)
-El microservicio `ms-auth` aplica estrictamente el estándar hexagonal de StyleRadar y el checklist de 10 puntos de calificación:
-- **Desacoplamiento Tecnológico**: Los adaptadores de entrada (Controladores REST y consumidores AMQP) no contienen lógica de negocio; su única responsabilidad es deserializar la petición, validar el formato de entrada mediante anotaciones Jakarta y delegar la ejecución a través de la interfaz del puerto de entrada (`domain/port/in/`).
-- **Inversión de Dependencias (DIP)**: La capa de aplicación y el núcleo de dominio no conocen las implementaciones de base de datos ni los clientes de mensajería. Dependen exclusivamente de interfaces de puertos de salida (`domain/port/out/`). Las implementaciones concretas residen en `infrastructure/adapter/out/` e inyectan los repositorios de Spring Data y clientes Redis.
-- **Configuración IoC Manual**: La capa de aplicación no utiliza `@Service` ni `@Component`. El cableado de dependencias se realiza de manera explícita en `BeanConfig.java` dentro de la capa de infraestructura, manteniendo la aplicación desacoplada del contenedor de Spring.
+##### Justificación del Enfoque Hexagonal Real
 
-##### Explicación Detallada de los Flujos de Componentes
-1. **Flujo 1: Login, Emisión/Refresh de JWT y Revocación en Blacklist (SR-RF-02, SR-RNF-01)**:
-   - **Entrada (Driving)**: `AuthController` (`infrastructure/adapter/in/rest/`) expone los endpoints `POST /login`, `POST /refresh` y `POST /logout`. Implementa la interfaz contractual `AuthApi` de documentación OpenAPI.
-   - **Puerto In**: Interfaz `LoginUseCase` (`domain/port/in/`).
-   - **Aplicación**: `LoginUseCaseImpl` (`application/usecase/`) orquesta la operación y se apoya en los mappers `LoginDtoInMapper` y `AuthDtoOutMapper` (`application/mapper/in/` y `out/`). Invoca la interfaz `AuthService` implementada en `AuthServiceImpl` (`application/service/impl/`).
-   - **Dominio Puro**: `AuthServiceImpl` opera sobre el modelo `Credencial`, el Value Object `Email` y el validador `CredencialValidator` (100% puro, 0% Spring).
-   - **Puerto Out**: Invoca `CredencialRepositoryPort` y `TokenProviderPort` (`domain/port/out/`).
-   - **Adaptadores Driven**: `CredencialPersistenceMapper` traduce el modelo de dominio a `CredencialJpaEntity`. `CredencialRepositoryAdapter` consulta a `SpringDataCredencialRepo` hacia PostgreSQL 15, mientras que `JwtTokenAdapter` y `RedisBlacklistAdapter` gestionan la firma de tokens y el almacenamiento en Redis.
-2. **Flujo 2: Registro de Comprador, Políticas OWASP y Consentimiento Habeas Data (SR-RF-01, SR-RNF-02)**:
-   - **Entrada**: `RegistroAuthController` recibe la solicitud `POST /api/v1/auth/register`.
-   - **Puerto In y Aplicación**: Se conecta a `RegisterUserUseCase` e invoca `RegisterUserUseCaseImpl` con apoyo de `RegisterUserDtoInMapper` y `RegisterUserDtoOutMapper`.
-   - **Servicio y Dominio**: `RegistroAuthServiceImpl` invoca a `HabeasDataServiceImpl`. Se validan las políticas de contraseña mediante `PasswordRequestValidator` y se instancia el evento de dominio `UserRegisteredEvent`.
-   - **Salida**: Se persiste el consentimiento mediante `ConsentimientoPersistenceMapper` y `UserRepositoryAdapter` en PostgreSQL, y se emite el evento a través de `EventPublisherPort` hacia `RabbitMqEventPublisherAdapter` con destino al Topic Exchange `auth.events`.
-3. **Flujo 3: Verificación en Dos Pasos 2FA / OTP y Auditoría de Intentos (SR-RF-92)**:
-   - **Entrada**: `OtpVerificationController` atiende `POST /verify-otp` y `POST /resend-otp`.
-   - **Puerto In y Aplicación**: Conexión a `VerifyOtpUseCase` y ejecución en `VerifyOtpUseCaseImpl`, asistido por `VerifyOtpDtoInMapper` y `OtpChallengedDtoOutMapper`.
-   - **Servicio y Dominio**: `OtpVerificationServiceImpl` utiliza el modelo `OtpSession`, el Value Object `OtpSessionOtp` y la regla de negocio pura `OtpAttemptValidator` (control de máximo 3 intentos y ventana de 5 minutos).
-   - **Salida**: `OtpSessionPersistenceMapper` y `AuditoriaPersistenceMapper` se conectan con `RedisOtpSessionAdapter` (lectura/escritura veloz con TTL en Redis) y `AuditoriaRepositoryAdapter` (registro inmutable del evento en PostgreSQL).
-4. **Banda Transversal de Infraestructura**:
-   - `BeanConfig.java` (`infrastructure/config/`): Instancia manualmente los beans de casos de uso y servicios de aplicación sin requerir anotaciones en el dominio ni en la aplicación.
-   - `SecurityConfig.java` & `JwtAuthFilter`: Configura la seguridad stateless, la validación de firmas JWT contra Redis y la prevención de accesos no autorizados.
-   - `GlobalExceptionHandler.java` (`infrastructure/exception/`): Captura excepciones de dominio y las serializa bajo el estándar internacional RFC 7807 Problem Details (`400`, `401`, `403`, `404`, `409`, `423`).
-   - `RabbitMqConfig.java`: Declara el Topic Exchange `auth.events`, colas durables, enrutamiento y cola de mensajes muertos (DLQ).
-   - `OpenApiConfig.java`: Configuración de Swagger 3 / OpenAPI 3.0 con esquema de seguridad Bearer JWT.
-   - `Flyway SQL Migrations` (`resources/db/migration/V1__init_schema.sql`): Versionamiento automatizado del esquema relacional `styleradar_auth`.
+La vista de componentes excluye deliberadamente entidades, enums y DTOs (documentados en el [Diagrama de Clases](docs/uml/DiagramaClases.png)) y refleja exactamente las clases ejecutables implementadas en `src/main/java/edu/dosw/styleradar/auth`:
+
+- **Separación Entrada → Núcleo → Salida:** Los adaptadores primarios (`AuthController`, `JwtAuthenticationFilter`, `UsuarioEstadoCambiadoConsumer`) aíslan transporte HTTP, filtro de seguridad y escucha AMQP respecto a la lógica de negocio en `application.service.impl`.
+- **Interfaces Explícitas en el Núcleo (`—(o—`):** Los conectores *ball-and-socket* modelan exclusivamente las interfaces reales definidas hoy (`EmailService`, `OtpService` y `JwtService`), evitando simular puertos inexistentes.
+- **Hexagonal Pragmática sin Sobre-ingeniería:** `AuthController` invoca directamente a `UsuarioClient` (`RestClient` hacia `ms-usuarios`), y los consumidores/servicios de caché y correo inyectan directamente las abstracciones de Spring (`StringRedisTemplate`, `JavaMailSender`). Los paquetes de plantilla vacíos (`domain/port/{in,out}/`, `application/usecase/`, `application/mapper/{in,out}/`, `infrastructure/adapter/out/persistence/{entity,repository}/`) conservan `.gitkeep` mientras los usuarios residen en `ms-usuarios`.
+
+##### Desglose de Componentes Reales y Flujos
+
+| Capa Hexagonal | Componente UML | Ubicación / Origen Real | Responsabilidad e Interacciones Verificadas |
+| :--- | :--- | :--- | :--- |
+| **Entrada (`IN`)** | `AuthController` | `infrastructure/adapter/in/rest/` | Expone `POST /api/v1/auth/{login, otp/verificar, otp/reenviar, refresh, logout, registro}` implementando `AuthApi`; invoca `UsuarioClient` y orquesta `EmailService`, `OtpService` y `JwtService`. |
+| **Entrada (`IN`)** | `JwtAuthenticationFilter` | `infrastructure/security/` | Filtro `OncePerRequestFilter` registrado en `SecurityConfig`; valida firma HS256 vía `JwtService` y consulta revocación por usuario en `StringRedisTemplate`. |
+| **Entrada (`IN · AMQP`)** | `UsuarioEstadoCambiadoConsumer` | `infrastructure/adapter/in/messaging/` | `@RabbitListener` sobre la cola `auth.usuario.estado.cambiado` desde `RabbitMQ`; registra el sello de revocación en `StringRedisTemplate`. |
+| **Núcleo (`Core`)** | `EmailServiceImpl` | `application/service/impl/` | Implementa `EmailService`; construye y despacha el correo OTP mediante `JavaMailSender` (con fallback a consola local si falla SMTP). |
+| **Núcleo (`Core`)** | `OtpServiceImpl` | `application/service/impl/` | Implementa `OtpService`; gestiona códigos de 6 dígitos (`ttlSeconds=300`, `maxAttempts=3`) y blacklist JWT sobre `StringRedisTemplate` con respaldo `ConcurrentHashMap`. |
+| **Núcleo (`Core`)** | `JwtServiceImpl` | `application/service/impl/` | Implementa `JwtService`; genera y valida tokens JWT HS256 (`JJWT`) usando `SecretKey` y `Duration`, sin acoplamiento a bases de datos. |
+| **Salida (`OUT`)** | `UsuarioClient` | `infrastructure/adapter/out/external/` | Encapsula `RestClient` HTTP Basic contra `ms-usuarios` (`/internal/api/v1/usuarios/verificar-credenciales`), con fallback dev si `ResourceAccessException`. |
+| **Salida (`OUT`)** | `JavaMailSender` | Spring Boot Mail | Abstracción SMTP utilizada por `EmailServiceImpl` hacia `SMTP Gmail`. |
+| **Salida (`OUT`)** | `StringRedisTemplate` | Spring Data Redis | Cliente clave-valor compartido por `OtpServiceImpl`, `JwtAuthenticationFilter` y `UsuarioEstadoCambiadoConsumer` hacia `Redis 7`. |
+| **Externos** | `ms-usuarios` · `SMTP Gmail` · `Redis 7` · `RabbitMQ` | Sistemas pares e infraestructura | Proveedor de credenciales, servidor de correo, almacén efímero en memoria y broker de eventos administrativos (`styleradar.usuarios`). |
+
+> Como soporte transversal de infraestructura Web/AMQP sin lógica de negocio operan [`SecurityConfig`](src/main/java/edu/dosw/styleradar/auth/infrastructure/config/SecurityConfig.java), [`GlobalExceptionHandler`](src/main/java/edu/dosw/styleradar/auth/infrastructure/exception/GlobalExceptionHandler.java), [`RabbitMQConfig`](src/main/java/edu/dosw/styleradar/auth/infrastructure/config/RabbitMQConfig.java), [`SwaggerConfig`](src/main/java/edu/dosw/styleradar/auth/infrastructure/config/SwaggerConfig.java) y [`AuthApi`](src/main/java/edu/dosw/styleradar/auth/infrastructure/adapter/in/rest/doc/AuthApi.java). Detalle arquitectónico completo en [docs/DocumentoTecnico.html](docs/DocumentoTecnico.html) (Sección **04 Arquitectura Hexagonal · Diagrama de Componentes**).
 
 ### Estructura Oficial de Paquetes en `src/main/java/`
 
