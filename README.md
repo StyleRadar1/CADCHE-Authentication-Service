@@ -24,10 +24,10 @@
   </p>
 
   <p align="center">
-    <a href="https://styleradar-backend-prod.azurewebsites.net/swagger-ui/index.html">
-      <img src="https://img.shields.io/badge/PROD-Active-16A34A?style=for-the-badge&logo=azure-app-services&logoColor=white" alt="PROD Deployment" />
+    <a href="https://styleradar-auth-prod.azurewebsites.net/actuator/health">
+      <img src="https://img.shields.io/badge/PROD-Azure_App_Service-16A34A?style=for-the-badge&logo=azure-app-services&logoColor=white" alt="PROD Deployment" />
     </a>
-    <a href="https://styleradar-backend-qa.azurewebsites.net/swagger-ui/index.html">
+    <a href="https://styleradar-auth-qa.azurewebsites.net/swagger-ui.html">
       <img src="https://img.shields.io/badge/QA-Active-5600EF?style=for-the-badge&logo=azure-app-services&logoColor=white" alt="QA Deployment" />
     </a>
     <a href="https://sonarcloud.io/project/overview?id=StyleRadar1_CADCHE-Authentication-Service">
@@ -239,6 +239,17 @@ Contrario a esquemas teóricos tempranos, la auditoría directa del código fuen
 - **Fuente Externa de Credenciales (`ms-usuarios` en `:8120` vía HTTP Basic):** `ms-auth` no duplica perfiles ni hashes de contraseña en base local. Durante `POST /api/v1/auth/login`, `UsuarioClient` invoca `POST /internal/api/v1/usuarios/verificar-credenciales` y recibe `VerificarCredencialesResponseDTO(id, email, rol, estado)` (con fallback sintético en perfil `dev`).
 - **Estado Real de `PostgreSQL 16` (`styleradar_auth`) y `Flyway 10.20.1`:** Aunque `pom.xml`, `application.yml` (`jdbc:postgresql://localhost:5432/styleradar_auth`, `ddl-auto: validate`, `flyway.enabled: false`) y `docker-compose.yml` (`auth-db` sobre `postgres:16-alpine`, puerto `5434:5432`) declaran la base relacional, tanto `application-dev.yml` como `application-test.yml` excluyen `DataSourceAutoConfiguration`, `HibernateJpaAutoConfiguration` y `FlywayAutoConfiguration`. Los directorios `infrastructure/adapter/out/persistence/{entity,repository}/` y `src/main/resources/db/migration/` solo contienen `.gitkeep` mientras `POST /api/v1/auth/registro` opera como stub controlado (`201 Created`, `id=12L`, `Rol.COMPRADOR`), evitando falsa sensación de persistencia hasta implementar entidades JPA reales.
 
+##### Tabla de Bases de Datos y Almacenamiento por Ambiente
+
+| Ambiente / Perfil | Almacenamiento Activo (`Redis 7`) | Persistencia Relacional (`PostgreSQL 16`) | Fuente de Identidad (`ms-usuarios`) | Comportamiento de Respaldo / Seguridad |
+| :--- | :--- | :--- | :--- | :--- |
+| **Local / `dev`** | `${REDIS_HOST:localhost}:${REDIS_PORT:6379}` (sin SSL) | Excluida (`DataSource`, `JPA`, `Flyway`). En `docker-compose.yml`: servicio `auth-db` (`postgres:16-alpine`, `styleradar_auth`, puerto `5434:5432`) | `http://localhost:8120` (`USUARIOS_SERVICE_URL`) | Fallbacks locales activos (`redis-local-fallback-enabled: true`, `dev-fallback-enabled: true`, `registration.stub-enabled: true`) |
+| **Pruebas / `test`** | En memoria / mocks de pruebas (`StringRedisTemplate` y `ConcurrentHashMap`) | Excluida (`DataSourceAutoConfiguration`, `HibernateJpaAutoConfiguration`, `FlywayAutoConfiguration`) | Mockeado en suite (`dev-fallback-enabled: false`) | Fallbacks Redis/SMTP deshabilitados (`false`); `registration.stub-enabled: true` para pruebas de contrato |
+| **Calidad / `qa`** | `${REDIS_HOST}:${REDIS_PORT:6380}` (`REDIS_SSL_ENABLED=true`) | `jdbc:postgresql://styleradar-pg-qa.postgres.database.azure.com:5432/styleradar_auth?sslmode=require` (usuario `styleradaradmin`, Hikari max `5`, `ddl-auto: validate`, `FLYWAY_ENABLED=false`) | `https://styleradar-usuarios-qa.azurewebsites.net` | Sin fallbacks en memoria ni stubs (`false`); secreto JWT de desarrollo bloqueado en arranque; TLS obligatorio |
+| **Producción / `prod`** | `${REDIS_HOST}:${REDIS_PORT:6380}` (`REDIS_SSL_ENABLED=true`) | `jdbc:postgresql://styleradar-pg-prod.postgres.database.azure.com:5432/styleradar_auth?sslmode=require` (usuario `styleradaradmin`, Hikari max `10`, `ddl-auto: validate`, `FLYWAY_ENABLED=false`) | `https://styleradar-usuarios-prod.azurewebsites.net` | Sin fallbacks ni stubs (`false`); secreto JWT de desarrollo bloqueado en arranque; Swagger deshabilitado (`false`) |
+
+> *(Nota arquitectónica: hoy la base operativa real en ejecución para OTP, blacklist y revocaciones es `Redis 7`; `PostgreSQL 16` queda parametrizado por perfil para futura persistencia JPA sin entidades activas en este corte.)*
+
 ##### Catálogo Exacto de Claves en Redis 7 (`StringRedisTemplate`)
 
 | Espacio de Clave (Grupo Diagrama) | Prefijo Exacto en Código | Tipo / Formato de Valor | TTL Configurado | Escrita Por | Leída / Validada Por |
@@ -341,13 +352,13 @@ La documentación interactiva OpenAPI 3.0 y los contratos de ejecución se encue
 
 ### Matriz Oficial de Enlaces por Entorno (PROD, QA, LOCAL)
 
-| Entorno | Estado | Propósito | URL Base del Servicio | Swagger OpenAPI UI | Health Check |
+| Entorno | Perfil | Propósito | URL Base del Servicio | Swagger OpenAPI UI | Health Check |
 | :--- | :---: | :--- | :--- | :--- | :--- |
-| **Producción (PROD)** | Active | Despliegue productivo de StyleRadar | `https://styleradar-backend-prod.azurewebsites.net` | [Swagger UI PROD](https://styleradar-backend-prod.azurewebsites.net/swagger-ui/index.html) | [`/actuator/health`](https://styleradar-backend-prod.azurewebsites.net/actuator/health) |
-| **Calidad / Pruebas (QA)** | Active | Pruebas integradas de Sprint y QA | `https://styleradar-backend-qa.azurewebsites.net` | [Swagger UI QA](https://styleradar-backend-qa.azurewebsites.net/swagger-ui/index.html) | [`/actuator/health`](https://styleradar-backend-qa.azurewebsites.net/actuator/health) |
-| **Desarrollo Local (DEV)** | Local | Entorno de desarrollo local en máquina | `http://localhost:8100` | [Swagger UI Local](http://localhost:8100/swagger-ui.html) | [`/actuator/health`](http://localhost:8100/actuator/health) |
+| **Producción (PROD)** | `prod` | Despliegue productivo (`main` → `styleradar-auth-prod`) | `https://styleradar-auth-prod.azurewebsites.net` | Deshabilitado en PROD (`springdoc.swagger-ui.enabled: false`, OWASP) | [`/actuator/health`](https://styleradar-auth-prod.azurewebsites.net/actuator/health) |
+| **Calidad / Pruebas (QA)** | `qa` | Pruebas integradas y verificación (`develop` → `styleradar-auth-qa`) | `https://styleradar-auth-qa.azurewebsites.net` | [Swagger UI QA](https://styleradar-auth-qa.azurewebsites.net/swagger-ui.html) (`200 OK`) | [`/actuator/health`](https://styleradar-auth-qa.azurewebsites.net/actuator/health) |
+| **Desarrollo Local (DEV)** | `dev` | Ejecución local / Docker Compose en puerto oficial `8100` | `http://localhost:8100` | [Swagger UI Local](http://localhost:8100/swagger-ui.html) | [`/actuator/health`](http://localhost:8100/actuator/health) |
 
-* **Especificación OpenAPI (Contrato JSON Schema):** `http://localhost:8100/v3/api-docs` (o `/v3/api-docs` en los dominios de PROD y QA).
+* **Especificación OpenAPI (JSON Schema):** `http://localhost:8100/v3/api-docs` en local y [`https://styleradar-auth-qa.azurewebsites.net/v3/api-docs`](https://styleradar-auth-qa.azurewebsites.net/v3/api-docs) en QA (`/swagger-ui/index.html` también resuelve en QA y local). En `prod`, tanto `/v3/api-docs` como `/swagger-ui/**` y `/actuator/info` permanecen deshabilitados, exponiendo únicamente `/actuator/health`.
 
 
 <div align="center">
@@ -373,69 +384,70 @@ La documentación interactiva OpenAPI 3.0 y los contratos de ejecución se encue
 
 ### Tabla de Endpoints Expuestos
 
-| Método | Endpoint | Descripción | Rol Requerido | Códigos HTTP |
+| Método | Endpoint | Descripción | Acceso / Rol Requerido | Códigos HTTP |
 | :---: | :--- | :--- | :--- | :---: |
-| `POST` | `/api/v1/auth/login` | Inicio de sesión unificado multi-rol y emisión de `accessToken` + `refreshToken` (`SR-RF-02`) | Público | `200`, `400`, `401`, `403` |
-| `POST` | `/api/v1/auth/registro` | Registro de comprador con contraseña `BCrypt`, validación de Habeas Data y disparo de OTP (`SR-RF-01`, `SR-RNF-02`) | Público | `201`, `400`, `409` |
-| `POST` | `/api/v1/auth/refresh` | Renovación de `accessToken` mediante `refreshToken` vigente con rotación segura (`SR-RF-02`, `SR-RNF-01`) | Público (Refresh Token) | `200`, `400`, `401`, `403` |
-| `POST` | `/api/v1/auth/logout` | Cierre de sesión e invalidación inmediata del token JWT en lista negra (`SR-RNF-01`, Deuda Técnica #2) | Autenticado (`Bearer JWT`) | `204`, `401` |
-| `POST` | `/api/v1/auth/otp/verificar` | Verificación de código OTP de 6 dígitos (TTL 5 minutos, máximo 3 intentos) (`SR-RF-92`) | Público | `200`, `400`, `410`, `429` |
-| `POST` | `/api/v1/auth/otp/reenviar` | Invalidación del OTP anterior y generación de nuevo código OTP de 6 dígitos (`SR-RF-92`) | Público | `200`, `400`, `404`, `429` |
-| `GET` | `/actuator/health` | Health Check y estado operativo del microservicio | Público | `200` |
+| `POST` | `/api/v1/auth/login` | Valida credenciales contra `ms-usuarios` y dispara código OTP de 6 dígitos en Redis (`SR-RF-02`, `SR-RF-92`) | Público | `200`, `400`, `401`, `403`, `503` |
+| `POST` | `/api/v1/auth/otp/verificar` | Verifica código OTP (TTL `300 s`, máx. `3` intentos) y emite JWT Bearer HS256 (`SR-RF-92`) | Público | `200`, `400`, `401`, `429` |
+| `POST` | `/api/v1/auth/otp/reenviar` | Genera nuevo OTP de 6 dígitos respetando límite de `3` reenvíos (`SR-RF-92`) | Público | `200`, `400`, `401`, `429`, `503` |
+| `POST` | `/api/v1/auth/refresh` | Rota JWT vigente validando blacklist y revocación global en Redis (`SR-RF-02`, `SR-RNF-01`) | Público (`refreshToken` vigente) | `200`, `400`, `401` |
+| `POST` | `/api/v1/auth/logout` | Invalida inmediatamente el JWT actual en la lista negra de Redis (`SR-RNF-01`) | Autenticado (`Bearer JWT`) | `204`, `401` |
+| `POST` | `/api/v1/auth/registro` | Stub controlado en `dev`/`test` (`201 Created`); en `qa`/`prod` responde `503` fail-closed hasta sincronizar con `ms-usuarios` (`SR-RF-01`, `SR-RNF-02`) | Público (`dev`/`test`) | `201`, `400`, `503` |
+| `GET` | `/actuator/health` | Health Check operativo del servicio y sus dependencias | Público | `200`, `503` |
 
 <details>
-<summary><b>Click para ver Ejemplos Interactivos de Request y Response JSON (Payloads)</b></summary>
+<summary><b>Click para ver Ejemplos Reales de Request y Response JSON (Payloads)</b></summary>
 
 <br>
 
-#### Ejemplo Request (`POST /api/v1/auth/login`)
+#### 1. Inicio de sesión y desafío OTP (`POST /api/v1/auth/login`)
 
 ```bash
 curl -X POST "http://localhost:8100/api/v1/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
-    "correo": "camila.torres@correo.com",
-    "password": "Password123*"
+    "email": "comprador@styleradar.com",
+    "password": "StyleRadar2026*"
   }'
 ```
 
-#### Ejemplo Response Exitoso (`200 OK`)
+Response (`200 OK`):
 
 ```json
 {
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZXMiOlsiQ09NUFJBRE9SIl19.signature",
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2gifQ.signature",
+  "accessToken": null,
   "tokenType": "Bearer",
-  "expiresIn": 3600,
-  "usuario": {
-    "id": 1,
-    "nombre": "Camila Torres",
-    "correo": "camila.torres@correo.com",
-    "roles": ["COMPRADOR"],
-    "otpVerificado": true
-  }
+  "expiresIn": 86400,
+  "usuarioId": 12,
+  "roles": ["COMPRADOR"],
+  "requiereOtp": true,
+  "otpExpiraEnSegundos": 300,
+  "intentosOtpRestantes": 3
 }
 ```
 
-#### Ejemplo Request (`POST /api/v1/auth/otp/verificar`)
+#### 2. Verificación de código OTP y emisión JWT (`POST /api/v1/auth/otp/verificar`)
 
 ```bash
 curl -X POST "http://localhost:8100/api/v1/auth/otp/verificar" \
   -H "Content-Type: application/json" \
   -d '{
-    "correo": "camila.torres@correo.com",
-    "codigoOtp": "482910"
+    "email": "comprador@styleradar.com",
+    "codigoOtp": "482915"
   }'
 ```
 
-#### Ejemplo Response Exitoso (`200 OK`)
+Response (`200 OK`):
 
 ```json
 {
-  "correo": "camila.torres@correo.com",
-  "mensaje": "Código OTP verificado exitosamente. Cuenta activada.",
-  "expiraEnSegundos": 0,
-  "intentosRestantes": 3
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMiIsInJvbGVzIjpbIkNPTVBSQURPUiJdLCJpYXQiOjE3MzA2NTkyMDAsImV4cCI6MTczMDc0NTYwMH0.firma",
+  "tokenType": "Bearer",
+  "expiresIn": 86400,
+  "usuarioId": 12,
+  "roles": ["COMPRADOR"],
+  "requiereOtp": false,
+  "otpExpiraEnSegundos": null,
+  "intentosOtpRestantes": 0
 }
 ```
 
@@ -447,42 +459,32 @@ curl -X POST "http://localhost:8100/api/v1/auth/otp/verificar" \
 
 ## <img src="https://img.shields.io/badge/05-5600EF?style=for-the-badge" height="20" align="absmiddle" /> 5. EVENTOS QUE PUBLICA Y CONSUME
 
-La comunicación asíncrona entre microservicios se orquesta a través de **RabbitMQ 3.12** utilizando Topic Exchanges durables.
+La integración asíncrona real implementada en [`RabbitMQConfig`](src/main/java/edu/dosw/styleradar/auth/infrastructure/config/RabbitMQConfig.java) y [`UsuarioEstadoCambiadoConsumer`](src/main/java/edu/dosw/styleradar/auth/infrastructure/adapter/in/messaging/UsuarioEstadoCambiadoConsumer.java) utiliza **RabbitMQ (AMQP)** con un `DirectExchange` durable y serialización JSON restringida por *allowlist* (`edu.dosw.styleradar.auth.*`, `java.util`, `java.time`):
 
-* **Exchange Principal de Dominio:** `styleradar.auth.events` / `styleradar.events` (`topic`, durable)
-* **Exchange de Auditoría:** `styleradar.audit` (`fanout`, durable)
-* **Dead Letter Exchange (DLX):** `styleradar.dlx`
+* **Exchange Activo:** `styleradar.usuarios` (`direct`, `durable=true`, `autoDelete=false`)
+* **Cola Activa:** `auth.usuario.estado.cambiado` (`durable=true`, `defaultRequeueRejected=false`)
+* **Routing Key:** `usuario.estado.cambiado`
 
-### Matriz de Eventos AMQP
+### Matriz de Eventos AMQP (Estado Real en Código)
 
-| Tipo | Routing Key | Cola (Queue) | Microservicio Emisor / Receptor | Cuándo se Dispara / Acción |
-| :---: | :--- | :--- | :--- | :--- |
-| **PUBLICA** | `auth.usuario.registrado` | N/A (Exchange) | `ms-auth` &rarr; `ms-usuarios`, `ms-notificaciones` | Se publica al registrar un comprador (`SR-RF-01`) para sincronizar su perfil y disparar bienvenida. |
-| **PUBLICA** | `auth.otp.generado` | N/A (Exchange) | `ms-auth` &rarr; `ms-notificaciones` | Se publica al generar o reenviar el código OTP de 6 dígitos (`SR-RF-92`) con vigencia de 5 minutos. |
-| **PUBLICA** | `auth.sesion.revocada` | N/A (Exchange) | `ms-auth` &rarr; `api-gateway` | Notifica la invalidación de un token (`jti`) tras logout o bloqueo de seguridad (`SR-RNF-01`). |
-| **CONSUME** | `usuario.estado.cambiado` | `q.auth.usuario.estado` | `ms-usuarios` &rarr; `ms-auth` | Bloquea el inicio de sesión y revoca sesiones activas cuando una cuenta pasa a `INACTIVO` o `BLOQUEADO` (`SR-RF-66`). |
-| **CONSUME** | `tienda.rol.asignado` | `q.auth.tienda.rol` | `ms-tiendas` &rarr; `ms-auth` | Asigna el rol `ADMIN_ALMACEN` o `REPRESENTANTE_FUNDACION` al usuario vinculado (`SR-RF-62`, `SR-RF-63`). |
+| Dirección | Estado | Exchange / Routing Key | Cola (Queue) | Emisor / Receptor | Comportamiento Verificado en Código |
+| :---: | :---: | :--- | :--- | :--- | :--- |
+| **CONSUME** | **Activo** | `styleradar.usuarios` / `usuario.estado.cambiado` | `auth.usuario.estado.cambiado` | `ms-usuarios` &rarr; `ms-auth` | [`UsuarioEstadoCambiadoConsumer.recibir`](src/main/java/edu/dosw/styleradar/auth/infrastructure/adapter/in/messaging/UsuarioEstadoCambiadoConsumer.java#L27-L54) procesa [`UsuarioEstadoCambiadoEvent`](src/main/java/edu/dosw/styleradar/auth/domain/event/UsuarioEstadoCambiadoEvent.java). Si `estadoNuevo` es `BLOQUEADA` o `INACTIVA`, guarda `usuario:revocado:{usuarioId}` en Redis con el timestamp `fechaCambio` para invalidar JWT previos. |
+| **PUBLICA** | **Sin productores activos** | N/A | N/A | N/A | Actualmente `ms-auth` **no publica eventos AMQP** en RabbitMQ: el despacho OTP se ejecuta de forma síncrona vía SMTP ([`EmailServiceImpl`](src/main/java/edu/dosw/styleradar/auth/application/service/impl/EmailServiceImpl.java)) y la revocación/blacklist de tokens vive en Redis. |
 
 <details>
-<summary><b>Click para ver Esquema JSON del Evento Publicado (con Idempotencia)</b></summary>
+<summary><b>Click para ver Esquema JSON Real del Evento Consumido (<code>UsuarioEstadoCambiadoEvent</code>)</b></summary>
 
 <br>
 
 ```json
 {
-  "eventId": "018e3a2b-3333-7000-8000-000000000001",
-  "eventType": "auth.otp.generado",
-  "timestamp": "2026-11-01T14:30:00Z",
-  "producer": "ms-auth",
-  "correlationId": "corr-auth-otp-0001",
-  "data": {
-    "usuarioId": 1,
-    "correo": "camila.torres@correo.com",
-    "codigoOtp": "482910",
-    "ttlSegundos": 300,
-    "maxIntentos": 3,
-    "version": 1
-  }
+  "usuarioId": 12,
+  "estadoAnterior": "ACTIVA",
+  "estadoNuevo": "BLOQUEADA",
+  "administradorId": 1,
+  "motivo": "Bloqueo preventivo por actividad sospechosa",
+  "fechaCambio": "2026-11-11T23:10:00Z"
 }
 ```
 
@@ -498,11 +500,11 @@ El stack del microservicio cumple con el estándar unificado de arquitectura de 
 
 | Capa / Componente | Tecnología | Versión | Justificación Técnica |
 | :--- | :--- | :--- | :--- |
-| **Lenguaje Core** | Java LTS | `17 / 21 LTS` | Tipado fuerte, Records inmutables para DTOs y alto rendimiento en ejecución sobre JVM. |
+| **Lenguaje Core** | Java LTS | `21 LTS` | Compilación y runtime definidos en `<java.version>21</java.version>` (`pom.xml` y `Dockerfile`), con `Records` inmutables y `HexFormat`. |
 | **Framework Empresarial** | Spring Boot | `3.2.12` | Gestión declarativa de configuración, ecosistema nativo Spring Web, Spring Security y Actuator. |
 | **Seguridad & Tokens** | Spring Security + JJWT | `6.2.x / 0.12.6` | Firma y verificación criptográfica de tokens JWT (`accessToken`/`refreshToken`) y hashing `BCrypt`. |
-| **Base de Datos** | PostgreSQL | `16` | Integridad transaccional ACID para cuentas, roles, auditoría de accesos y sesiones. |
-| **Migraciones de BD** | Flyway | `10.20.1` | Control de versiones reproducible de scripts SQL en el arranque del microservicio. |
+| **Base de Datos** | PostgreSQL | `16` | Integridad transaccional ACID parametrizada para `qa`/`prod` (`sslmode=require`; autoconfiguración excluida en `dev`/`test` mientras las credenciales residen en `ms-usuarios`). |
+| **Migraciones de BD** | Flyway | `10.20.1` | Versionado determinista de scripts SQL (`FLYWAY_ENABLED=false` hasta activar entidades JPA). |
 | **Broker de Mensajería** | RabbitMQ | `3.12+` | Desacoplamiento temporal de eventos de identidad, OTP y cambios de estado de cuenta. |
 | **Caché en Memoria** | Redis | `7.x` | Almacenamiento con TTL exacto de 300 segundos para códigos OTP y lista negra de JWT revocados. |
 | **Mapeo de DTOs** | MapStruct + Lombok | `1.5.5.Final / 1.18.42` | Generación de mappers en tiempo de compilación con cero sobrecarga de reflexión. |
@@ -519,122 +521,71 @@ El stack del microservicio cumple con el estándar unificado de arquitectura de 
 
 ### Prerrequisitos de Entorno
 
-* **Java Development Kit (JDK):** Versión 17 o 21 LTS instalada (`java -version`).
-* **Apache Maven:** Versión 3.9+ instalada (`mvn -version`).
-* **Docker Engine & Docker Compose:** Versión 24+ en ejecución (`docker --version`).
+* **Java Development Kit (JDK):** Versión **21 LTS** instalada (`java -version`).
+* **Apache Maven:** Versión **3.9+** instalada (`mvn -version`).
+* **Docker Engine & Docker Compose:** Opcional para levantar dependencias o contenedores completos (`docker --version`).
 
-### Ejecución Local con Maven (Perfil Dev / Test)
+### Ejecución Local con Maven (Perfil `dev`)
 
 ```bash
 # 1. Clonar el repositorio
 git clone https://github.com/StyleRadar1/CADCHE-Authentication-Service.git
 cd CADCHE-Authentication-Service
 
-# 2. Levantar servicios de infraestructura en Docker (PostgreSQL, Redis, RabbitMQ)
-docker compose up -d postgres rabbitmq redis
+# 2. (Opcional) Crear archivo .env local a partir de la plantilla
+cp .env.example .env
 
-# 3. Ejecutar el microservicio localmente con PostgreSQL (perfil dev)
+# 3. Levantar dependencias locales definidas en docker-compose.yml (Redis y PostgreSQL)
+docker compose up -d auth-redis auth-db
+
+# 4. Ejecutar el microservicio en perfil dev (puerto 8100)
+# Nota: sin Redis/SMTP/ms-usuarios activos, el perfil dev cuenta con fallbacks controlados en memoria/consola
 mvn clean spring-boot:run -Dspring-boot.run.profiles=dev
-
-# Alternativa rápida sin PostgreSQL externo (usando configuración en memoria de test)
-mvn spring-boot:run -Dspring-boot.run.useTestClasspath=true -Dspring-boot.run.profiles=test
 ```
 
-### Ejecución Contenerizada Completa con Docker
+```bash
+# Ejecutar todas las pruebas (84 tests), reporte/umbral JaCoCo (>= 85%), SBOM CycloneDX y SpotBugs
+mvn -B clean verify com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check --no-transfer-progress
+```
+
+### Ejecución Contenerizada Completa con Docker Compose
+
+```bash
+# Levantar el stack completo del servicio (ms-auth :8100, auth-redis :6379, auth-db :5434)
+docker compose up -d --build
+docker compose ps
+```
 
 <details>
-<summary><b>Click para ver Instrucciones de Docker y docker-compose.yml de Ejemplo</b></summary>
+<summary><b>Click para ver Ejecución Manual de Contenedor OCI y Resumen del <code>docker-compose.yml</code> Real</b></summary>
 
 <br>
 
 ```bash
-# Compilar y empaquetar el JAR ejecutable omitiendo tests
-mvn clean package -DskipTests
+# Construir imagen OCI multi-stage (maven:3.9.9-eclipse-temurin-21-alpine -> eclipse-temurin:21-jre-alpine, usuario appuser)
+docker build -t styleradar/ms-auth:local .
 
-# Construir la imagen OCI local
-docker build -t styleradar/ms-auth:v1.0 .
-
-# Ejecutar el contenedor conectado a la red compartida de StyleRadar
+# Ejecutar pasando variables externas (no incluir .env en la imagen)
 docker run -d \
   --name ms-auth \
-  --network styleradar-net \
   -p 8100:8100 \
   --env-file .env \
-  styleradar/ms-auth:v1.0
+  styleradar/ms-auth:local
 ```
 
-#### Archivo `docker-compose.yml` de Soporte
-
-```yaml
-version: '3.8'
-
-networks:
-  styleradar-net:
-    driver: bridge
-
-services:
-  ms-auth:
-    build: .
-    container_name: ms-auth
-    restart: always
-    ports:
-      - "8100:8100"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SERVER_PORT=8100
-      - DB_URL=jdbc:postgresql://postgres:5432/styleradar_auth
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=postgres
-      - JPA_DDL_AUTO=validate
-      - FLYWAY_ENABLED=true
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    depends_on:
-      - postgres
-      - rabbitmq
-      - redis
-    networks:
-      - styleradar-net
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: sr-postgres-auth
-    environment:
-      POSTGRES_DB: styleradar_auth
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5431:5432"
-    networks:
-      - styleradar-net
-
-  redis:
-    image: redis:7-alpine
-    container_name: sr-redis-auth
-    ports:
-      - "6379:6379"
-    networks:
-      - styleradar-net
-
-  rabbitmq:
-    image: rabbitmq:3.12-management-alpine
-    container_name: sr-rabbitmq-auth
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    networks:
-      - styleradar-net
-```
+**Servicios reales declarados en [`docker-compose.yml`](docker-compose.yml):**
+* `ms-auth` (`:8100`, `SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}`, depende de `auth-db` y `auth-redis` saludables en red `auth-network`)
+* `auth-redis` (`redis:7-alpine`, `:6379`, volumen `auth-redis-data`, healthcheck `redis-cli ping`)
+* `auth-db` (`postgres:16-alpine`, puerto host `5434` &rarr; contenedor `5432`, base `styleradar_auth`, volumen `auth-data`)
 
 </details>
 
-### Comprobación de Salud (Health Check)
+### Comprobación de Salud (Health Check) y Swagger Local
 
 ```bash
-curl -s http://localhost:8100/actuator/health | jq .
-# Esperado: {"status":"UP"}
+curl -s http://localhost:8100/actuator/health
+# Abrir documentación interactiva en navegador:
+# http://localhost:8100/swagger-ui.html
 ```
 
 <div align="center">
@@ -667,62 +618,65 @@ curl -s http://localhost:8100/actuator/health | jq .
 
 Todas las configuraciones sensibles y dependientes de entorno se externalizan mediante variables de sistema conformes al estándar **Twelve-Factor App**.
 
-| Variable | Descripción | Valor por Defecto (`dev`) | Requerido en Prod |
+| Variable | Descripción | Valor por Defecto (`dev` / base) | Requerido en `qa` / `prod` |
 | :--- | :--- | :--- | :---: |
-| `SERVER_PORT` | Puerto de escucha HTTP del microservicio | `8100` | Sí |
-| `SPRING_PROFILES_ACTIVE` | Perfil de configuración Spring Boot activo | `dev` | Sí |
-| `DB_URL` | URL JDBC de conexión a PostgreSQL | `jdbc:postgresql://localhost:5432/styleradar_auth` | Sí |
-| `DB_USERNAME` | Usuario de conexión a la base de datos | `postgres` | Sí |
-| `DB_PASSWORD` | Contraseña del usuario de base de datos | `postgres` | Sí |
-| `JPA_DDL_AUTO` | Estrategia de validación de esquema Hibernate | `validate` | Sí |
-| `FLYWAY_ENABLED` | Ejecución automática de migraciones Flyway | `false` (`true` en prod) | Sí |
-| `JWT_SECRET` | Clave secreta o par de llaves para firma de JWT | `<SECRET_KEY_256_BITS>` | Sí |
-| `JWT_ACCESS_EXPIRATION` | Tiempo de expiración del `accessToken` en segundos | `3600` | Sí |
-| `JWT_REFRESH_EXPIRATION` | Tiempo de expiración del `refreshToken` en segundos | `604800` | Sí |
-| `OTP_EXPIRATION_SECONDS` | Tiempo de vida (TTL) del código OTP de 6 dígitos | `300` | Sí |
-| `OTP_MAX_ATTEMPTS` | Número máximo de intentos fallidos de validación OTP | `3` | Sí |
-| `REDIS_HOST` | Hostname del servidor de caché Redis (OTP / Blacklist) | `localhost` | Sí |
-| `REDIS_PORT` | Puerto de conexión a Redis | `6379` | Sí |
-| `RABBITMQ_HOST` | Hostname del broker de mensajería RabbitMQ | `localhost` | Sí |
-| `RABBITMQ_PORT` | Puerto AMQP de RabbitMQ | `5672` | Sí |
-| `RABBITMQ_USERNAME` | Usuario de conexión a RabbitMQ | `guest` | Sí |
-| `RABBITMQ_PASSWORD` | Contraseña de conexión a RabbitMQ | `guest` | Sí |
+| `SERVER_PORT` | Puerto HTTP de escucha del microservicio | `8100` | Sí |
+| `SPRING_PROFILES_ACTIVE` | Perfil activo (`dev`, `test`, `qa`, `prod`) | `dev` | Sí |
+| `JWT_SECRET_BASE64` | Clave secreta HMAC Base64 de mínimo 256 bits (`32` bytes). Bloquea el valor de ejemplo en `qa`/`prod` | Secreto de desarrollo en `application-dev.yml` | **Obligatorio** |
+| `JWT_DURATION` | Duración ISO-8601 del token JWT | `PT24H` (`PT12H` en `qa`, `PT8H` en `prod`) | Opcional |
+| `REDIS_HOST` / `REDIS_PORT` | Host y puerto del servidor Redis (`6380` SSL en `qa`/`prod`) | `localhost` / `6379` | **Obligatorio** |
+| `REDIS_PASSWORD` / `REDIS_SSL_ENABLED` | Contraseña de Redis y cifrado TLS | Vacío / `false` (`true` en `qa`/`prod`) | Sí |
+| `RABBITMQ_HOST` / `RABBITMQ_PORT` | Host y puerto AMQP (`5671` SSL en `qa`/`prod`) | `localhost` / `5672` | **Obligatorio** |
+| `RABBITMQ_USERNAME` / `RABBITMQ_PASSWORD` / `RABBITMQ_SSL_ENABLED` | Credenciales AMQP y cifrado TLS | `guest` / `guest` (`true` en `qa`/`prod`) | **Obligatorio** |
+| `USUARIOS_SERVICE_URL` | URL base del microservicio `ms-usuarios` | `http://localhost:8120` | Sí |
+| `USUARIOS_INTERNAL_USERNAME` / `USUARIOS_INTERNAL_PASSWORD` | Credenciales HTTP Basic internas contra `ms-usuarios` | `ms-auth` / vacío | **Obligatorio** |
+| `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | Servidor SMTP con STARTTLS obligatorio para envío de OTP | `smtp.gmail.com` / `587` / `styleradar1@gmail.com` / vacío | **Obligatorio** |
+| `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` | Parámetros JDBC PostgreSQL (y `POSTGRES_*` en `docker-compose.yml`) | `jdbc:postgresql://localhost:5432/styleradar_auth` | Parametrizado (`sslmode=require`) |
+| `JPA_DDL_AUTO` / `FLYWAY_ENABLED` | Estrategia DDL de Hibernate y activación de migraciones Flyway | `validate` / `false` | Parametrizado |
+| `CORS_ALLOWED_ORIGINS` | Orígenes permitidos en CORS (sin `*` con credenciales) | `http://localhost:3000,http://127.0.0.1:*` | Sí |
+| `SWAGGER_ENABLED` | Habilita `/v3/api-docs` y `/swagger-ui.html` (deshabilitado en `prod`) | `true` (`false` fijo en `prod`) | No |
+| `RATE_LIMIT_ENABLED` / `RATE_LIMIT_MAX_REQUESTS` / `RATE_LIMIT_WINDOW_SECONDS` | Límite de peticiones por IP y ventana en segundos | `true` / `15` (`10` en `prod`) / `60` | Opcional |
 
 <details>
-<summary><b>Click para copiar la Plantilla de Archivo .env.example</b></summary>
+<summary><b>Click para ver la Plantilla Real de <code>.env.example</code></b></summary>
 
 <br>
 
 ```dotenv
-# ==============================================================================
-# STYLERADAR · ms-auth · VARIABLES DE ENTORNO LOCALES (.env)
-# ==============================================================================
 SERVER_PORT=8100
 SPRING_PROFILES_ACTIVE=dev
 
-# Persistencia PostgreSQL
-DB_URL=jdbc:postgresql://localhost:5432/styleradar_auth
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-JPA_DDL_AUTO=validate
-FLYWAY_ENABLED=false
+# Base de datos PostgreSQL (Docker Compose / futuro uso JPA)
+POSTGRES_DB=styleradar_auth
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=CAMBIAR_ESTA_CLAVE
 
-# Seguridad JWT y OTP
-JWT_SECRET=change_this_secret_in_production_minimum_32_characters
-JWT_ACCESS_EXPIRATION=3600
-JWT_REFRESH_EXPIRATION=604800
-OTP_EXPIRATION_SECONDS=300
-OTP_MAX_ATTEMPTS=3
-
-# Caché Redis (OTP & JWT Revocation List)
+# Cache, OTP y rate limiting distribuido (Redis)
 REDIS_HOST=localhost
 REDIS_PORT=6379
+REDIS_PASSWORD=
 
-# Event Broker RabbitMQ
+# Broker de mensajeria RabbitMQ
 RABBITMQ_HOST=localhost
 RABBITMQ_PORT=5672
 RABBITMQ_USERNAME=guest
-RABBITMQ_PASSWORD=guest
+RABBITMQ_PASSWORD=CAMBIAR_ESTA_CLAVE
+
+# Seguridad JWT y CORS (OBLIGATORIO usar secreto >= 32 bytes Base64 en QA/PROD)
+JWT_SECRET_BASE64=REEMPLAZAR_POR_SECRETO_ALEATORIO_MIN_256_BITS_EN_BASE64
+JWT_DURATION=PT24H
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+
+# Servidor SMTP de correo saliente
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=styleradar1@gmail.com
+MAIL_PASSWORD=TU_CONTRASENA_O_APP_PASSWORD
+
+# Comunicacion interna con ms-usuarios
+USUARIOS_SERVICE_URL=http://localhost:8120
+USUARIOS_INTERNAL_USERNAME=ms-auth
+USUARIOS_INTERNAL_PASSWORD=TU_CLAVE_INTERNA
 ```
 
 </details>
@@ -787,25 +741,25 @@ mvn jacoco:report
 
 ## <img src="https://img.shields.io/badge/10-5600EF?style=for-the-badge" height="20" align="absmiddle" /> 10. CI/CD CON EL BADGE DEL PIPELINE
 
-El ciclo de vida del software implementa integración continua y entrega continua automatizada mediante **GitHub Actions / Azure Pipelines**:
+El ciclo de vida del software implementa integración continua y entrega continua automatizada mediante **GitHub Actions** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
 
 ### Matriz de Pipelines por Entorno (PROD y QA)
 
 | Pipeline | Entorno Destino | Desencadenador (Trigger) | Quality Gate Exigido | Badge de Estado |
 | :--- | :--- | :--- | :--- | :---: |
-| **CI - Staging / QA** | Calidad (`QA`) | Pull Request o Push a rama `develop` | Build OK + Tests Unitarios/Integración + JaCoCo ≥ 85% + SonarQube OK | [![QA Pipeline](https://img.shields.io/badge/Pipeline_QA-Passing-5600EF?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions) |
-| **CD - Producción (PROD)** | Producción (`PROD`) | Merge a rama `main` / `master` tras validación QA | Aprobación manual + Imagen OCI desplegada en Azure App Service | [![PROD Pipeline](https://img.shields.io/badge/Pipeline_PROD-Passing-16A34A?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions) |
-| **Quality Gate SonarQube** | Transversal | Ejecutado en cada build de CI | 0 Vulnerabilidades, 0 Bugs, Calificaciones en A (Reliability, Security, Maintainability, Security Review), Cobertura ≥ 80% en New Code (JaCoCo ≥ 85% global) y SpotBugs 0 hallazgos | [![Quality Gate](https://img.shields.io/badge/SonarQube-Quality_Gate_Passed-16A34A?style=for-the-badge&logo=sonarqube&logoColor=white)](https://sonarcloud.io/project/overview?id=StyleRadar1_CADCHE-Authentication-Service) |
+| **CI / CD - QA (`styleradar-auth-qa`)** | Calidad (`QA`) | `pull_request` (solo CI) o `push` a `develop` (CI + Docker Hub `qa-latest` + Azure QA) | Build OK + 84 Tests + JaCoCo ≥ 85% + SpotBugs 0 + SonarQube OK | [![QA Pipeline](https://img.shields.io/badge/Pipeline_QA-Passing-5600EF?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions) |
+| **CI / CD - Producción (`styleradar-auth-prod`)** | Producción (`PROD`) | `push` / merge a `main` tras validación QA (CI + Docker Hub `prod-latest` + Azure PROD) | CI en verde + Imagen OCI (`GITHUB_SHA`) desplegada en Azure App Service PROD | [![PROD Pipeline](https://img.shields.io/badge/Pipeline_PROD-Passing-16A34A?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions) |
+| **Quality Gate SonarQube** | Transversal | Ejecutado en cada build de CI (`-Dsonar.qualitygate.wait=true`) | 0 Vulnerabilidades, 0 Bugs, Calificaciones en A (Reliability, Security, Maintainability, Security Review), Cobertura ≥ 80% en New Code (JaCoCo ≥ 85% global) y SpotBugs 0 hallazgos | [![Quality Gate](https://img.shields.io/badge/SonarQube-Quality_Gate_Passed-16A34A?style=for-the-badge&logo=sonarqube&logoColor=white)](https://sonarcloud.io/project/overview?id=StyleRadar1_CADCHE-Authentication-Service) |
 
 ### Diagrama del Flujo Automatizado (Pipeline Stages)
 
 ```mermaid
 flowchart LR
-    A["Push / PR<br>(GitHub)"] --> B["Build & Compile<br>(Maven Java)"]
-    B --> C["Tests & JaCoCo<br>(Coverage ≥ 85%)"]
-    C --> D["Análisis SonarQube<br>(0 Vulnerabilities)"]
-    D --> E["Build Docker OCI<br>(Multi-stage Build)"]
-    E --> F["Deploy Cloud<br>(Azure App Service)"]
+    A["Push / PR<br>(GitHub)"] --> B["Build & Compile<br>(Maven Java 21)"]
+    B --> C["Tests, JaCoCo >= 85%<br>& SpotBugs"]
+    C --> D["SonarQube Cloud<br>(Quality Gate A)"]
+    D --> E["Build Docker OCI<br>(develop / main)"]
+    E --> F["Deploy Azure<br>(styleradar-auth-qa / prod)"]
 
     classDef step fill:#12063A,stroke:#5600EF,stroke-width:2px,color:#FFFFFF;
     classDef pass fill:#DCFCE7,stroke:#16A34A,stroke-width:2px,color:#0C0C12;
@@ -816,11 +770,11 @@ flowchart LR
 
 ### Reglas de Calidad en SonarQube (*Quality Gate Passed*)
 
-* **Bugs:** 0
-* **Vulnerabilidades:** 0
-* **Hotspots de Seguridad:** 0 revisados al 100%
-* **Code Smells Críticos:** 0
-* **Deuda Técnica:** < 5%
+* **Reliability / Bugs:** Calificación **A** (`0` bugs)
+* **Security / Vulnerabilities:** Calificación **A** (`0` vulnerabilidades)
+* **Maintainability:** Calificación **A** (`0` code smells abiertos)
+* **Security Review:** Calificación **A** (`100%` hotspots revisados)
+* **Cobertura y Duplicación:** `≥ 80%` en *New Code* (`≥ 85%` instrucciones en JaCoCo) y `≤ 3%` líneas duplicadas
 
 <div align="center">
   <table width="100%" style="margin: 18px 0; border: 2px dashed #5600EF; border-radius: 8px; background-color: #FBFBFE;">
@@ -906,11 +860,10 @@ El seguimiento de requerimientos, evidencias y artefactos de entrega se centrali
 
 * **Épica Oficial del Microservicio (Jira):** [https://mail-team-nyjtgqcj.atlassian.net/jira/software/projects/CADCHE/boards/75/backlog](https://mail-team-nyjtgqcj.atlassian.net/jira/software/projects/CADCHE/boards/75/backlog)
 * **Tablero Scrum del Squad CADche (Jira):** [https://mail-team-nyjtgqcj.atlassian.net/jira/software/projects/CADCHE/boards/75/backlog](https://mail-team-nyjtgqcj.atlassian.net/jira/software/projects/CADCHE/boards/75/backlog)
-* **API Swagger en Producción (PROD):** [https://styleradar-backend-prod.azurewebsites.net/swagger-ui/index.html](https://styleradar-backend-prod.azurewebsites.net/swagger-ui/index.html)
-* **API Swagger en Calidad (QA):** [https://styleradar-backend-qa.azurewebsites.net/swagger-ui/index.html](https://styleradar-backend-qa.azurewebsites.net/swagger-ui/index.html)
-* **Colección de Pruebas Postman:** [CatrachoINXS/StyleRadar-Backend/tree/main/postman](https://github.com/CatrachoINXS/StyleRadar-Backend/tree/main/postman)
-* **Contenedor OCI Oficial (Docker Hub):** [hub.docker.com/r/juanamunoz/styleradar](https://hub.docker.com/r/juanamunoz/styleradar)
-* **Video de Respaldo de la Demostración:** [Demostración Funcional en Google Drive](https://drive.google.com/file/d/1W6dklNVi8Bp8LQUx1dkGrkMlly0gRjd7/view?usp=sharing)
+* **Health Check en Producción (`ms-auth` PROD):** [https://styleradar-auth-prod.azurewebsites.net/actuator/health](https://styleradar-auth-prod.azurewebsites.net/actuator/health) *(Swagger UI deshabilitado en `prod`)*
+* **API Swagger en Calidad (`ms-auth` QA):** [https://styleradar-auth-qa.azurewebsites.net/swagger-ui.html](https://styleradar-auth-qa.azurewebsites.net/swagger-ui.html) ([`/v3/api-docs`](https://styleradar-auth-qa.azurewebsites.net/v3/api-docs))
+* **Pipelines GitHub Actions y Reportes JaCoCo:** [StyleRadar1/CADCHE-Authentication-Service/actions](https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions)
+* **Calidad Estática en SonarQube Cloud:** [StyleRadar1_CADCHE-Authentication-Service](https://sonarcloud.io/project/overview?id=StyleRadar1_CADCHE-Authentication-Service)
 
 
 <div align="center">
