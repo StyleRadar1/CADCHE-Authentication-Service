@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   build-and-test:
-    name: Build, Tests, Coverage and Quality
+    name: Build, Tests, Coverage and Sonar
     runs-on: ubuntu-latest
 
     steps:
@@ -47,12 +47,14 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -n "$SONAR_TOKEN" ]; then
-            mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-              -Dsonar.projectKey=StyleRadar1_CADCHE-Authentication-Service
-          else
-            echo "SONAR_TOKEN no configurado. Se omite SonarCloud."
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "ERROR: SONAR_TOKEN no está configurado."
+            exit 1
           fi
+
+          mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.projectKey=StyleRadar1_CADCHE-Authentication-Service \
+            -Dsonar.qualitygate.wait=true
 
       - name: Upload JaCoCo report
         if: always()
@@ -72,6 +74,9 @@ jobs:
       (github.ref == 'refs/heads/develop' ||
        github.ref == 'refs/heads/main')
 
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -86,7 +91,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Define Docker image tags
-        id: tags
+        id: meta
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
@@ -96,8 +101,11 @@ jobs:
             TAG="prod-latest"
           fi
 
+          IMAGE="${DOCKERHUB_USERNAME}/styleradar-auth:${TAG}"
+
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
           echo "tags<<EOF" >> "$GITHUB_OUTPUT"
-          echo "${DOCKERHUB_USERNAME}/styleradar-auth:${TAG}" >> "$GITHUB_OUTPUT"
+          echo "$IMAGE" >> "$GITHUB_OUTPUT"
           echo "${DOCKERHUB_USERNAME}/styleradar-auth:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
@@ -107,6 +115,40 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
-          tags: ${{ steps.tags.outputs.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy-qa:
+    name: Deploy to Azure QA
+    needs: docker-publish
+    runs-on: ubuntu-latest
+
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: Deploy Authentication Service to QA
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: styleradar-auth-qa
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_QA }}
+          images: ${{ needs.docker-publish.outputs.image }}
+
+  deploy-prod:
+    name: Deploy to Azure PROD
+    needs: docker-publish
+    runs-on: ubuntu-latest
+
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploy Authentication Service to PROD
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: styleradar-auth-prod
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PROD }}
+          images: ${{ needs.docker-publish.outputs.image }}
