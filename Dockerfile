@@ -28,6 +28,10 @@ WORKDIR /app
 # Seguridad: Usuario sin privilegios (CIS Docker Benchmark - Non-Root User)
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
+# Certificado público CA del broker RabbitMQ QA (AMQPS TLS :5671)
+COPY rabbitmq-ca.pem /tmp/rabbitmq-ca.pem
+RUN keytool -importcert -trustcacerts -cacerts -storepass changeit -noprompt -alias styleradar-rabbitmq-ca -file /tmp/rabbitmq-ca.pem && rm -f /tmp/rabbitmq-ca.pem
+
 COPY --from=builder --chown=appuser:appgroup /build/target/*.jar app.jar
 
 ENV SERVER_PORT=8100 \
