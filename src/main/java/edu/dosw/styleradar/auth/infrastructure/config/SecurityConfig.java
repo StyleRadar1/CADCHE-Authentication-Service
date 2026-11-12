@@ -47,6 +47,7 @@ public class SecurityConfig {
         }
 
         @Bean
+        @SuppressWarnings("java:S4502")
         SecurityFilterChain securityFilterChain(
                         HttpSecurity http,
                         JwtAuthenticationFilter jwtAuthenticationFilter,
@@ -56,7 +57,7 @@ public class SecurityConfig {
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .cors(Customizer.withDefaults())
-                                .csrf(csrf -> csrf.disable())
+                                .csrf(csrf -> csrf.disable()) // NOSONAR: API REST stateless con JWT Bearer sin cookies de sesión
                                 .formLogin(form -> form.disable())
                                 .httpBasic(basic -> basic.disable())
                                 .logout(logout -> logout.disable())
