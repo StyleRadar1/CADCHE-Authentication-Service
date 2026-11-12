@@ -81,14 +81,18 @@ public class SecurityConfig {
                                                                 "/v3/api-docs/**",
                                                                 "/actuator/health",
                                                                 "/actuator/health/**",
-                                                                "/actuator/info")
+                                                                "/actuator/info",
+                                                                "/api/v1/auth/oauth2/google/url",
+                                                                "/api/v1/auth/oauth2/google/callback")
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.POST,
                                                                 "/api/v1/auth/login",
                                                                 "/api/v1/auth/registro",
                                                                 "/api/v1/auth/otp/verificar",
                                                                 "/api/v1/auth/otp/reenviar",
-                                                                "/api/v1/auth/refresh")
+                                                                "/api/v1/auth/refresh",
+                                                                "/api/v1/auth/oauth2/google",
+                                                                "/api/v1/auth/oauth2/google/code")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
                                 .addFilterBefore(

@@ -64,6 +64,7 @@ management:
 styleradar:
   usuarios:
     base-url: ${USUARIOS_SERVICE_URL:https://ms-usuarios-internal}
+    oauth2-path: ${USUARIOS_OAUTH2_PATH:/internal/api/v1/usuarios/oauth2}
     username: ${USUARIOS_INTERNAL_USERNAME:}
     password: ${USUARIOS_INTERNAL_PASSWORD:}
     dev-fallback-enabled: false
@@ -79,6 +80,16 @@ styleradar:
       ttl-seconds: 300
       max-attempts: 3
       max-resends: 3
+    oauth2:
+      google:
+        client-id: ${GOOGLE_CLIENT_ID:}
+        client-secret: ${GOOGLE_CLIENT_SECRET:}
+        redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8100/api/v1/auth/oauth2/google/callback}
+        allowed-redirect-uris: ${GOOGLE_ALLOWED_REDIRECT_URIS:http://localhost:8100/api/v1/auth/oauth2/google/callback,http://localhost:3000/auth/google/callback,https://styleradar.com/auth/google/callback}
+        authorization-uri: ${GOOGLE_AUTHORIZATION_URI:https://accounts.google.com/o/oauth2/v2/auth}
+        token-uri: ${GOOGLE_TOKEN_URI:https://oauth2.googleapis.com/token}
+        jwk-set-uri: ${GOOGLE_JWK_SET_URI:https://www.googleapis.com/oauth2/v3/certs}
+        state-ttl-seconds: ${GOOGLE_STATE_TTL_SECONDS:300}
     redis-local-fallback-enabled: false
     registration:
       stub-enabled: false

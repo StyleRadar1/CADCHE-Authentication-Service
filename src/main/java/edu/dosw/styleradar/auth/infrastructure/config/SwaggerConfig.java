@@ -35,7 +35,7 @@ public class SwaggerConfig {
                         .title("StyleRadar - Authentication Service API (ms-auth)")
                         .description("Especificación OpenAPI 3.0 del microservicio de autenticación de StyleRadar. "
                                 + "Gobierna el inicio de sesión con JWT (SR-RF-02), la verificación de segundo factor mediante código OTP de 6 dígitos en Redis (SR-RF-92), "
-                                + "el registro atómico de credenciales y la revocación de sesiones en lista negra (SR-RNF-01).")
+                                + "la autenticación federada con Google OAuth2 / OpenID Connect, el registro atómico de credenciales y la revocación de sesiones en lista negra (SR-RNF-01).")
                         .version("v1")
                         .contact(new Contact()
                                 .name("Equipo CADche - StyleRadar DOSW")
@@ -49,7 +49,12 @@ public class SwaggerConfig {
                 "/api/v1/auth/registro",
                 "/api/v1/auth/otp/verificar",
                 "/api/v1/auth/otp/reenviar",
-                "/api/v1/auth/refresh");
+                "/api/v1/auth/refresh",
+                "/api/v1/auth/oauth2/google",
+                "/api/v1/auth/oauth2/google/code");
+        Set<String> publicGets = Set.of(
+                "/api/v1/auth/oauth2/google/url",
+                "/api/v1/auth/oauth2/google/callback");
 
         return api -> {
             if (api.getPaths() == null) {
@@ -57,7 +62,8 @@ public class SwaggerConfig {
             }
 
             api.getPaths().forEach((path, item) -> item.readOperationsMap().forEach((method, operation) -> {
-                boolean publicRoute = method == PathItem.HttpMethod.POST && publicPosts.contains(path);
+                boolean publicRoute = (method == PathItem.HttpMethod.POST && publicPosts.contains(path))
+                        || (method == PathItem.HttpMethod.GET && publicGets.contains(path));
                 operation.setSecurity(publicRoute
                         ? List.of()
                         : List.of(new SecurityRequirement().addList("bearerAuth")));

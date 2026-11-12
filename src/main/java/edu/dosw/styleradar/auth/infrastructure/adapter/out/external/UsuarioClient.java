@@ -1,18 +1,21 @@
 package edu.dosw.styleradar.auth.infrastructure.adapter.out.external;
 
-import java.net.URI;
 import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
+import edu.dosw.styleradar.auth.application.dto.request.OAuthUsuarioRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.request.VerificarCredencialesRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.response.VerificarCredencialesResponseDTO;
 import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException;
+import edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException;
 import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
 import edu.dosw.styleradar.auth.infrastructure.security.SecuritySanitizer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -24,6 +27,7 @@ public final class UsuarioClient {
 
     private final RestClient restClient;
     private final String baseUrl;
+    private final String oauth2Path;
     private final boolean devFallbackEnabled;
     private final Environment environment;
 
@@ -32,7 +36,7 @@ public final class UsuarioClient {
             String baseUrl,
             String username,
             String password) {
-        this(restClientBuilder, baseUrl, username, password, false, null);
+        this(restClientBuilder, baseUrl, username, password, false, null, "/internal/api/v1/usuarios/oauth2");
     }
 
     public UsuarioClient(
@@ -41,7 +45,17 @@ public final class UsuarioClient {
             String username,
             String password,
             boolean devFallbackEnabled) {
-        this(restClientBuilder, baseUrl, username, password, devFallbackEnabled, null);
+        this(restClientBuilder, baseUrl, username, password, devFallbackEnabled, null, "/internal/api/v1/usuarios/oauth2");
+    }
+
+    public UsuarioClient(
+            RestClient.Builder restClientBuilder,
+            String baseUrl,
+            String username,
+            String password,
+            boolean devFallbackEnabled,
+            Environment environment) {
+        this(restClientBuilder, baseUrl, username, password, devFallbackEnabled, environment, "/internal/api/v1/usuarios/oauth2");
     }
 
     @SuppressFBWarnings(
@@ -54,9 +68,14 @@ public final class UsuarioClient {
             @Value("${styleradar.usuarios.username}") String username,
             @Value("${styleradar.usuarios.password}") String password,
             @Value("${styleradar.usuarios.dev-fallback-enabled:false}") boolean devFallbackEnabled,
-            Environment environment) {
+            Environment environment,
+            @Value("${styleradar.usuarios.oauth2-path:/internal/api/v1/usuarios/oauth2}") String oauth2Path) {
 
-        this.baseUrl = validarUrlExterna(baseUrl, environment);
+        this.baseUrl = SecuritySanitizer.validateExternalServiceUrl(
+                baseUrl, environment, "USUARIOS_SERVICE_URL");
+        this.oauth2Path = (oauth2Path == null || oauth2Path.isBlank())
+                ? "/internal/api/v1/usuarios/oauth2"
+                : oauth2Path.trim();
         this.devFallbackEnabled = devFallbackEnabled;
         this.environment = environment;
         this.restClient = restClientBuilder
@@ -94,35 +113,47 @@ public final class UsuarioClient {
         }
     }
 
-    private String validarUrlExterna(String rawUrl, Environment env) {
-        if (rawUrl == null || rawUrl.isBlank()) {
-            throw new IllegalArgumentException("La URL del servicio de usuarios es obligatoria");
-        }
-        URI uri;
+    public VerificarCredencialesResponseDTO resolverUsuarioOAuth(
+            String email, String nombre, String proveedor, String proveedorId) {
+
+        String normalizedEmail = SecuritySanitizer.normalizeEmail(email);
+        String sanitizedName = nombre != null ? SecuritySanitizer.sanitizeForLog(nombre.trim()) : "";
+        OAuthUsuarioRequestDTO request = new OAuthUsuarioRequestDTO(
+                normalizedEmail, sanitizedName, proveedor, proveedorId);
+
         try {
-            uri = URI.create(rawUrl.trim());
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("URL de ms-usuarios inválida (OWASP A01:2025 / SSRF)", ex);
+            return restClient.post()
+                    .uri(oauth2Path)
+                    .body(request)
+                    .retrieve()
+                    .body(VerificarCredencialesResponseDTO.class);
+        } catch (HttpClientErrorException.Unauthorized exception) {
+            throw new CredencialesIncorrectasException(
+                    "No autorizado para iniciar sesión mediante proveedor OAuth2");
+        } catch (HttpClientErrorException.Forbidden exception) {
+            throw new CuentaNoActivaException(
+                    "La cuenta asociada al correo se encuentra inactiva o bloqueada");
+        } catch (RestClientResponseException exception) {
+            log.error("Error HTTP {} al resolver usuario OAuth2 {} en ms-usuarios: {}",
+                    exception.getStatusCode().value(),
+                    SecuritySanitizer.maskEmail(normalizedEmail),
+                    SecuritySanitizer.sanitizeForLog(exception.getMessage()));
+            throw new ServicioExternoNoDisponibleException(
+                    "No fue posible sincronizar la identidad OAuth2 con el servicio de usuarios", exception);
+        } catch (ResourceAccessException exception) {
+            if (isDevFallbackActive()) {
+                log.warn("Respaldo local dev OAuth2 activo ante indisponibilidad de ms-usuarios para {}",
+                        SecuritySanitizer.maskEmail(normalizedEmail));
+                long devId = Integer.toUnsignedLong(normalizedEmail.hashCode()) % 9000L + 100L;
+                return new VerificarCredencialesResponseDTO(
+                        devId, normalizedEmail, inferirRolDev(normalizedEmail), "ACTIVA");
+            }
+            log.error("Fallo fail-closed resolviendo usuario OAuth2 en {}: {}",
+                    SecuritySanitizer.sanitizeForLog(baseUrl),
+                    SecuritySanitizer.sanitizeForLog(exception.getMessage()));
+            throw new ServicioExternoNoDisponibleException(
+                    "El servicio de usuarios no está disponible temporalmente para autenticación OAuth2", exception);
         }
-
-        String scheme = uri.getScheme() != null ? uri.getScheme().toLowerCase(Locale.ROOT) : "";
-        String host = uri.getHost() != null ? uri.getHost().toLowerCase(Locale.ROOT) : "";
-
-        if (!"http".equals(scheme) && !"https".equals(scheme)) {
-            throw new IllegalArgumentException("Esquema no permitido en USUARIOS_SERVICE_URL (solo http/https)");
-        }
-        if (uri.getUserInfo() != null) {
-            throw new IllegalArgumentException("No se permite incluir credenciales en USUARIOS_SERVICE_URL");
-        }
-        if (host.isEmpty()
-                || host.startsWith("169.254.")
-                || "metadata.google.internal".equals(host)) {
-            throw new IllegalArgumentException("Host bloqueado por prevención SSRF en USUARIOS_SERVICE_URL");
-        }
-        if (SecuritySanitizer.isProdProfile(env) && !"https".equals(scheme)) {
-            throw new IllegalArgumentException("En perfil prod USUARIOS_SERVICE_URL debe utilizar HTTPS");
-        }
-        return rawUrl.trim();
     }
 
     private boolean isDevFallbackActive() {
@@ -142,15 +173,20 @@ public final class UsuarioClient {
             throw new CredencialesIncorrectasException(
                     "El correo o la contraseña son incorrectos (validación local dev)");
         }
-        String rol = "COMPRADOR";
+        return new VerificarCredencialesResponseDTO(10L, email, inferirRolDev(email), "ACTIVA");
+    }
+
+    private static String inferirRolDev(String email) {
         String lower = email.toLowerCase(Locale.ROOT);
         if (lower.contains("admin")) {
-            rol = "ADMIN_STYLERADAR";
-        } else if (lower.contains("almacen")) {
-            rol = "ADMIN_ALMACEN";
-        } else if (lower.contains("fundacion")) {
-            rol = "REPRESENTANTE_FUNDACION";
+            return "ADMIN_STYLERADAR";
         }
-        return new VerificarCredencialesResponseDTO(10L, email, rol, "ACTIVA");
+        if (lower.contains("almacen")) {
+            return "ADMIN_ALMACEN";
+        }
+        if (lower.contains("fundacion")) {
+            return "REPRESENTANTE_FUNDACION";
+        }
+        return "COMPRADOR";
     }
 }

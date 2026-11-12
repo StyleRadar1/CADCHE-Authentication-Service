@@ -147,4 +147,91 @@ class UsuarioClientTest {
                     () -> devClient.verificarCredenciales("comprador@styleradar.com", badPassword));
         }
     }
+
+    @Test
+    @DisplayName("Debe resolver usuario OAuth2 cuando ms-usuarios responde 200 OK")
+    void resolverUsuarioOAuth_conRespuestaExitosa_debeRetornarUsuario() {
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        """
+                        {
+                            "id": 25,
+                            "email": "usuario@gmail.com",
+                            "rol": "COMPRADOR",
+                            "estado": "ACTIVA"
+                        }
+                        """,
+                        MediaType.APPLICATION_JSON
+                ));
+
+        VerificarCredencialesResponseDTO response = usuarioClient.resolverUsuarioOAuth(
+                "  Usuario@Gmail.com ", "Ana Perez", "GOOGLE", "sub-123");
+
+        assertEquals(25L, response.id());
+        assertEquals("usuario@gmail.com", response.email());
+        assertEquals("COMPRADOR", response.rol());
+        assertEquals("ACTIVA", response.estado());
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("Debe mapear 401/403/5xx/timeout de ms-usuarios correctamente en resolverUsuarioOAuth")
+    void resolverUsuarioOAuth_conErrores_debeMapearExcepcionesDeDominio() {
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.UNAUTHORIZED));
+
+        assertThrows(CredencialesIncorrectasException.class,
+                () -> usuarioClient.resolverUsuarioOAuth("u@gmail.com", "Ana", "GOOGLE", "1"));
+
+        server.reset();
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN));
+
+        assertThrows(edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException.class,
+                () -> usuarioClient.resolverUsuarioOAuth("u@gmail.com", "Ana", "GOOGLE", "1"));
+
+        server.reset();
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+
+        assertThrows(ServicioExternoNoDisponibleException.class,
+                () -> usuarioClient.resolverUsuarioOAuth("u@gmail.com", "Ana", "GOOGLE", "1"));
+
+        server.reset();
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(request -> {
+                    throw new ResourceAccessException("Timeout");
+                });
+
+        assertThrows(ServicioExternoNoDisponibleException.class,
+                () -> usuarioClient.resolverUsuarioOAuth("u@gmail.com", "Ana", "GOOGLE", "1"));
+    }
+
+    @Test
+    @DisplayName("Debe usar fallback dev en resolverUsuarioOAuth únicamente en perfil dev")
+    void resolverUsuarioOAuth_conFallbackDev_debeRetornarUsuarioActivo() {
+        RestClient.Builder devBuilder = RestClient.builder();
+        MockRestServiceServer devServer = MockRestServiceServer.bindTo(devBuilder).build();
+        MockEnvironment devEnv = new MockEnvironment();
+        devEnv.setActiveProfiles("dev");
+        UsuarioClient devClient = new UsuarioClient(
+                devBuilder, BASE_URL, "u", "p", true, devEnv, "/internal/api/v1/usuarios/oauth2");
+
+        devServer.expect(ExpectedCount.once(), requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
+                .andRespond(request -> {
+                    throw new ResourceAccessException("Offline dev");
+                });
+
+        VerificarCredencialesResponseDTO response =
+                devClient.resolverUsuarioOAuth("cliente.google@gmail.com", "Cliente", "GOOGLE", "sub-dev");
+
+        assertEquals("ACTIVA", response.estado());
+        assertEquals("COMPRADOR", response.rol());
+        devServer.verify();
+    }
 }

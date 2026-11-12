@@ -1,5 +1,6 @@
 package edu.dosw.styleradar.auth.infrastructure.security;
 
+import java.net.URI;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -75,5 +76,42 @@ public final class SecuritySanitizer {
      */
     public static boolean isProdProfile(Environment environment) {
         return environment != null && environment.acceptsProfiles(Profiles.of("prod"));
+    }
+
+    /**
+     * Valida una URL de servicio o proveedor externo contra ataques SSRF (OWASP A01:2025):
+     * restringe esquema a {@code http}/{@code https}, prohíbe credenciales embebidas,
+     * bloquea metadatos cloud y exige {@code https} en perfil {@code prod}.
+     */
+    public static String validateExternalServiceUrl(
+            String rawUrl, Environment environment, String parameterName) {
+        if (rawUrl == null || rawUrl.isBlank()) {
+            throw new IllegalArgumentException("La URL " + parameterName + " es obligatoria");
+        }
+        URI uri;
+        try {
+            uri = URI.create(rawUrl.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("URL inválida en " + parameterName + " (OWASP A01:2025 / SSRF)", ex);
+        }
+
+        String scheme = uri.getScheme() != null ? uri.getScheme().toLowerCase(Locale.ROOT) : "";
+        String host = uri.getHost() != null ? uri.getHost().toLowerCase(Locale.ROOT) : "";
+
+        if (!"http".equals(scheme) && !"https".equals(scheme)) {
+            throw new IllegalArgumentException("Esquema no permitido en " + parameterName + " (solo http/https)");
+        }
+        if (uri.getUserInfo() != null) {
+            throw new IllegalArgumentException("No se permite incluir credenciales en " + parameterName);
+        }
+        if (host.isEmpty()
+                || host.startsWith("169.254.")
+                || "metadata.google.internal".equals(host)) {
+            throw new IllegalArgumentException("Host bloqueado por prevención SSRF en " + parameterName);
+        }
+        if (isProdProfile(environment) && !"https".equals(scheme)) {
+            throw new IllegalArgumentException("En perfil prod " + parameterName + " debe utilizar HTTPS");
+        }
+        return rawUrl.trim();
     }
 }

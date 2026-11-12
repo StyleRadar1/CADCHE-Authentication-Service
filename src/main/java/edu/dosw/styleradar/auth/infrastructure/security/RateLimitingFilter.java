@@ -43,7 +43,14 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             "/api/v1/auth/otp/verificar",
             "/api/v1/auth/otp/reenviar",
             "/api/v1/auth/refresh",
-            "/api/v1/auth/registro"
+            "/api/v1/auth/registro",
+            "/api/v1/auth/oauth2/google",
+            "/api/v1/auth/oauth2/google/code"
+    );
+
+    private static final Set<String> PROTECTED_GET_AUTH_PATHS = Set.of(
+            "/api/v1/auth/oauth2/google/url",
+            "/api/v1/auth/oauth2/google/callback"
     );
 
     private final StringRedisTemplate redisTemplate;
@@ -84,8 +91,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             FilterChain filterChain) throws ServletException, IOException {
 
         String path = request.getRequestURI();
-        if (!enabled || !HttpMethod.POST.matches(request.getMethod())
-                || path == null || !PROTECTED_AUTH_PATHS.contains(path)) {
+        if (!enabled || path == null || !isProtectedEndpoint(request.getMethod(), path)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -146,6 +152,13 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             return new WindowCounter(current.count + 1L, current.expiresAtMillis);
         });
         return updated.count;
+    }
+
+    private boolean isProtectedEndpoint(String method, String path) {
+        if (HttpMethod.POST.matches(method)) {
+            return PROTECTED_AUTH_PATHS.contains(path);
+        }
+        return HttpMethod.GET.matches(method) && PROTECTED_GET_AUTH_PATHS.contains(path);
     }
 
     private boolean isDevFallbackActive() {
