@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
@@ -8,6 +10,12 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
@@ -28,6 +36,10 @@ styleradar:
     base-url: ${USUARIOS_SERVICE_URL:http://localhost:8120}
     username: ${USUARIOS_INTERNAL_USERNAME:ms-auth}
     password: ${USUARIOS_INTERNAL_PASSWORD:}
+    dev-fallback-enabled: true
+
+  mail:
+    dev-console-fallback-enabled: true
 
   security:
     jwt:
@@ -36,6 +48,14 @@ styleradar:
     otp:
       ttl-seconds: 300
       max-attempts: 3
+      max-resends: 3
+    oauth2:
+      google:
+        redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8100/api/v1/auth/oauth2/google/callback}
+        allowed-redirect-uris: ${GOOGLE_ALLOWED_REDIRECT_URIS:http://localhost:8100/api/v1/auth/oauth2/google/callback,http://localhost:8080/api/v1/auth/oauth2/google/callback,http://localhost:3000/auth/google/callback}
+    redis-local-fallback-enabled: true
+    registration:
+      stub-enabled: true
 
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:*}

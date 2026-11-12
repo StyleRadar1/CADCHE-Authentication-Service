@@ -20,11 +20,16 @@ public class RegistroAuthRequestDTO {
 
     @NotBlank(message = "El nombre es obligatorio")
     @Size(min = 2, max = 100, message = "El nombre debe tener entre 2 y 100 caracteres")
+    @Pattern(
+            regexp = "^[\\p{L}0-9 .,'\\-]+$",
+            message = "El nombre contiene caracteres no permitidos"
+    )
     @Schema(description = "Nombre completo del usuario comprador", example = "Laura Gómez", requiredMode = Schema.RequiredMode.REQUIRED)
     private String nombre;
 
     @NotBlank(message = "El correo electrónico es obligatorio")
     @Email(message = "El formato del correo electrónico es inválido")
+    @Size(max = 254, message = "El correo electrónico excede la longitud máxima permitida")
     @Schema(description = "Correo electrónico único para autenticación", example = "laura.gomez@styleradar.com", requiredMode = Schema.RequiredMode.REQUIRED)
     private String email;
 
@@ -34,6 +39,10 @@ public class RegistroAuthRequestDTO {
 
     @NotBlank(message = "La contraseña es obligatoria")
     @Size(min = 8, max = 72, message = "La contraseña debe tener entre 8 y 72 caracteres")
+    @Pattern(
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,72}$",
+            message = "La contraseña debe incluir al menos una mayúscula, una minúscula, un número y un carácter especial"
+    )
     @Schema(description = "Contraseña que cumple la política de seguridad de la plataforma", example = "StyleRadar2026*", requiredMode = Schema.RequiredMode.REQUIRED)
     private String password;
 
@@ -42,4 +51,3 @@ public class RegistroAuthRequestDTO {
     @Schema(description = "Consentimiento expreso de tratamiento de datos personales conforme a la Ley 1581 (SR-RNF-02)", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
     private boolean aceptaHabeasData = true;
 }
-

@@ -13,3 +13,12 @@ springdoc:
     enabled: true
     path: /swagger-ui.html
 
+styleradar:
+  usuarios:
+    dev-fallback-enabled: false
+  mail:
+    dev-console-fallback-enabled: false
+  security:
+    redis-local-fallback-enabled: false
+    registration:
+      stub-enabled: true

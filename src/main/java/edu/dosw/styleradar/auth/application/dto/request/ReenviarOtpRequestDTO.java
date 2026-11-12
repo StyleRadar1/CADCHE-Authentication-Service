@@ -3,6 +3,7 @@ package edu.dosw.styleradar.auth.application.dto.request;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,7 +18,7 @@ public class ReenviarOtpRequestDTO {
 
     @NotBlank(message = "El correo electrónico es obligatorio")
     @Email(message = "El formato del correo electrónico es inválido")
+    @Size(max = 254, message = "El correo electrónico excede la longitud máxima permitida")
     @Schema(description = "Correo electrónico registrado que requiere un nuevo código OTP", example = "comprador@styleradar.com", requiredMode = Schema.RequiredMode.REQUIRED)
     private String email;
 }
-
