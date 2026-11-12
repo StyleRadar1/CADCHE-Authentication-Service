@@ -1,11 +1,8 @@
 package edu.dosw.styleradar.auth.infrastructure.config;
 
 import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
-import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.config.RetryInterceptorBuilder;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -25,17 +22,6 @@ public class RabbitMQConfig {
     public static final String QUEUE = "styleradar.auth.estado-cambiado.q";
     public static final String DLQ = "styleradar.auth.dlq";
     public static final String ROUTING_KEY = "styleradar.usuarios.estado.cambiado";
-    public static final String LEGACY_ROUTING_KEY = "usuario.estado.cambiado";
-
-    @Bean
-    TopicExchange styleradarExchange() {
-        return new TopicExchange(EXCHANGE, true, false);
-    }
-
-    @Bean
-    DirectExchange deadLetterExchange() {
-        return new DirectExchange(DLX_EXCHANGE, true, false);
-    }
 
     @Bean
     Queue usuarioEstadoQueue() {
@@ -52,23 +38,22 @@ public class RabbitMQConfig {
 
     @Bean
     Binding usuarioEstadoBinding() {
-        return BindingBuilder.bind(usuarioEstadoQueue())
-                .to(styleradarExchange())
-                .with(ROUTING_KEY);
-    }
-
-    @Bean
-    Binding usuarioEstadoLegacyBinding() {
-        return BindingBuilder.bind(usuarioEstadoQueue())
-                .to(styleradarExchange())
-                .with(LEGACY_ROUTING_KEY);
+        return new Binding(
+                QUEUE,
+                Binding.DestinationType.QUEUE,
+                EXCHANGE,
+                ROUTING_KEY,
+                null);
     }
 
     @Bean
     Binding usuarioEstadoDlqBinding() {
-        return BindingBuilder.bind(usuarioEstadoDeadLetterQueue())
-                .to(deadLetterExchange())
-                .with(DLQ);
+        return new Binding(
+                DLQ,
+                Binding.DestinationType.QUEUE,
+                DLX_EXCHANGE,
+                DLQ,
+                null);
     }
 
     @Bean

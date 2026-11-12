@@ -89,5 +89,31 @@ class UsuarioEstadoCambiadoConsumerTest {
         assertThatThrownBy(() -> EstadoCuenta.fromValue("DESCONOCIDO"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("Debe descartar eventos duplicados cuando eventoId ya fue procesado en Redis")
+    void debeDescartarEventosDuplicadosPorEventoId() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        Instant now = Instant.ofEpochMilli(1700000000000L);
+        UsuarioEstadoCambiadoEvent eventoConId = new UsuarioEstadoCambiadoEvent(
+                "evt-usr-999", 20L, EstadoCuenta.ACTIVA, EstadoCuenta.BLOQUEADA, 1L, "Fraude", now);
+
+        when(valueOperations.setIfAbsent(
+                org.mockito.ArgumentMatchers.eq("evento:procesado:evt-usr-999"),
+                org.mockito.ArgumentMatchers.eq("1"),
+                org.mockito.ArgumentMatchers.any(java.time.Duration.class)))
+                .thenReturn(true)
+                .thenReturn(false);
+
+        consumer.recibir(eventoConId);
+        consumer.recibir(eventoConId);
+
+        verify(valueOperations, org.mockito.Mockito.times(1)).set("usuario:revocado:20", "1700000000000");
+
+        UsuarioEstadoCambiadoEvent eventoIdBlanco = new UsuarioEstadoCambiadoEvent(
+                "   ", 21L, EstadoCuenta.ACTIVA, EstadoCuenta.BLOQUEADA, 1L, "Fraude", now);
+        consumer.recibir(eventoIdBlanco);
+        verify(valueOperations).set("usuario:revocado:21", "1700000000000");
+    }
 }
 
