@@ -1,270 +1,75 @@
 <?xml version='1.0' encoding='utf-8'?>
-<mxfile host="app.diagrams.net">
-  <diagram id="DiagramaComponentesEspecifico_ms_auth" name="Componentes Especifico Hexagonal ms-auth">
-    <mxGraphModel dx="1420" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1330" pageHeight="540" background="#ffffff" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-
-        <!-- Adaptadores de Entrada (Driving / IN) -->
-        <mxCell id="comp_auth_ctrl" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;AuthController&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.5;spacingRight=22;rounded=1;arcSize=6;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
-          <mxGeometry x="30" y="132" width="225" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="comp_auth_ctrl_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=2;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_auth_ctrl">
-          <mxGeometry x="1" width="18" height="18" relative="1" as="geometry">
-            <mxPoint x="-24" y="6" as="offset" />
-          </mxGeometry>
-        </mxCell>
-
-        <mxCell id="comp_jwt_filter" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;JwtAuthenticationFilter&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.5;spacingRight=22;rounded=1;arcSize=6;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
-          <mxGeometry x="30" y="303" width="235" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="comp_jwt_filter_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=2;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_jwt_filter">
-          <mxGeometry x="1" width="18" height="18" relative="1" as="geometry">
-            <mxPoint x="-24" y="6" as="offset" />
-          </mxGeometry>
-        </mxCell>
-
-        <mxCell id="comp_amqp_cons" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;UsuarioEstadoCambiadoConsumer&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.5;spacingRight=22;rounded=1;arcSize=6;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
-          <mxGeometry x="30" y="456" width="275" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="comp_amqp_cons_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=2;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_amqp_cons">
-          <mxGeometry x="1" width="18" height="18" relative="1" as="geometry">
-            <mxPoint x="-24" y="6" as="offset" />
-          </mxGeometry>
-        </mxCell>
-
-        <!-- Núcleo de Aplicación (Application Services) -->
-        <mxCell id="comp_email_svc" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;EmailServiceImpl&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.5;spacingRight=22;rounded=1;arcSize=6;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
-          <mxGeometry x="395" y="132" width="235" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="comp_email_svc_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=2;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_email_svc">
-          <mxGeometry x="1" width="18" height="18" relative="1" as="geometry">
-            <mxPoint x="-24" y="6" as="offset" />
-          </mxGeometry>
-        </mxCell>
-
-        <mxCell id="comp_otp_svc" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;OtpServiceImpl&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.5;spacingRight=22;rounded=1;arcSize=6;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
-          <mxGeometry x="395" y="217" width="235" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="comp_otp_svc_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=2;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_otp_svc">
-          <mxGeometry x="1" width="18" height="18" relative="1" as="geometry">
-            <mxPoint x="-24" y="6" as="offset" />
-          </mxGeometry>
-        </mxCell>
-
-        <mxCell id="comp_jwt_svc" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;JwtServiceImpl&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.5;spacingRight=22;rounded=1;arcSize=6;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
-          <mxGeometry x="395" y="303" width="235" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="comp_jwt_svc_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=2;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_jwt_svc">
-          <mxGeometry x="1" width="18" height="18" relative="1" as="geometry">
-            <mxPoint x="-24" y="6" as="offset" />
-          </mxGeometry>
-        </mxCell>
-
-        <!-- Adaptadores y Clientes de Salida (Driven / OUT) -->
-        <mxCell id="comp_user_client" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;UsuarioClient&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.5;spacingRight=22;rounded=1;arcSize=6;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
-          <mxGeometry x="745" y="30" width="235" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="comp_user_client_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=2;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_user_client">
-          <mxGeometry x="1" width="18" height="18" relative="1" as="geometry">
-            <mxPoint x="-24" y="6" as="offset" />
-          </mxGeometry>
-        </mxCell>
-
-        <mxCell id="comp_mail_sender" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;JavaMailSender&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.5;spacingRight=22;rounded=1;arcSize=6;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
-          <mxGeometry x="745" y="132" width="235" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="comp_mail_sender_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=2;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_mail_sender">
-          <mxGeometry x="1" width="18" height="18" relative="1" as="geometry">
-            <mxPoint x="-24" y="6" as="offset" />
-          </mxGeometry>
-        </mxCell>
-
-        <mxCell id="comp_redis_tpl" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;StringRedisTemplate&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.5;spacingRight=22;rounded=1;arcSize=6;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
-          <mxGeometry x="745" y="303" width="235" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="comp_redis_tpl_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=2;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_redis_tpl">
-          <mxGeometry x="1" width="18" height="18" relative="1" as="geometry">
-            <mxPoint x="-24" y="6" as="offset" />
-          </mxGeometry>
-        </mxCell>
-
-        <!-- Sistemas Externos y Almacenamiento Activo -->
-        <mxCell id="ext_usuarios" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;ms-usuarios&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#F7F3FD;fontSize=11.5;spacingRight=22;rounded=1;arcSize=6;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
-          <mxGeometry x="1090" y="30" width="210" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="ext_usuarios_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=2;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="ext_usuarios">
-          <mxGeometry x="1" width="18" height="18" relative="1" as="geometry">
-            <mxPoint x="-24" y="6" as="offset" />
-          </mxGeometry>
-        </mxCell>
-
-        <mxCell id="ext_smtp" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;SMTP Gmail&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#F7F3FD;fontSize=11.5;spacingRight=22;rounded=1;arcSize=6;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
-          <mxGeometry x="1090" y="132" width="210" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="ext_smtp_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=2;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="ext_smtp">
-          <mxGeometry x="1" width="18" height="18" relative="1" as="geometry">
-            <mxPoint x="-24" y="6" as="offset" />
-          </mxGeometry>
-        </mxCell>
-
-        <mxCell id="db_redis" value="&lt;b&gt;Redis 7&lt;/b&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=14;strokeWidth=2;strokeColor=#48119A;fillColor=#FFFFFF;fontStyle=1;fontColor=#48119A;fontSize=11.5;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
-          <mxGeometry x="1125" y="274" width="140" height="110" as="geometry" />
-        </mxCell>
-
-        <mxCell id="ext_rabbitmq" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;RabbitMQ&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#F7F3FD;fontSize=11.5;spacingRight=22;rounded=1;arcSize=6;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1">
-          <mxGeometry x="1090" y="456" width="210" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="ext_rabbitmq_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=2;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="ext_rabbitmq">
-          <mxGeometry x="1" width="18" height="18" relative="1" as="geometry">
-            <mxPoint x="-24" y="6" as="offset" />
-          </mxGeometry>
-        </mxCell>
-
-        <!-- Conectores Ortogonales -->
-        <!-- AuthController -> UsuarioClient -> ms-usuarios -->
-        <mxCell id="edge_auth_uclient" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="142" y="132" as="sourcePoint" />
-            <mxPoint x="745" y="56" as="targetPoint" />
-            <Array as="points">
-              <mxPoint x="142" y="56" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="edge_uclient_msu" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="980" y="56" as="sourcePoint" />
-            <mxPoint x="1090" y="56" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-
-        <!-- Bus Entrada -> Interfaces Core (EmailService, OtpService, JwtService) -->
-        <mxCell id="edge_auth_out" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=none;endFill=0;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="255" y="158" as="sourcePoint" />
-            <mxPoint x="305" y="158" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="edge_in_bus" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=none;endFill=0;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="305" y="158" as="sourcePoint" />
-            <mxPoint x="305" y="329" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="edge_filter_in" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=none;endFill=0;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="265" y="329" as="sourcePoint" />
-            <mxPoint x="305" y="329" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-
-        <!-- Lollipop 1: EmailService -->
-        <mxCell id="lol_b_email" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=oval;endFill=0;endSize=9;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="395" y="158" as="sourcePoint" />
-            <mxPoint x="350" y="158" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="lol_s_email" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=halfCircle;endFill=0;endSize=12;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="305" y="158" as="sourcePoint" />
-            <mxPoint x="350" y="158" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-
-        <!-- Lollipop 2: OtpService -->
-        <mxCell id="lol_b_otp" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=oval;endFill=0;endSize=9;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="395" y="243" as="sourcePoint" />
-            <mxPoint x="350" y="243" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="lol_s_otp" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=halfCircle;endFill=0;endSize=12;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="305" y="243" as="sourcePoint" />
-            <mxPoint x="350" y="243" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-
-        <!-- Lollipop 3: JwtService -->
-        <mxCell id="lol_b_jwt" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=oval;endFill=0;endSize=9;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="395" y="329" as="sourcePoint" />
-            <mxPoint x="350" y="329" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="lol_s_jwt" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=halfCircle;endFill=0;endSize=12;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="305" y="329" as="sourcePoint" />
-            <mxPoint x="350" y="329" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-
-        <!-- EmailServiceImpl -> JavaMailSender -> SMTP Gmail -->
-        <mxCell id="edge_email_mail" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="630" y="158" as="sourcePoint" />
-            <mxPoint x="745" y="158" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="edge_mail_smtp" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="980" y="158" as="sourcePoint" />
-            <mxPoint x="1090" y="158" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-
-        <!-- Bus Colector -> StringRedisTemplate -> Redis 7 -->
-        <mxCell id="edge_otp_redis" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=none;endFill=0;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="630" y="243" as="sourcePoint" />
-            <mxPoint x="685" y="243" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="edge_filter_redis" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=none;endFill=0;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="147" y="355" as="sourcePoint" />
-            <mxPoint x="685" y="396" as="targetPoint" />
-            <Array as="points">
-              <mxPoint x="147" y="396" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="edge_cons_redis" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=none;endFill=0;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="305" y="470" as="sourcePoint" />
-            <mxPoint x="685" y="470" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="edge_redis_bus" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=none;endFill=0;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="685" y="243" as="sourcePoint" />
-            <mxPoint x="685" y="470" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="edge_bus_tpl" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="685" y="329" as="sourcePoint" />
-            <mxPoint x="745" y="329" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="edge_tpl_redis" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="980" y="329" as="sourcePoint" />
-            <mxPoint x="1125" y="329" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-
-        <!-- Asíncrono RabbitMQ -> UsuarioEstadoCambiadoConsumer -->
-        <mxCell id="edge_mq_cons" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;dashed=1;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="1090" y="494" as="sourcePoint" />
-            <mxPoint x="305" y="494" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-</mxfile>
+<mxfile host="app.diagrams.net"><diagram id="DiagramaComponentesEspecifico_ms_auth" name="Componentes Especifico Hexagonal ms-auth"><mxGraphModel dx="1420" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1660" pageHeight="680" background="#ffffff" math="0" shadow="0"><root><mxCell id="0" /><mxCell id="1" parent="0" />
+<mxCell id="banner_11" value="&lt;b&gt;DIAGRAMA DE COMPONENTES ESPECÍFICO · ms-auth (:8100 · Arquitectura Hexagonal)&lt;/b&gt;" style="text;html=1;strokeColor=#48119A;fillColor=#E4DBF0;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13.5;fontStyle=1;strokeWidth=2;fontColor=#48119A;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="28" y="18" width="1604" height="36" as="geometry" /></mxCell>
+<mxCell id="frame_12" value="Infrastructure IN (Security · REST · AMQP)" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;strokeColor=#B7A6DA;strokeWidth=1.8;fillColor=#FBF9FF;fontStyle=1;fontColor=#48119A;width=280;height=26;dashed=1;connectable=0;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="28" y="70" width="332" height="585" as="geometry" /></mxCell>
+<mxCell id="frame_13" value="Application &amp; Domain Core" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;strokeColor=#B7A6DA;strokeWidth=1.8;fillColor=#FBF9FF;fontStyle=1;fontColor=#48119A;width=215;height=26;dashed=1;connectable=0;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="396" y="70" width="455" height="585" as="geometry" /></mxCell>
+<mxCell id="frame_14" value="Infrastructure OUT (Adapters)" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;strokeColor=#B7A6DA;strokeWidth=1.8;fillColor=#FBF9FF;fontStyle=1;fontColor=#48119A;width=230;height=26;dashed=1;connectable=0;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="886" y="70" width="375" height="585" as="geometry" /></mxCell>
+<mxCell id="frame_15" value="Infraestructura Externa" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;strokeColor=#B7A6DA;strokeWidth=1.8;fillColor=#FBF9FF;fontStyle=1;fontColor=#48119A;width=205;height=26;dashed=1;connectable=0;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="1296" y="70" width="336" height="585" as="geometry" /></mxCell>
+<mxCell id="comp_16" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;AuthController&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="50" y="114" width="248" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_16_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_16"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_17" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;JwtAuthenticationFilter&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="50" y="212" width="248" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_17_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_17"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_18" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;UsuarioEstadoCambiadoConsumer&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=10.4;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="50" y="308" width="282" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_18_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_18"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_19" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;RateLimitingFilter&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="50" y="404" width="248" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_19_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_19"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_20" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;GoogleOAuth2Controller&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="50" y="534" width="248" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_20_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_20"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_21" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;EmailServiceImpl&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="520" y="114" width="260" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_21_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_21"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_22" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;JwtServiceImpl&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="520" y="212" width="260" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_22_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_22"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_23" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;OtpServiceImpl&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="520" y="308" width="260" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_23_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_23"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_24" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;SecuritySanitizer&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="536" y="444" width="228" height="44" as="geometry" /></mxCell>
+<mxCell id="comp_24_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_24"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_25" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;GoogleOAuth2ServiceImpl&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="520" y="534" width="260" height="52" as="geometry" /></mxCell>
+<mxCell id="comp_25_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_25"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_26" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;JavaMailSender&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#F7F3FD;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="940" y="114" width="265" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_26_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_26"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_27" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;UsuarioClient&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#F7F3FD;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="940" y="212" width="265" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_27_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_27"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_28" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;StringRedisTemplate&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#F7F3FD;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="940" y="308" width="265" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_28_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_28"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_29" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;RabbitMQConfig&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#F7F3FD;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="940" y="404" width="265" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_29_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_29"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_30" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;GoogleOAuthAdapter&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#FFFFFF;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="940" y="534" width="265" height="52" as="geometry" /></mxCell>
+<mxCell id="comp_30_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_30"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_31" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;SMTP Gmail (:587)&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#F7F3FD;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="1348" y="114" width="240" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_31_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_31"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_32" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;ms-usuarios (:8120)&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#F7F3FD;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="1348" y="212" width="240" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_32_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_32"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="db_33" value="&lt;b&gt;Redis 7&lt;/b&gt;&lt;br&gt;&lt;font style=&#x27;font-size:10px&#x27;&gt;:6379&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=14;strokeWidth=2;strokeColor=#48119A;fillColor=#FFFFFF;fontStyle=1;fontColor=#48119A;fontSize=11.5;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="1392" y="278" width="152" height="108" as="geometry" /></mxCell>
+<mxCell id="comp_34" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;RabbitMQ (AMQP)&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#F7F3FD;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="1348" y="404" width="240" height="50" as="geometry" /></mxCell>
+<mxCell id="comp_34_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_34"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="comp_35" value="&lt;font data-font-src=&quot;https://fonts.googleapis.com/css?family=poppins&quot;&gt;&lt;b&gt;Google OIDC (JWKS)&lt;/b&gt;&lt;/font&gt;" style="html=1;dropTarget=0;whiteSpace=wrap;strokeWidth=2;strokeColor=#48119A;fontColor=#48119A;fillColor=#F7F3FD;fontSize=11.2;spacingRight=24;rounded=1;arcSize=8;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" vertex="1" parent="1"><mxGeometry x="1348" y="534" width="240" height="52" as="geometry" /></mxCell>
+<mxCell id="comp_35_ico" value="" style="shape=module;jettyWidth=8;jettyHeight=4;strokeWidth=1.8;strokeColor=#48119A;fillColor=#E4DBF0;" vertex="1" parent="comp_35"><mxGeometry x="1" width="18" height="18" relative="1" as="geometry"><mxPoint x="-24" y="6" as="offset" /></mxGeometry></mxCell>
+<mxCell id="lol_b_36" value="EmailService" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=oval;endFill=0;endSize=9;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="520" y="126" as="sourcePoint"/><mxPoint x="409.0" y="126.0" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="lol_s_37" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=halfCircle;endFill=0;endSize=12;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="298" y="126" as="sourcePoint"/><mxPoint x="409.0" y="126.0" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="edge_38" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=none;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="298" y="140" as="sourcePoint" /><mxPoint x="366" y="333" as="targetPoint" /><Array as="points"><mxPoint x="366" y="140" /></Array></mxGeometry></mxCell>
+<mxCell id="edge_39" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=none;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="298" y="237" as="sourcePoint" /><mxPoint x="366" y="237" as="targetPoint" /></mxGeometry></mxCell>
+<mxCell id="lol_b_40" value="JwtService" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=oval;endFill=0;endSize=9;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="520" y="237" as="sourcePoint"/><mxPoint x="443.0" y="237.0" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="lol_s_41" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=halfCircle;endFill=0;endSize=12;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="366" y="237" as="sourcePoint"/><mxPoint x="443.0" y="237.0" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="edge_42" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=none;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="332" y="333" as="sourcePoint" /><mxPoint x="366" y="333" as="targetPoint" /></mxGeometry></mxCell>
+<mxCell id="lol_b_43" value="OtpService" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=oval;endFill=0;endSize=9;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="520" y="333" as="sourcePoint"/><mxPoint x="443.0" y="333.0" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="lol_s_44" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=halfCircle;endFill=0;endSize=12;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="366" y="333" as="sourcePoint"/><mxPoint x="443.0" y="333.0" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="lol_b_45" value="GoogleOAuth2Service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=oval;endFill=0;endSize=9;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="520" y="560" as="sourcePoint"/><mxPoint x="409.0" y="560.0" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="lol_s_46" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=halfCircle;endFill=0;endSize=12;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="298" y="560" as="sourcePoint"/><mxPoint x="409.0" y="560.0" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="edge_47" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="298" y="154" as="sourcePoint" /><mxPoint x="940" y="228" as="targetPoint" /><Array as="points"><mxPoint x="382" y="154" /><mxPoint x="382" y="184" /><mxPoint x="835" y="184" /><mxPoint x="835" y="228" /></Array></mxGeometry></mxCell>
+<mxCell id="edge_48" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="298" y="429" as="sourcePoint" /><mxPoint x="940" y="344" as="targetPoint" /><Array as="points"><mxPoint x="478" y="429" /><mxPoint x="478" y="388" /><mxPoint x="862" y="388" /><mxPoint x="862" y="344" /></Array></mxGeometry></mxCell>
+<mxCell id="edge_49" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1348" y="429" as="sourcePoint" /><mxPoint x="1205" y="429" as="targetPoint" /></mxGeometry></mxCell>
+<mxCell id="edge_50" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="940" y="418" as="sourcePoint" /><mxPoint x="314" y="358" as="targetPoint" /><Array as="points"><mxPoint x="875" y="418" /><mxPoint x="875" y="372" /><mxPoint x="314" y="372" /></Array></mxGeometry></mxCell>
+<mxCell id="edge_51" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="650" y="534" as="sourcePoint" /><mxPoint x="650" y="488" as="targetPoint" /></mxGeometry></mxCell>
+<mxCell id="edge_52" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="174" y="454" as="sourcePoint" /><mxPoint x="585" y="488" as="targetPoint" /><Array as="points"><mxPoint x="174" y="498" /><mxPoint x="585" y="498" /></Array></mxGeometry></mxCell>
+<mxCell id="edge_53" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="520" y="544" as="sourcePoint" /><mxPoint x="520" y="250" as="targetPoint" /><Array as="points"><mxPoint x="492" y="544" /><mxPoint x="492" y="250" /></Array></mxGeometry></mxCell>
+<mxCell id="edge_54" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="780" y="139" as="sourcePoint" /><mxPoint x="940" y="139" as="targetPoint" /></mxGeometry></mxCell>
+<mxCell id="edge_55" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="780" y="333" as="sourcePoint" /><mxPoint x="940" y="333" as="targetPoint" /></mxGeometry></mxCell>
+<mxCell id="edge_56" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="780" y="542" as="sourcePoint" /><mxPoint x="940" y="246" as="targetPoint" /><Array as="points"><mxPoint x="835" y="542" /><mxPoint x="835" y="246" /></Array></mxGeometry></mxCell>
+<mxCell id="edge_57" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="780" y="551" as="sourcePoint" /><mxPoint x="940" y="322" as="targetPoint" /><Array as="points"><mxPoint x="862" y="551" /><mxPoint x="862" y="322" /></Array></mxGeometry></mxCell>
+<mxCell id="lol_b_58" value="GoogleOAuthPort" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=oval;endFill=0;endSize=9;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="940" y="570" as="sourcePoint"/><mxPoint x="860.0" y="570.0" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="lol_s_59" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=halfCircle;endFill=0;endSize=12;strokeWidth=2;strokeColor=#48119A;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="780" y="570" as="sourcePoint"/><mxPoint x="860.0" y="570.0" as="targetPoint"/></mxGeometry></mxCell>
+<mxCell id="edge_60" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1205" y="139" as="sourcePoint" /><mxPoint x="1348" y="139" as="targetPoint" /></mxGeometry></mxCell>
+<mxCell id="edge_61" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1205" y="237" as="sourcePoint" /><mxPoint x="1348" y="237" as="targetPoint" /></mxGeometry></mxCell>
+<mxCell id="edge_62" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1205" y="333" as="sourcePoint" /><mxPoint x="1392" y="333" as="targetPoint" /></mxGeometry></mxCell>
+<mxCell id="edge_63" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#48119A;strokeWidth=2;endArrow=open;endFill=0;endSize=10;startArrow=none;startFill=0;startSize=10;fontColor=#48119A;fontSize=10;fontFamily=poppins;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3Dpoppins;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1205" y="560" as="sourcePoint" /><mxPoint x="1348" y="560" as="targetPoint" /></mxGeometry></mxCell>
+</root></mxGraphModel></diagram></mxfile>
