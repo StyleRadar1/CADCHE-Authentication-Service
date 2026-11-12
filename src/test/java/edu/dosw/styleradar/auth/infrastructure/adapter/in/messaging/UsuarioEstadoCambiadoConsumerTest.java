@@ -79,9 +79,15 @@ class UsuarioEstadoCambiadoConsumerTest {
     @DisplayName("Debe aceptar variantes masculinas ACTIVO/INACTIVO/BLOQUEADO del contrato de eventos RabbitMQ")
     void debeAceptarVariantesEstadoCuentaDelContratoRabbitMQ() {
         org.assertj.core.api.Assertions.assertThat(EstadoCuenta.fromValue("ACTIVO")).isEqualTo(EstadoCuenta.ACTIVA);
+        org.assertj.core.api.Assertions.assertThat(EstadoCuenta.fromValue("ACTIVA")).isEqualTo(EstadoCuenta.ACTIVA);
         org.assertj.core.api.Assertions.assertThat(EstadoCuenta.fromValue("INACTIVO")).isEqualTo(EstadoCuenta.INACTIVA);
+        org.assertj.core.api.Assertions.assertThat(EstadoCuenta.fromValue("INACTIVA")).isEqualTo(EstadoCuenta.INACTIVA);
         org.assertj.core.api.Assertions.assertThat(EstadoCuenta.fromValue("BLOQUEADO")).isEqualTo(EstadoCuenta.BLOQUEADA);
+        org.assertj.core.api.Assertions.assertThat(EstadoCuenta.fromValue("BLOQUEADA")).isEqualTo(EstadoCuenta.BLOQUEADA);
+        org.assertj.core.api.Assertions.assertThat(EstadoCuenta.fromValue(null)).isNull();
         org.assertj.core.api.Assertions.assertThat(EstadoCuenta.fromValue("   ")).isNull();
+        assertThatThrownBy(() -> EstadoCuenta.fromValue("DESCONOCIDO"))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }
 

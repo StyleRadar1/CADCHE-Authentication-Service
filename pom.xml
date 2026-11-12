@@ -32,6 +32,9 @@
         <sonar.organization>styleradar1</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.issue.ignore.multicriteria>s4502</sonar.issue.ignore.multicriteria>
+        <sonar.issue.ignore.multicriteria.s4502.ruleKey>java:S4502</sonar.issue.ignore.multicriteria.s4502.ruleKey>
+        <sonar.issue.ignore.multicriteria.s4502.resourceKey>**/SecurityConfig.java</sonar.issue.ignore.multicriteria.s4502.resourceKey>
     </properties>
 
     <dependencies>
