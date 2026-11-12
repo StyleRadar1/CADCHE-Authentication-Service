@@ -1,5 +1,6 @@
 package edu.dosw.styleradar.auth.infrastructure.adapter.in.messaging;
 
+import java.time.Duration;
 import java.time.Instant;
 
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -18,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class UsuarioEstadoCambiadoConsumer {
 
+    private static final Duration EVENTO_IDEMPOTENCIA_TTL = Duration.ofHours(24);
     private final StringRedisTemplate redisTemplate;
 
     public UsuarioEstadoCambiadoConsumer(StringRedisTemplate redisTemplate) {
@@ -43,6 +45,15 @@ public class UsuarioEstadoCambiadoConsumer {
         try {
             ValueOperations<String, String> ops = redisTemplate.opsForValue();
             if (ops != null) {
+                if (evento.eventoId() != null && !evento.eventoId().isBlank()) {
+                    String claveEvento = "evento:procesado:" + SecuritySanitizer.sanitizeForLog(evento.eventoId());
+                    Boolean primeraVez = ops.setIfAbsent(claveEvento, "1", EVENTO_IDEMPOTENCIA_TTL);
+                    if (Boolean.FALSE.equals(primeraVez)) {
+                        log.info("Evento duplicado {} descartado por idempotencia para usuario ID {}",
+                                claveEvento, evento.usuarioId());
+                        return;
+                    }
+                }
                 ops.set(clave, String.valueOf(fechaCambio.toEpochMilli()));
             }
             log.warn("Sesiones globales revocadas para usuario ID {} por cambio a estado {}",
