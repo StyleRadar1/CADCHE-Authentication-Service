@@ -74,5 +74,14 @@ class UsuarioEstadoCambiadoConsumerTest {
         assertThatThrownBy(() -> consumer.recibir(event))
                 .isInstanceOf(DataAccessResourceFailureException.class);
     }
+
+    @Test
+    @DisplayName("Debe aceptar variantes masculinas ACTIVO/INACTIVO/BLOQUEADO del contrato de eventos RabbitMQ")
+    void debeAceptarVariantesEstadoCuentaDelContratoRabbitMQ() {
+        org.assertj.core.api.Assertions.assertThat(EstadoCuenta.fromValue("ACTIVO")).isEqualTo(EstadoCuenta.ACTIVA);
+        org.assertj.core.api.Assertions.assertThat(EstadoCuenta.fromValue("INACTIVO")).isEqualTo(EstadoCuenta.INACTIVA);
+        org.assertj.core.api.Assertions.assertThat(EstadoCuenta.fromValue("BLOQUEADO")).isEqualTo(EstadoCuenta.BLOQUEADA);
+        org.assertj.core.api.Assertions.assertThat(EstadoCuenta.fromValue("   ")).isNull();
+    }
 }
 

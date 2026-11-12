@@ -39,12 +39,14 @@ spring:
         enabled: ${REDIS_SSL_ENABLED:true}
 
   rabbitmq:
-    host: ${RABBITMQ_HOST}
+    host: ${RABBITMQ_HOST:styleradar-rabbitmq-qa.northcentralus.cloudapp.azure.com}
     port: ${RABBITMQ_PORT:5671}
-    username: ${RABBITMQ_USERNAME}
-    password: ${RABBITMQ_PASSWORD}
+    username: ${RABBITMQ_USER:${RABBITMQ_USERNAME:}}
+    password: ${RABBITMQ_PASSWORD:}
+    virtual-host: ${RABBITMQ_VHOST:/}
     ssl:
       enabled: ${RABBITMQ_SSL_ENABLED:true}
+      verify-hostname: ${RABBITMQ_SSL_VERIFY_HOSTNAME:true}
 
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}

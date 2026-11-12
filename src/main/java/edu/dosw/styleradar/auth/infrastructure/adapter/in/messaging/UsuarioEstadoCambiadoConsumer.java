@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import edu.dosw.styleradar.auth.domain.event.UsuarioEstadoCambiadoEvent;
 import edu.dosw.styleradar.auth.domain.model.EstadoCuenta;
+import edu.dosw.styleradar.auth.infrastructure.config.RabbitMQConfig;
 import edu.dosw.styleradar.auth.infrastructure.security.SecuritySanitizer;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,7 +24,7 @@ public class UsuarioEstadoCambiadoConsumer {
         this.redisTemplate = redisTemplate;
     }
 
-    @RabbitListener(queues = "auth.usuario.estado.cambiado")
+    @RabbitListener(queues = RabbitMQConfig.QUEUE)
     public void recibir(UsuarioEstadoCambiadoEvent evento) {
         if (evento == null || evento.usuarioId() == null || evento.estadoNuevo() == null) {
             log.warn("Evento UsuarioEstadoCambiadoEvent incompleto o nulo ignorado");
