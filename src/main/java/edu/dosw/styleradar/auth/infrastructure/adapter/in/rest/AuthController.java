@@ -115,6 +115,26 @@ public class AuthController implements AuthApi {
         }
 
         Rol rol = parsearRolSeguro(usuario.rol());
+
+        if (Boolean.TRUE.equals(usuario.correoVerificado())) {
+            String token = jwtService.generarToken(usuario.id(), Set.of(rol));
+            log.info("Inicio de sesión directo sin OTP (correo verificado) para usuario ID {}", usuario.id());
+            return ResponseEntity.ok(new LoginResponseDTO(
+                    token,
+                    "Bearer",
+                    86400L,
+                    usuario.id(),
+                    Set.of(rol),
+                    Boolean.FALSE,
+                    null,
+                    null,
+                    email,
+                    Boolean.TRUE,
+                    Boolean.FALSE,
+                    "Inicio de sesión exitoso"
+            ));
+        }
+
         String codigo = otpService.generarOtp(email, usuario.id(), rol.name());
         enviarOtpConRollback(email, maskedEmail, codigo);
 
@@ -124,9 +144,13 @@ public class AuthController implements AuthApi {
                 86400L,
                 usuario.id(),
                 Set.of(rol),
-                true,
+                Boolean.TRUE,
                 300,
-                3
+                3,
+                email,
+                Boolean.FALSE,
+                Boolean.TRUE,
+                "Código de verificación OTP enviado a su correo electrónico"
         ));
     }
 
@@ -155,6 +179,7 @@ public class AuthController implements AuthApi {
 
         String token = jwtService.generarToken(usuarioId, roles);
         otpService.eliminarOtp(email);
+        usuarioClient.marcarCorreoVerificado(usuarioId);
 
         log.info("Acceso concedido y token JWT emitido para usuario ID {}", usuarioId);
 
@@ -166,7 +191,11 @@ public class AuthController implements AuthApi {
                 roles,
                 false,
                 null,
-                0
+                0,
+                email,
+                true,
+                false,
+                "Correo verificado exitosamente"
         ));
     }
 

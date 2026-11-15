@@ -20,6 +20,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import edu.dosw.styleradar.auth.application.dto.response.ErrorResponseDTO;
 import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException;
 import edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException;
+import edu.dosw.styleradar.auth.domain.exception.OtpBloqueadoTemporalmenteException;
 import edu.dosw.styleradar.auth.domain.exception.OtpExpiradoException;
 import edu.dosw.styleradar.auth.domain.exception.OtpIntentosAgotadosException;
 import edu.dosw.styleradar.auth.domain.exception.OtpInvalidoException;
@@ -116,6 +117,28 @@ public class GlobalExceptionHandler {
 
         return buildResponse(HttpStatus.TOO_MANY_REQUESTS,
                 exception.getMessage(), request.getRequestURI(), Map.of());
+    }
+
+    @ExceptionHandler(OtpBloqueadoTemporalmenteException.class)
+    public ResponseEntity<ErrorResponseDTO> handleOtpBloqueadoTemporalmente(
+            OtpBloqueadoTemporalmenteException exception, HttpServletRequest request) {
+
+        log.warn("Bloqueo temporal de OTP activo (429) en ruta {}: {}",
+                SecuritySanitizer.sanitizeForLog(request.getRequestURI()),
+                SecuritySanitizer.sanitizeForLog(exception.getMessage()));
+
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.TOO_MANY_REQUESTS.value())
+                .error(HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase())
+                .message(exception.getMessage())
+                .path(SecuritySanitizer.sanitizeForLog(request.getRequestURI()))
+                .validationErrors(Map.of())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(org.springframework.http.HttpHeaders.RETRY_AFTER, String.valueOf(exception.getSegundosRestantes()))
+                .body(errorResponse);
     }
 
     @ExceptionHandler(ServicioExternoNoDisponibleException.class)
