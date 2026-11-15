@@ -35,15 +35,13 @@ RUN keytool -importcert -trustcacerts -cacerts -storepass changeit -noprompt -al
 COPY --from=builder --chown=appuser:appgroup /build/target/*.jar app.jar
 
 ENV SPRING_PROFILES_ACTIVE=qa \
-    SERVER_PORT=8100 \
-    PORT=8100 \
     WEBSITES_PORT=8100 \
     TZ=America/Bogota
 
 EXPOSE 8100
 
 HEALTHCHECK --interval=20s --timeout=5s --start-period=30s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8100/actuator/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-8100}/actuator/health || exit 1
 
 USER appuser:appgroup
 

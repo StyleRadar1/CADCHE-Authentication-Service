@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT:${PORT:8100}}
+  port: ${PORT:${SERVER_PORT:8100}}
   forward-headers-strategy: framework
   shutdown: graceful
   error:
@@ -99,7 +99,7 @@ management:
 
 styleradar:
   usuarios:
-    base-url: ${USUARIOS_SERVICE_URL:https://ms-usuarios-internal}
+    base-url: ${USUARIOS_QA_SERVICE_URL:https://styleradar-usuarios-qa.azurewebsites.net}
     oauth2-path: ${USUARIOS_OAUTH2_PATH:/internal/api/v1/usuarios/oauth2}
     username: ${USUARIOS_INTERNAL_USERNAME:ms-auth}
     password: ${USUARIOS_INTERNAL_PASSWORD:}
@@ -110,7 +110,7 @@ styleradar:
 
   security:
     jwt:
-      secret-base64: ${JWT_SECRET_BASE64:VGhpc0lzQVN1ZmZpY2llbnRseUxvbmdTZWNyZXRLZXlGb3JUZXN0czEyMzQ1Ng==}
+      secret-base64: ${JWT_SECRET_QA_BASE64:VGhpc0lzQVN1ZmZpY2llbnRseUxvbmdTZWNyZXRLZXlGb3JUZXN0czEyMzQ1Ng==}
       duration: ${JWT_DURATION:PT24H}
     otp:
       ttl-seconds: 300
@@ -135,4 +135,4 @@ styleradar:
       window-seconds: ${RATE_LIMIT_WINDOW_SECONDS:60}
 
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:https://styleradar.com,https://*.styleradar.com,https://*.azurewebsites.net}
+    allowed-origins: ${CORS_QA_ALLOWED_ORIGINS:https://styleradar.com,https://*.styleradar.com,https://*.azurewebsites.net,http://localhost:3000,http://127.0.0.1:*}

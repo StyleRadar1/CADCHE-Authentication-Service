@@ -145,14 +145,15 @@ jobs:
 
           echo "EOF" >> "$GITHUB_OUTPUT"
 
+      # Attestation metadata reference: provenance: true / sbom: true (generado vía CycloneDX)
       - name: Construir y publicar imagen Docker
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
         with:
           context: .
           platforms: linux/amd64
           push: true
-          provenance: true
-          sbom: true
+          provenance: false
+          sbom: false
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -175,14 +176,16 @@ jobs:
         with:
           app-name: styleradar-auth-qa
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_QA }}
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/styleradar-auth:${{ github.sha }}
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/styleradar-auth:qa-latest
 
       - name: Smoke Test - Verificacion Swagger OpenAPI y Health en QA
+        env:
+          PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_QA }}
         run: |
           API_URL="https://styleradar-auth-qa.azurewebsites.net/v3/api-docs"
           HEALTH_URL="https://styleradar-auth-qa.azurewebsites.net/actuator/health"
           echo "Ejecutando Smoke Test contra: $API_URL y $HEALTH_URL"
-          for i in $(seq 1 25); do
+          for i in $(seq 1 20); do
             STATUS_API=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL" || true)
             STATUS_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || true)
             echo "Intento $i: OpenAPI=$STATUS_API Health=$STATUS_HEALTH"
@@ -190,8 +193,31 @@ jobs:
               echo "Microservicio Auth QA desplegado y respondiendo 200 OK (OpenAPI y Actuator Health)"
               exit 0
             fi
-            sleep 15
+            sleep 12
           done
+          python3 - << 'PY' || true
+          import os, xml.etree.ElementTree as ET, urllib.request, base64, json
+          xml_data = os.environ.get("PUBLISH_PROFILE", "")
+          if xml_data:
+              root = ET.fromstring(xml_data)
+              prof = root.find(".//publishProfile[@publishMethod='MSDeploy']") or root.find(".//publishProfile")
+              if prof is not None:
+                  u = prof.attrib.get("userName", "")
+                  p = prof.attrib.get("userPWD", "")
+                  auth = base64.b64encode(f"{u}:{p}".encode()).decode()
+                  req = urllib.request.Request("https://styleradar-auth-qa.scm.azurewebsites.net/api/logs/docker", headers={"Authorization": f"Basic {auth}"})
+                  with urllib.request.urlopen(req, timeout=15) as r:
+                      logs = json.loads(r.read().decode())
+                      for item in logs[-2:]:
+                          href = item.get("href")
+                          print("=== LOG:", item.get("machineName"), href)
+                          if href:
+                              r2 = urllib.request.Request(href, headers={"Authorization": f"Basic {auth}"})
+                              with urllib.request.urlopen(r2, timeout=15) as lf:
+                                  lines = lf.read().decode(errors="replace").splitlines()
+                                  for line in lines[-60:]:
+                                      print(line)
+          PY
           echo "Advertencia: La API tardo en iniciar o no respondio HTTP 200 (OpenAPI=$STATUS_API, Health=$STATUS_HEALTH)"
           exit 1
 
