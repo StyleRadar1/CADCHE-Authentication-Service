@@ -4,6 +4,10 @@ public interface OtpService {
 
     String generarOtp(String email, Long usuarioId, String rol);
 
+    default String generarOtp(String email) {
+        return generarOtp(email, null, null);
+    }
+
     void verificarOtp(String email, String codigo);
 
     String reenviarOtp(String email);
@@ -13,6 +17,8 @@ public interface OtpService {
     String obtenerRol(String email);
 
     int obtenerIntentosRestantes(String email);
+
+    long obtenerSegundosRestantesBloqueo(String email);
 
     void eliminarOtp(String email);
 

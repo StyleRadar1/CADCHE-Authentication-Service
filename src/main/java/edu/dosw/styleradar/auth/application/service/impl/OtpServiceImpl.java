@@ -17,6 +17,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import edu.dosw.styleradar.auth.application.service.OtpService;
+import edu.dosw.styleradar.auth.domain.exception.OtpBloqueadoTemporalmenteException;
 import edu.dosw.styleradar.auth.domain.exception.OtpExpiradoException;
 import edu.dosw.styleradar.auth.domain.exception.OtpIntentosAgotadosException;
 import edu.dosw.styleradar.auth.domain.exception.OtpInvalidoException;
@@ -36,6 +37,7 @@ public final class OtpServiceImpl implements OtpService {
     private static final String KEY_ROL = "otp:rol:";
     private static final String KEY_BLACKLIST = "blacklist:";
     private static final String KEY_USUARIO_REVOCADO = "usuario:revocado:";
+    private static final String KEY_BLOQUEO = "otp:bloqueo:";
 
     private final StringRedisTemplate redisTemplate;
     private final SecureRandom random = new SecureRandom();
@@ -83,9 +85,14 @@ public final class OtpServiceImpl implements OtpService {
 
         guardarValor(KEY_OTP + normalizedEmail, hashOtp, ttlSeconds);
         guardarValor(KEY_INTENTOS + normalizedEmail, String.valueOf(maxAttempts), ttlSeconds);
-        guardarValor(KEY_USUARIO + normalizedEmail, String.valueOf(usuarioId), ttlSeconds);
-        guardarValor(KEY_ROL + normalizedEmail, rol, ttlSeconds);
+        if (usuarioId != null) {
+            guardarValor(KEY_USUARIO + normalizedEmail, String.valueOf(usuarioId), ttlSeconds);
+        }
+        if (rol != null) {
+            guardarValor(KEY_ROL + normalizedEmail, rol, ttlSeconds);
+        }
         eliminarClave(KEY_REENVIOS + normalizedEmail);
+        eliminarClave(KEY_BLOQUEO + normalizedEmail);
 
         log.info("Código OTP generado para {}", SecuritySanitizer.maskEmail(normalizedEmail));
         return codigo;
@@ -114,10 +121,15 @@ public final class OtpServiceImpl implements OtpService {
         log.warn("Código OTP incorrecto para {}. Intentos restantes: {}", maskedEmail, restantes);
 
         if (restantes == null || restantes <= 0) {
-            eliminarOtp(normalizedEmail);
-            log.error("Se agotaron los intentos de verificación OTP para {}", maskedEmail);
+            eliminarClave(KEY_OTP + normalizedEmail);
+            eliminarClave(KEY_INTENTOS + normalizedEmail);
+            eliminarClave(KEY_USUARIO + normalizedEmail);
+            eliminarClave(KEY_ROL + normalizedEmail);
+            eliminarClave(KEY_REENVIOS + normalizedEmail);
+            guardarValor(KEY_BLOQUEO + normalizedEmail, String.valueOf(System.currentTimeMillis() + 60000L), 60L);
+            log.error("Se agotaron los intentos de verificación OTP para {}. Bloqueo temporal de 60s activado.", maskedEmail);
             throw new OtpIntentosAgotadosException(
-                    "Se agotaron los intentos disponibles para verificar el OTP. Debe solicitar un nuevo código.");
+                    "Se agotaron los intentos de verificación. Debe esperar 60 segundos para solicitar un nuevo código.");
         }
 
         throw new OtpInvalidoException("El código OTP es incorrecto. Intentos restantes: " + restantes);
@@ -127,6 +139,13 @@ public final class OtpServiceImpl implements OtpService {
     public String reenviarOtp(String email) {
         String normalizedEmail = SecuritySanitizer.normalizeEmail(email);
         String maskedEmail = SecuritySanitizer.maskEmail(normalizedEmail);
+
+        long segundosBloqueo = obtenerSegundosRestantesBloqueo(normalizedEmail);
+        if (segundosBloqueo > 0) {
+            log.warn("Reenvío de OTP bloqueado por enfriamiento temporal de 60s para: {}", maskedEmail);
+            throw new OtpBloqueadoTemporalmenteException(
+                    "Debe esperar " + segundosBloqueo + " segundos para solicitar un nuevo código.", segundosBloqueo);
+        }
 
         String usuarioId = obtenerValor(KEY_USUARIO + normalizedEmail);
         String rol = obtenerValor(KEY_ROL + normalizedEmail);
@@ -178,6 +197,22 @@ public final class OtpServiceImpl implements OtpService {
     }
 
     @Override
+    public long obtenerSegundosRestantesBloqueo(String email) {
+        String normalizedEmail = SecuritySanitizer.normalizeEmail(email);
+        String val = obtenerValor(KEY_BLOQUEO + normalizedEmail);
+        if (val == null) {
+            return 0L;
+        }
+        try {
+            long expiracion = Long.parseLong(val);
+            long diff = (expiracion - System.currentTimeMillis()) / 1000L;
+            return Math.max(diff, 1L);
+        } catch (NumberFormatException ex) {
+            return 0L;
+        }
+    }
+
+    @Override
     public void eliminarOtp(String email) {
         String normalizedEmail = SecuritySanitizer.normalizeEmail(email);
         eliminarClave(KEY_OTP + normalizedEmail);
@@ -185,6 +220,7 @@ public final class OtpServiceImpl implements OtpService {
         eliminarClave(KEY_REENVIOS + normalizedEmail);
         eliminarClave(KEY_USUARIO + normalizedEmail);
         eliminarClave(KEY_ROL + normalizedEmail);
+        eliminarClave(KEY_BLOQUEO + normalizedEmail);
     }
 
     @Override
@@ -294,90 +330,101 @@ public final class OtpServiceImpl implements OtpService {
 
     private void guardarValor(String clave, String valor, long ttl) {
         try {
-            redisTemplate.opsForValue().set(clave, valor, ttl, TimeUnit.SECONDS);
-        } catch (DataAccessException ex) {
-            if (isDevFallbackActive()) {
-                log.debug("Redis no disponible en perfil dev. Usando memoria local: {}",
-                        SecuritySanitizer.sanitizeForLog(ex.getMessage()));
-                localMemoryStore.put(clave, valor);
-                localExpiryStore.put(clave, System.currentTimeMillis() + (ttl * 1000L));
+            if (redisTemplate != null && redisTemplate.opsForValue() != null) {
+                redisTemplate.opsForValue().set(clave, valor, ttl, TimeUnit.SECONDS);
                 return;
             }
-            log.error("Fallo fail-closed guardando clave OTP en Redis: {}",
-                    SecuritySanitizer.sanitizeForLog(ex.getMessage()));
-            throw new ServicioExternoNoDisponibleException("Servicio de sesiones OTP no disponible temporalmente", ex);
+        } catch (DataAccessException ex) {
+            log.debug("Fallo al escribir en Redis: {}", SecuritySanitizer.sanitizeForLog(ex.getMessage()));
         }
+        if (isDevFallbackActive()) {
+            localMemoryStore.put(clave, valor);
+            localExpiryStore.put(clave, System.currentTimeMillis() + (ttl * 1000L));
+            return;
+        }
+        log.error("Fallo fail-closed guardando clave OTP en Redis");
+        throw new ServicioExternoNoDisponibleException("Servicio de sesiones OTP no disponible temporalmente");
     }
 
     private String obtenerValor(String clave) {
         try {
-            return redisTemplate.opsForValue().get(clave);
-        } catch (DataAccessException ex) {
-            if (isDevFallbackActive()) {
-                Long exp = localExpiryStore.get(clave);
-                if (exp != null && System.currentTimeMillis() > exp) {
-                    localMemoryStore.remove(clave);
-                    localExpiryStore.remove(clave);
-                    return null;
-                }
-                return localMemoryStore.get(clave);
+            if (redisTemplate != null && redisTemplate.opsForValue() != null) {
+                return redisTemplate.opsForValue().get(clave);
             }
-            log.error("Fallo fail-closed leyendo Redis: {}", SecuritySanitizer.sanitizeForLog(ex.getMessage()));
-            throw new ServicioExternoNoDisponibleException("Servicio de sesiones OTP no disponible temporalmente", ex);
+        } catch (DataAccessException ex) {
+            log.debug("Fallo al leer de Redis: {}", SecuritySanitizer.sanitizeForLog(ex.getMessage()));
         }
+        if (isDevFallbackActive()) {
+            Long exp = localExpiryStore.get(clave);
+            if (exp != null && System.currentTimeMillis() > exp) {
+                localMemoryStore.remove(clave);
+                localExpiryStore.remove(clave);
+                return null;
+            }
+            return localMemoryStore.get(clave);
+        }
+        log.error("Fallo fail-closed leyendo Redis");
+        throw new ServicioExternoNoDisponibleException("Servicio de sesiones OTP no disponible temporalmente");
     }
 
     private Long decrementarIntentos(String clave) {
         try {
-            return redisTemplate.opsForValue().decrement(clave);
-        } catch (DataAccessException ex) {
-            if (isDevFallbackActive()) {
-                String val = localMemoryStore.get(clave);
-                long actual = val != null ? Long.parseLong(val) : maxAttempts;
-                long decrementado = actual - 1;
-                localMemoryStore.put(clave, String.valueOf(decrementado));
-                return decrementado;
+            if (redisTemplate != null && redisTemplate.opsForValue() != null) {
+                return redisTemplate.opsForValue().decrement(clave);
             }
-            log.error("Fallo fail-closed decrementando intentos OTP en Redis: {}",
-                    SecuritySanitizer.sanitizeForLog(ex.getMessage()));
-            throw new ServicioExternoNoDisponibleException("Servicio de sesiones OTP no disponible temporalmente", ex);
+        } catch (DataAccessException ex) {
+            log.debug("Fallo al decrementar en Redis: {}", SecuritySanitizer.sanitizeForLog(ex.getMessage()));
         }
+        if (isDevFallbackActive()) {
+            String val = localMemoryStore.get(clave);
+            long actual = val != null ? Long.parseLong(val) : maxAttempts;
+            long decrementado = actual - 1;
+            localMemoryStore.put(clave, String.valueOf(decrementado));
+            return decrementado;
+        }
+        log.error("Fallo fail-closed decrementando intentos OTP en Redis");
+        throw new ServicioExternoNoDisponibleException("Servicio de sesiones OTP no disponible temporalmente");
     }
 
     private long incrementarContador(String clave, long ttl) {
         try {
-            Long valor = redisTemplate.opsForValue().increment(clave);
-            long count = valor != null ? valor : 1L;
-            if (count == 1L) {
-                redisTemplate.expire(clave, ttl, TimeUnit.SECONDS);
-            }
-            return count;
-        } catch (DataAccessException ex) {
-            if (isDevFallbackActive()) {
-                String current = localMemoryStore.get(clave);
-                long count = (current != null ? Long.parseLong(current) : 0L) + 1L;
-                localMemoryStore.put(clave, String.valueOf(count));
-                localExpiryStore.put(clave, System.currentTimeMillis() + (ttl * 1000L));
+            if (redisTemplate != null && redisTemplate.opsForValue() != null) {
+                Long valor = redisTemplate.opsForValue().increment(clave);
+                long count = valor != null ? valor : 1L;
+                if (count == 1L) {
+                    redisTemplate.expire(clave, ttl, TimeUnit.SECONDS);
+                }
                 return count;
             }
-            log.error("Fallo fail-closed controlando reenvíos OTP en Redis: {}",
-                    SecuritySanitizer.sanitizeForLog(ex.getMessage()));
-            throw new ServicioExternoNoDisponibleException("Servicio de sesiones OTP no disponible temporalmente", ex);
+        } catch (DataAccessException ex) {
+            log.debug("Fallo al incrementar en Redis: {}", SecuritySanitizer.sanitizeForLog(ex.getMessage()));
         }
+        if (isDevFallbackActive()) {
+            String current = localMemoryStore.get(clave);
+            long count = (current != null ? Long.parseLong(current) : 0L) + 1L;
+            localMemoryStore.put(clave, String.valueOf(count));
+            localExpiryStore.put(clave, System.currentTimeMillis() + (ttl * 1000L));
+            return count;
+        }
+        log.error("Fallo fail-closed controlando reenvíos OTP en Redis");
+        throw new ServicioExternoNoDisponibleException("Servicio de sesiones OTP no disponible temporalmente");
     }
 
     private void eliminarClave(String clave) {
         try {
-            redisTemplate.delete(clave);
-        } catch (DataAccessException ex) {
-            if (isDevFallbackActive()) {
-                localMemoryStore.remove(clave);
-                localExpiryStore.remove(clave);
+            if (redisTemplate != null) {
+                redisTemplate.delete(clave);
                 return;
             }
-            log.error("Fallo fail-closed eliminando clave OTP en Redis: {}",
-                    SecuritySanitizer.sanitizeForLog(ex.getMessage()));
-            throw new ServicioExternoNoDisponibleException("Servicio de sesiones OTP no disponible temporalmente", ex);
+        } catch (DataAccessException ex) {
+            log.debug("Fallo al eliminar de Redis: {}", SecuritySanitizer.sanitizeForLog(ex.getMessage()));
         }
+        if (isDevFallbackActive()) {
+            localMemoryStore.remove(clave);
+            localExpiryStore.remove(clave);
+            return;
+        }
+        log.error("Fallo fail-closed eliminando clave OTP en Redis");
+        throw new ServicioExternoNoDisponibleException("Servicio de sesiones OTP no disponible temporalmente");
     }
 }

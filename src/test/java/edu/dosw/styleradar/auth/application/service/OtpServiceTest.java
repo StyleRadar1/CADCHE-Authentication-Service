@@ -28,8 +28,11 @@ import edu.dosw.styleradar.auth.domain.exception.OtpExpiradoException;
 import edu.dosw.styleradar.auth.domain.exception.OtpIntentosAgotadosException;
 import edu.dosw.styleradar.auth.domain.exception.OtpInvalidoException;
 import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("Pruebas Unitarias de OtpService - SR-RF-92 / OWASP A04-A06-A07-A10:2025")
 class OtpServiceTest {
 

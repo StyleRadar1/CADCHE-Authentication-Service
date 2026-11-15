@@ -156,6 +156,22 @@ public final class UsuarioClient {
         }
     }
 
+    public void marcarCorreoVerificado(Long usuarioId) {
+        if (usuarioId == null) {
+            return;
+        }
+        try {
+            restClient.patch()
+                    .uri("/internal/api/v1/usuarios/{id}/verificar-correo", usuarioId)
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("Notificación enviada a ms-usuarios: correo verificado para usuario ID {}", usuarioId);
+        } catch (Exception ex) {
+            log.warn("ms-usuarios no disponible para actualizar verificación de correo (modo tolerante) para usuario ID {}: {}",
+                    usuarioId, SecuritySanitizer.sanitizeForLog(ex.getMessage()));
+        }
+    }
+
     private boolean isDevFallbackActive() {
         if (!devFallbackEnabled) {
             return false;
