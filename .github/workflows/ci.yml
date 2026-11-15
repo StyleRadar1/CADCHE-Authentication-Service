@@ -39,6 +39,14 @@ jobs:
       - name: Compilar y ejecutar pruebas
         run: mvn -B clean verify --no-transfer-progress
 
+      - name: Guardar JAR validado para la imagen Docker
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ms-auth-jar
+          path: target/ms-auth-*.jar
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Analisis estatico con SpotBugs
         run: >
           mvn -B --no-transfer-progress
@@ -117,6 +125,12 @@ jobs:
     steps:
       - name: Descargar codigo
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Descargar JAR validado
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: ms-auth-jar
+          path: target
 
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f

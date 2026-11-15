@@ -578,6 +578,9 @@ mvn -B clean verify com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check --no
 ### Ejecución Contenerizada Completa con Docker Compose
 
 ```bash
+# Empaquetar el JAR que usará la imagen Docker
+mvn -B -DskipTests package --no-transfer-progress
+
 # Levantar el stack completo del servicio (ms-auth :8100, auth-redis :6379, auth-db :5434)
 docker compose up -d --build
 docker compose ps
@@ -589,7 +592,8 @@ docker compose ps
 <br>
 
 ```bash
-# Construir imagen OCI multi-stage (maven:3.9.9-eclipse-temurin-21-alpine -> eclipse-temurin:21-jre-alpine, usuario appuser)
+# Construir imagen OCI desde el JAR empaquetado por Maven (runtime eclipse-temurin:21-jre-alpine, usuario appuser)
+mvn -B -DskipTests package --no-transfer-progress
 docker build -t styleradar/ms-auth:local .
 
 # Ejecutar pasando variables externas (no incluir .env en la imagen)

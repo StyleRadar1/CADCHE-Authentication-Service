@@ -4,17 +4,7 @@
 # Estándares: OCI, CIS Benchmark, Non-Root User, JVM Container-Aware
 # ==============================================================================
 
-# Etapa 1: Construcción segura de la aplicación
-FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
-
-WORKDIR /build
-
-COPY pom.xml .
-COPY src ./src
-
-RUN mvn clean package -DskipTests -q
-
-# Etapa 2: Imagen Final Ultraligera y Endurecida (Runtime Environment)
+# Runtime de la aplicación. El JAR se compila y valida en CI antes de construir la imagen.
 FROM eclipse-temurin:21-jre-alpine
 
 LABEL org.opencontainers.image.title="StyleRadar CADCHE Authentication Service" \
@@ -32,7 +22,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 COPY rabbitmq-ca.pem /tmp/rabbitmq-ca.pem
 RUN keytool -importcert -trustcacerts -cacerts -storepass changeit -noprompt -alias styleradar-rabbitmq-ca -file /tmp/rabbitmq-ca.pem && rm -f /tmp/rabbitmq-ca.pem
 
-COPY --from=builder --chown=appuser:appgroup /build/target/*.jar app.jar
+COPY --chown=appuser:appgroup target/ms-auth-*.jar app.jar
 
 ENV SPRING_PROFILES_ACTIVE=qa \
     WEBSITES_PORT=8100 \

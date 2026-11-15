@@ -1,4 +1,5 @@
-target/
+target/*
+!target/ms-auth-*.jar
 .idea/
 *.iml
 .git/
