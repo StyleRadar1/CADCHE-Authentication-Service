@@ -23,6 +23,9 @@ public class RabbitMQConfig {
     public static final String DLQ = "styleradar.auth.dlq";
     public static final String ROUTING_KEY = "styleradar.usuarios.estado.cambiado";
 
+    @org.springframework.beans.factory.annotation.Value("${spring.rabbitmq.password:}")
+    private String rabbitPassword = "";
+
     @Bean
     Queue usuarioEstadoQueue() {
         return QueueBuilder.durable(QUEUE)
@@ -89,6 +92,7 @@ public class RabbitMQConfig {
         factory.setMessageConverter(converter);
         factory.setDefaultRequeueRejected(false);
         factory.setMissingQueuesFatal(false);
+        factory.setAutoStartup(org.springframework.util.StringUtils.hasText(rabbitPassword));
         factory.setAdviceChain(RetryInterceptorBuilder.stateless()
                 .maxAttempts(3)
                 .backOffOptions(1000L, 2.0, 10000L)

@@ -141,6 +141,8 @@ jobs:
             echo "${DOCKERHUB_USERNAME}/styleradar-auth:prod-latest" >> "$GITHUB_OUTPUT"
           else
             echo "${DOCKERHUB_USERNAME}/styleradar-auth:qa-latest" >> "$GITHUB_OUTPUT"
+            echo "${DOCKERHUB_USERNAME}/styleradar-auth:test-latest" >> "$GITHUB_OUTPUT"
+            echo "${DOCKERHUB_USERNAME}/styleradar-auth:latest" >> "$GITHUB_OUTPUT"
           fi
 
           echo "EOF" >> "$GITHUB_OUTPUT"
@@ -176,24 +178,26 @@ jobs:
         with:
           app-name: styleradar-auth-qa
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_QA }}
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/styleradar-auth:qa-latest
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/styleradar-auth:${{ github.sha }}
 
       - name: Smoke Test - Verificacion Swagger OpenAPI y Health en QA
         env:
           PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_QA }}
         run: |
           API_URL="https://styleradar-auth-qa.azurewebsites.net/v3/api-docs"
+          SWAGGER_URL="https://styleradar-auth-qa.azurewebsites.net/swagger-ui/index.html"
           HEALTH_URL="https://styleradar-auth-qa.azurewebsites.net/actuator/health"
-          echo "Ejecutando Smoke Test contra: $API_URL y $HEALTH_URL"
-          for i in $(seq 1 8); do
-            STATUS_API=$(curl --max-time 8 -s -o /dev/null -w "%{http_code}" "$API_URL" || true)
-            STATUS_HEALTH=$(curl --max-time 8 -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || true)
-            echo "Intento $i: OpenAPI=$STATUS_API Health=$STATUS_HEALTH"
-            if [ "$STATUS_API" = "200" ] && [ "$STATUS_HEALTH" = "200" ]; then
-              echo "Microservicio Auth QA desplegado y respondiendo 200 OK (OpenAPI y Actuator Health)"
+          echo "Ejecutando Smoke Test contra: $API_URL, $SWAGGER_URL y $HEALTH_URL"
+          for i in $(seq 1 20); do
+            STATUS_API=$(curl --max-time 15 -s -o /dev/null -w "%{http_code}" "$API_URL" || true)
+            STATUS_SWAGGER=$(curl --max-time 15 -s -o /dev/null -w "%{http_code}" "$SWAGGER_URL" || true)
+            STATUS_HEALTH=$(curl --max-time 15 -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || true)
+            echo "Intento $i: OpenAPI=$STATUS_API SwaggerUI=$STATUS_SWAGGER Health=$STATUS_HEALTH"
+            if [ "$STATUS_API" = "200" ] && [ "$STATUS_SWAGGER" = "200" ] && [ "$STATUS_HEALTH" = "200" ]; then
+              echo "Microservicio Auth QA desplegado y respondiendo 200 OK (OpenAPI, Swagger UI y Actuator Health)"
               exit 0
             fi
-            sleep 10
+            sleep 12
           done
           python3 - << 'PY' || true
           import os, xml.etree.ElementTree as ET, urllib.request, base64, json
@@ -206,23 +210,13 @@ jobs:
                   p = prof.attrib.get("userPWD", "")
                   auth = base64.b64encode(f"{u}:{p}".encode()).decode()
                   try:
-                      req_s = urllib.request.Request("https://styleradar-auth-qa.scm.azurewebsites.net/api/settings", headers={"Authorization": f"Basic {auth}"})
-                      with urllib.request.urlopen(req_s, timeout=15) as rs:
-                          st = json.loads(rs.read().decode())
-                          print("=== SETTINGS KEYS ===", sorted(list(st.keys())))
-                          for k in ["WEBSITES_PORT", "PORT", "SERVER_PORT", "SPRING_PROFILES_ACTIVE", "DOCKER_CUSTOM_IMAGE_NAME"]:
-                              if k in st:
-                                  print(f"SETTING {k} = {st[k]}")
-                  except Exception as e:
-                      print("Settings err:", e)
-                  try:
                       req = urllib.request.Request("https://styleradar-auth-qa.scm.azurewebsites.net/api/logs/docker", headers={"Authorization": f"Basic {auth}"})
                       with urllib.request.urlopen(req, timeout=15) as r:
                           logs = json.loads(r.read().decode())
-                          for item in logs[-4:]:
-                              href = item.get("href")
+                          for item in logs:
+                              href = item.get("href", "")
                               print("=== LOG:", item.get("machineName"), href)
-                              if href:
+                              if href and "2026_11_15" in href:
                                   r2 = urllib.request.Request(href, headers={"Authorization": f"Basic {auth}"})
                                   with urllib.request.urlopen(r2, timeout=15) as lf:
                                       lines = lf.read().decode(errors="replace").splitlines()
@@ -231,7 +225,7 @@ jobs:
                   except Exception as e:
                       print("Logs err:", e)
           PY
-          echo "Advertencia: La API tardo en iniciar o no respondio HTTP 200 (OpenAPI=$STATUS_API, Health=$STATUS_HEALTH)"
+          echo "Advertencia: La API tardo en iniciar o no respondio HTTP 200 (OpenAPI=$STATUS_API, SwaggerUI=$STATUS_SWAGGER, Health=$STATUS_HEALTH)"
           exit 1
 
   deploy-prod:
