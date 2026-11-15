@@ -345,4 +345,30 @@ class OtpServiceTest {
 
         assertThat(otpService.esTokenInvalido("token_valido")).isFalse();
     }
+
+    @Test
+    @DisplayName("Debe cubrir reenvío en fallback local dev y validaciones de hash corrupto")
+    void debeCubrirReenvioLocalYValidacionesDeHash() {
+        OtpServiceImpl devOtpService = new OtpServiceImpl(redisTemplate, true);
+        ReflectionTestUtils.setField(devOtpService, "ttlSeconds", 300L);
+        ReflectionTestUtils.setField(devOtpService, "maxAttempts", 3);
+        ReflectionTestUtils.setField(devOtpService, "maxResends", 2);
+
+        when(redisTemplate.opsForValue())
+                .thenThrow(new DataAccessResourceFailureException("Redis no disponible"));
+        doThrow(new DataAccessResourceFailureException("Redis no disponible"))
+                .when(redisTemplate).delete(anyString());
+
+        devOtpService.generarOtp(email, usuarioId, rol);
+        String reenviado1 = devOtpService.reenviarOtp(email);
+        String reenviado2 = devOtpService.reenviarOtp(email);
+        assertThat(reenviado1).hasSize(6);
+        assertThat(reenviado2).hasSize(6);
+
+        assertThatThrownBy(() -> devOtpService.reenviarOtp(email))
+                .isInstanceOf(OtpIntentosAgotadosException.class);
+
+        assertThatThrownBy(() -> otpService.hashearOtp(null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

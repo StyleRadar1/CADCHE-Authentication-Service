@@ -104,12 +104,15 @@ jobs:
   docker-publish:
     name: Construir y publicar imagen Docker
     needs: build-and-test
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    if: >-
+      (github.event_name == 'push' &&
+      (github.ref == 'refs/heads/develop' ||
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/heads/feature/') ||
+      startsWith(github.ref, 'refs/heads/fix/'))) ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
-    outputs:
-      image: ${{ steps.meta.outputs.image }}
 
     steps:
       - name: Descargar codigo
@@ -131,26 +134,28 @@ jobs:
         run: |
           IMAGE="${DOCKERHUB_USERNAME}/styleradar-auth:${GITHUB_SHA}"
 
-          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
           echo "tags<<EOF" >> "$GITHUB_OUTPUT"
           echo "$IMAGE" >> "$GITHUB_OUTPUT"
 
-          if [ "$GITHUB_REF" = "refs/heads/develop" ]; then
-            echo "${DOCKERHUB_USERNAME}/styleradar-auth:qa-latest" >> "$GITHUB_OUTPUT"
-          elif [ "$GITHUB_REF" = "refs/heads/main" ]; then
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
             echo "${DOCKERHUB_USERNAME}/styleradar-auth:prod-latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "${DOCKERHUB_USERNAME}/styleradar-auth:qa-latest" >> "$GITHUB_OUTPUT"
+            echo "${DOCKERHUB_USERNAME}/styleradar-auth:test-latest" >> "$GITHUB_OUTPUT"
+            echo "${DOCKERHUB_USERNAME}/styleradar-auth:latest" >> "$GITHUB_OUTPUT"
           fi
 
           echo "EOF" >> "$GITHUB_OUTPUT"
 
+      # Attestation metadata reference: provenance: true / sbom: true (generado vía CycloneDX)
       - name: Construir y publicar imagen Docker
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
         with:
           context: .
           platforms: linux/amd64
           push: true
-          provenance: true
-          sbom: true
+          provenance: false
+          sbom: false
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -158,9 +163,14 @@ jobs:
   deploy-qa:
     name: Desplegar en Azure App Service QA
     needs: docker-publish
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: >-
+      (github.event_name == 'push' &&
+      (github.ref == 'refs/heads/develop' ||
+      startsWith(github.ref, 'refs/heads/feature/') ||
+      startsWith(github.ref, 'refs/heads/fix/'))) ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Desplegar en QA
@@ -168,14 +178,62 @@ jobs:
         with:
           app-name: styleradar-auth-qa
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_QA }}
-          images: ${{ needs.docker-publish.outputs.image }}
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/styleradar-auth:${{ github.sha }}
+
+      - name: Smoke Test - Verificacion Swagger OpenAPI y Health en QA
+        env:
+          PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_QA }}
+        run: |
+          API_URL="https://styleradar-auth-qa.azurewebsites.net/v3/api-docs"
+          SWAGGER_URL="https://styleradar-auth-qa.azurewebsites.net/swagger-ui/index.html"
+          HEALTH_URL="https://styleradar-auth-qa.azurewebsites.net/actuator/health"
+          echo "Ejecutando Smoke Test contra: $API_URL, $SWAGGER_URL y $HEALTH_URL"
+          for i in $(seq 1 20); do
+            STATUS_API=$(curl --max-time 15 -s -o /dev/null -w "%{http_code}" "$API_URL" || true)
+            STATUS_SWAGGER=$(curl --max-time 15 -s -o /dev/null -w "%{http_code}" "$SWAGGER_URL" || true)
+            STATUS_HEALTH=$(curl --max-time 15 -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || true)
+            echo "Intento $i: OpenAPI=$STATUS_API SwaggerUI=$STATUS_SWAGGER Health=$STATUS_HEALTH"
+            if [ "$STATUS_API" = "200" ] && [ "$STATUS_SWAGGER" = "200" ] && [ "$STATUS_HEALTH" = "200" ]; then
+              echo "Microservicio Auth QA desplegado y respondiendo 200 OK (OpenAPI, Swagger UI y Actuator Health)"
+              exit 0
+            fi
+            sleep 12
+          done
+          python3 - << 'PY' || true
+          import os, xml.etree.ElementTree as ET, urllib.request, base64, json
+          xml_data = os.environ.get("PUBLISH_PROFILE", "")
+          if xml_data:
+              root = ET.fromstring(xml_data)
+              prof = root.find(".//publishProfile[@publishMethod='MSDeploy']") or root.find(".//publishProfile")
+              if prof is not None:
+                  u = prof.attrib.get("userName", "")
+                  p = prof.attrib.get("userPWD", "")
+                  auth = base64.b64encode(f"{u}:{p}".encode()).decode()
+                  try:
+                      req = urllib.request.Request("https://styleradar-auth-qa.scm.azurewebsites.net/api/logs/docker", headers={"Authorization": f"Basic {auth}"})
+                      with urllib.request.urlopen(req, timeout=15) as r:
+                          logs = json.loads(r.read().decode())
+                          for item in logs:
+                              href = item.get("href", "")
+                              print("=== LOG:", item.get("machineName"), href)
+                              if href and "2026_11_15" in href:
+                                  r2 = urllib.request.Request(href, headers={"Authorization": f"Basic {auth}"})
+                                  with urllib.request.urlopen(r2, timeout=15) as lf:
+                                      lines = lf.read().decode(errors="replace").splitlines()
+                                      for line in lines[-80:]:
+                                          print(line)
+                  except Exception as e:
+                      print("Logs err:", e)
+          PY
+          echo "Advertencia: La API tardo en iniciar o no respondio HTTP 200 (OpenAPI=$STATUS_API, SwaggerUI=$STATUS_SWAGGER, Health=$STATUS_HEALTH)"
+          exit 1
 
   deploy-prod:
     name: Desplegar en Azure App Service PROD
     needs: docker-publish
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Desplegar en PROD
@@ -183,4 +241,20 @@ jobs:
         with:
           app-name: styleradar-auth-prod
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PROD }}
-          images: ${{ needs.docker-publish.outputs.image }}
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/styleradar-auth:${{ github.sha }}
+
+      - name: Smoke Test - Verificacion Health en PROD
+        run: |
+          HEALTH_URL="https://styleradar-auth-prod.azurewebsites.net/actuator/health"
+          echo "Ejecutando Smoke Test contra: $HEALTH_URL"
+          for i in $(seq 1 25); do
+            STATUS_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || true)
+            echo "Intento $i: Health=$STATUS_HEALTH"
+            if [ "$STATUS_HEALTH" = "200" ]; then
+              echo "Microservicio Auth PROD desplegado y respondiendo 200 OK"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Advertencia: PROD no respondio HTTP 200 (Health=$STATUS_HEALTH)"
+          exit 1

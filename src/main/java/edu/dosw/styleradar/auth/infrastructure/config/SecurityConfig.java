@@ -75,14 +75,16 @@ public class SecurityConfig {
                                                 .authenticationEntryPoint(authenticationEntryPoint())
                                                 .accessDeniedHandler(accessDeniedHandler()))
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers(HttpMethod.GET,
+                                                .requestMatchers(
                                                                 "/swagger-ui.html",
                                                                 "/swagger-ui/**",
                                                                 "/v3/api-docs",
                                                                 "/v3/api-docs/**",
                                                                 "/actuator/health",
                                                                 "/actuator/health/**",
-                                                                "/actuator/info",
+                                                                "/actuator/info")
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.GET,
                                                                 "/api/v1/auth/oauth2/google/url",
                                                                 "/api/v1/auth/oauth2/google/callback")
                                                 .permitAll()
