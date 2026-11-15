@@ -45,5 +45,12 @@ class SwaggerOpenApiTest {
         mockMvc.perform(get("/swagger-ui/index.html"))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void debeResponder200EnActuatorHealth() throws Exception {
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("UP")));
+    }
 }
 

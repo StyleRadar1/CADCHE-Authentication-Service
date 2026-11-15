@@ -88,6 +88,7 @@ public class RabbitMQConfig {
         factory.setConnectionFactory(connectionFactory);
         factory.setMessageConverter(converter);
         factory.setDefaultRequeueRejected(false);
+        factory.setMissingQueuesFatal(false);
         factory.setAdviceChain(RetryInterceptorBuilder.stateless()
                 .maxAttempts(3)
                 .backOffOptions(1000L, 2.0, 10000L)

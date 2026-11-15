@@ -108,9 +108,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    outputs:
-      image: ${{ steps.meta.outputs.image }}
-
     steps:
       - name: Descargar codigo
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -160,7 +157,7 @@ jobs:
     needs: docker-publish
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Desplegar en QA
@@ -168,14 +165,32 @@ jobs:
         with:
           app-name: styleradar-auth-qa
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_QA }}
-          images: ${{ needs.docker-publish.outputs.image }}
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/styleradar-auth:${{ github.sha }}
+
+      - name: Smoke Test - Verificacion Swagger OpenAPI y Health en QA
+        run: |
+          API_URL="https://styleradar-auth-qa.azurewebsites.net/v3/api-docs"
+          HEALTH_URL="https://styleradar-auth-qa.azurewebsites.net/actuator/health"
+          echo "Ejecutando Smoke Test contra: $API_URL y $HEALTH_URL"
+          for i in $(seq 1 25); do
+            STATUS_API=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL" || true)
+            STATUS_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || true)
+            echo "Intento $i: OpenAPI=$STATUS_API Health=$STATUS_HEALTH"
+            if [ "$STATUS_API" = "200" ] && [ "$STATUS_HEALTH" = "200" ]; then
+              echo "Microservicio Auth QA desplegado y respondiendo 200 OK (OpenAPI y Actuator Health)"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Advertencia: La API tardo en iniciar o no respondio HTTP 200 (OpenAPI=$STATUS_API, Health=$STATUS_HEALTH)"
+          exit 1
 
   deploy-prod:
     name: Desplegar en Azure App Service PROD
     needs: docker-publish
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Desplegar en PROD
@@ -183,4 +198,20 @@ jobs:
         with:
           app-name: styleradar-auth-prod
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PROD }}
-          images: ${{ needs.docker-publish.outputs.image }}
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/styleradar-auth:${{ github.sha }}
+
+      - name: Smoke Test - Verificacion Health en PROD
+        run: |
+          HEALTH_URL="https://styleradar-auth-prod.azurewebsites.net/actuator/health"
+          echo "Ejecutando Smoke Test contra: $HEALTH_URL"
+          for i in $(seq 1 25); do
+            STATUS_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || true)
+            echo "Intento $i: Health=$STATUS_HEALTH"
+            if [ "$STATUS_HEALTH" = "200" ]; then
+              echo "Microservicio Auth PROD desplegado y respondiendo 200 OK"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Advertencia: PROD no respondio HTTP 200 (Health=$STATUS_HEALTH)"
+          exit 1

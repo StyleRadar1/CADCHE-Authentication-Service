@@ -7,6 +7,11 @@ spring:
   config:
     activate:
       on-profile: qa
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://styleradar-pg-qa.postgres.database.azure.com:5432/styleradar_auth?sslmode=require}
@@ -32,7 +37,7 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST}
+      host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6380}
       password: ${REDIS_PASSWORD:}
       ssl:
@@ -51,8 +56,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${MAIL_USERNAME:styleradar1@gmail.com}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -76,20 +81,37 @@ management:
     web:
       exposure:
         include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+    rabbit:
+      enabled: false
+    mail:
+      enabled: false
+    redis:
+      enabled: false
+    db:
+      enabled: false
 
 styleradar:
   usuarios:
     base-url: ${USUARIOS_SERVICE_URL:https://styleradar-usuarios-qa.azurewebsites.net}
-    username: ${USUARIOS_INTERNAL_USERNAME}
-    password: ${USUARIOS_INTERNAL_PASSWORD}
-    dev-fallback-enabled: false
+    username: ${USUARIOS_INTERNAL_USERNAME:ms-auth}
+    password: ${USUARIOS_INTERNAL_PASSWORD:}
+    dev-fallback-enabled: ${USUARIOS_DEV_FALLBACK_ENABLED:false}
 
   mail:
-    dev-console-fallback-enabled: false
+    dev-console-fallback-enabled: ${MAIL_DEV_CONSOLE_FALLBACK_ENABLED:false}
 
   security:
     jwt:
-      secret-base64: ${JWT_SECRET_BASE64}
+      secret-base64: ${JWT_SECRET_BASE64:VGhpc0lzQVN1ZmZpY2llbnRseUxvbmdTZWNyZXRLZXlGb3JUZXN0czEyMzQ1Ng==}
       duration: ${JWT_DURATION:PT12H}
     otp:
       ttl-seconds: 300
