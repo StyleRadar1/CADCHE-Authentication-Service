@@ -437,4 +437,56 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)));
     }
+
+    @Test
+    @DisplayName("Cobertura de ramas defensivas en login, verificarOtp, refresh, logout y registro fail-closed")
+    void debeCubrirRamasDefensivasDelControlador() throws Exception {
+        LoginRequestDTO loginReq = new LoginRequestDTO("comprador@styleradar.com", "Password123*");
+        when(usuarioClient.verificarCredenciales("comprador@styleradar.com", "Password123*"))
+                .thenReturn(new VerificarCredencialesResponseDTO(null, "comprador@styleradar.com", "COMPRADOR", "ACTIVA"));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginReq)))
+                .andExpect(status().isServiceUnavailable());
+
+        when(usuarioClient.verificarCredenciales("comprador@styleradar.com", "Password123*"))
+                .thenReturn(new VerificarCredencialesResponseDTO(10L, "comprador@styleradar.com", "ROL_INEXISTENTE", "ACTIVA"));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginReq)))
+                .andExpect(status().isUnauthorized());
+
+        VerificarOtpRequestDTO otpReq = new VerificarOtpRequestDTO("comprador@styleradar.com", "482915");
+        when(otpService.obtenerUsuarioId("comprador@styleradar.com")).thenReturn(null);
+        when(otpService.obtenerRol("comprador@styleradar.com")).thenReturn(null);
+        doNothing().when(otpService).verificarOtp("comprador@styleradar.com", "482915");
+
+        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(otpReq)))
+                .andExpect(status().isUnauthorized());
+
+        RefreshTokenRequestDTO refreshReq = new RefreshTokenRequestDTO("token.incompleto.jwt");
+        Claims claims = Jwts.claims().subject("10").build();
+        when(otpService.esTokenInvalido("token.incompleto.jwt")).thenReturn(false);
+        when(jwtService.validarToken("token.incompleto.jwt")).thenReturn(claims);
+        when(jwtService.obtenerUsuarioId("token.incompleto.jwt")).thenReturn(10L);
+        when(jwtService.obtenerRoles("token.incompleto.jwt")).thenReturn(Set.of());
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(refreshReq)))
+                .andExpect(status().isUnauthorized());
+
+        AuthController strictController = new AuthController(usuarioClient, otpService, emailService, jwtService);
+        org.junit.jupiter.api.Assertions.assertThrows(
+                edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException.class,
+                () -> strictController.logout("Bearer    "));
+        org.junit.jupiter.api.Assertions.assertThrows(
+                ServicioExternoNoDisponibleException.class,
+                () -> strictController.registrar(new RegistroAuthRequestDTO(
+                        "Ana", "ana@styleradar.com", "+57 300 000 0000", "StyleRadar2026*", true)));
+    }
 }

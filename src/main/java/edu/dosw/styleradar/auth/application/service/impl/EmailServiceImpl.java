@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.mail.MailException;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -35,7 +36,7 @@ public class EmailServiceImpl implements EmailService {
             justification = "Dependencias administradas por Spring e inyectadas por constructor.")
     @Autowired
     public EmailServiceImpl(
-            JavaMailSender mailSender,
+            @Autowired(required = false) JavaMailSender mailSender,
             @Value("${styleradar.mail.dev-console-fallback-enabled:false}") boolean devConsoleFallbackEnabled,
             Environment environment) {
         this.mailSender = mailSender;
@@ -68,6 +69,9 @@ public class EmailServiceImpl implements EmailService {
         );
 
         try {
+            if (mailSender == null) {
+                throw new MailSendException("JavaMailSender no configurado");
+            }
             mailSender.send(mensaje);
             log.info("Correo con código OTP enviado exitosamente a {}", maskedEmail);
         } catch (MailException ex) {

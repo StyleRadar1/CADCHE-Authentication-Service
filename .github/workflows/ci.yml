@@ -104,7 +104,13 @@ jobs:
   docker-publish:
     name: Construir y publicar imagen Docker
     needs: build-and-test
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    if: >-
+      (github.event_name == 'push' &&
+      (github.ref == 'refs/heads/develop' ||
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/heads/feature/') ||
+      startsWith(github.ref, 'refs/heads/fix/'))) ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -128,14 +134,13 @@ jobs:
         run: |
           IMAGE="${DOCKERHUB_USERNAME}/styleradar-auth:${GITHUB_SHA}"
 
-          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
           echo "tags<<EOF" >> "$GITHUB_OUTPUT"
           echo "$IMAGE" >> "$GITHUB_OUTPUT"
 
-          if [ "$GITHUB_REF" = "refs/heads/develop" ]; then
-            echo "${DOCKERHUB_USERNAME}/styleradar-auth:qa-latest" >> "$GITHUB_OUTPUT"
-          elif [ "$GITHUB_REF" = "refs/heads/main" ]; then
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
             echo "${DOCKERHUB_USERNAME}/styleradar-auth:prod-latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "${DOCKERHUB_USERNAME}/styleradar-auth:qa-latest" >> "$GITHUB_OUTPUT"
           fi
 
           echo "EOF" >> "$GITHUB_OUTPUT"
@@ -155,7 +160,12 @@ jobs:
   deploy-qa:
     name: Desplegar en Azure App Service QA
     needs: docker-publish
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: >-
+      (github.event_name == 'push' &&
+      (github.ref == 'refs/heads/develop' ||
+      startsWith(github.ref, 'refs/heads/feature/') ||
+      startsWith(github.ref, 'refs/heads/fix/'))) ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 

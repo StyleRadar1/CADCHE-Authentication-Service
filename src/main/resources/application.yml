@@ -51,6 +51,19 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
 
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:styleradar1@gmail.com}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
 springdoc:
   api-docs:
     enabled: ${SWAGGER_ENABLED:true}
@@ -88,7 +101,7 @@ styleradar:
   usuarios:
     base-url: ${USUARIOS_SERVICE_URL:https://ms-usuarios-internal}
     oauth2-path: ${USUARIOS_OAUTH2_PATH:/internal/api/v1/usuarios/oauth2}
-    username: ${USUARIOS_INTERNAL_USERNAME:}
+    username: ${USUARIOS_INTERNAL_USERNAME:ms-auth}
     password: ${USUARIOS_INTERNAL_PASSWORD:}
     dev-fallback-enabled: false
 
@@ -97,7 +110,7 @@ styleradar:
 
   security:
     jwt:
-      secret-base64: ${JWT_SECRET_BASE64:}
+      secret-base64: ${JWT_SECRET_BASE64:VGhpc0lzQVN1ZmZpY2llbnRseUxvbmdTZWNyZXRLZXlGb3JUZXN0czEyMzQ1Ng==}
       duration: ${JWT_DURATION:PT24H}
     otp:
       ttl-seconds: 300

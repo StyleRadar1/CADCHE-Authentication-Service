@@ -34,7 +34,8 @@ RUN keytool -importcert -trustcacerts -cacerts -storepass changeit -noprompt -al
 
 COPY --from=builder --chown=appuser:appgroup /build/target/*.jar app.jar
 
-ENV SERVER_PORT=8100 \
+ENV SPRING_PROFILES_ACTIVE=qa \
+    SERVER_PORT=8100 \
     PORT=8100 \
     WEBSITES_PORT=8100 \
     TZ=America/Bogota
