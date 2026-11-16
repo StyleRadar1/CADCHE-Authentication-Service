@@ -1,11 +1,11 @@
 package edu.dosw.styleradar.auth.infrastructure.exception;
 
-import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -123,19 +123,15 @@ public class GlobalExceptionHandler {
             Long esperarSegundos) {
 
         HttpStatus status = HttpStatus.valueOf(codigo.estadoHttp());
-        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
-                .timestamp(LocalDateTime.now())
-                .status(status.value())
-                .error(status.getReasonPhrase())
-                .codigo(codigo)
-                .message(message)
-                .path(SecuritySanitizer.sanitizeForLog(request.getRequestURI()))
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.problema(status.value(), status.getReasonPhrase(), codigo,
+                        message, SecuritySanitizer.sanitizeForLog(request.getRequestURI()))
                 .validationErrors(validationErrors)
                 .intentosRestantes(intentosRestantes)
                 .esperarSegundos(esperarSegundos)
                 .build();
 
-        ResponseEntity.BodyBuilder respuesta = ResponseEntity.status(status);
+        ResponseEntity.BodyBuilder respuesta = ResponseEntity.status(status)
+                .contentType(MediaType.valueOf(ErrorResponseDTO.MEDIA_TYPE));
         if (status == HttpStatus.TOO_MANY_REQUESTS && esperarSegundos != null) {
             respuesta.header(HttpHeaders.RETRY_AFTER, String.valueOf(esperarSegundos));
         }

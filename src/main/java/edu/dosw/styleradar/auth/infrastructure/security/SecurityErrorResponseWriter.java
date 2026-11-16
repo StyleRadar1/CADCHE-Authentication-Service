@@ -1,12 +1,10 @@
 package edu.dosw.styleradar.auth.infrastructure.security;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.Map;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -15,7 +13,7 @@ import edu.dosw.styleradar.auth.domain.model.CodigoError;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Escritor uniforme de respuestas JSON {@link ErrorResponseDTO} para filtros
+ * Escritor uniforme de respuestas ProblemDetail {@link ErrorResponseDTO} para filtros
  * y puntos de entrada de Spring Security (OWASP A09:2025 y A10:2025).
  */
 public final class SecurityErrorResponseWriter {
@@ -41,19 +39,14 @@ public final class SecurityErrorResponseWriter {
             String message,
             Long esperarSegundos) throws IOException {
         response.setStatus(status.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setContentType(ErrorResponseDTO.MEDIA_TYPE);
         response.setCharacterEncoding("UTF-8");
         if (esperarSegundos != null) {
             response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(esperarSegundos));
         }
 
-        ErrorResponseDTO body = ErrorResponseDTO.builder()
-                .timestamp(LocalDateTime.now())
-                .status(status.value())
-                .error(status.getReasonPhrase())
-                .codigo(codigo)
-                .message(message)
-                .path(SecuritySanitizer.sanitizeForLog(path))
+        ErrorResponseDTO body = ErrorResponseDTO.problema(status.value(), status.getReasonPhrase(), codigo, message,
+                        SecuritySanitizer.sanitizeForLog(path))
                 .validationErrors(Map.of())
                 .esperarSegundos(esperarSegundos)
                 .build();

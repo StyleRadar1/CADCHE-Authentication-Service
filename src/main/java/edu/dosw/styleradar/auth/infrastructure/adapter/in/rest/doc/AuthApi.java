@@ -56,6 +56,7 @@ import jakarta.validation.Valid;
 public interface AuthApi {
 
     String JSON = "application/json";
+    String PROBLEMA = ErrorResponseDTO.MEDIA_TYPE;
 
     @Operation(
             summary = "Iniciar sesión con correo y contraseña (SR-RF-02)",
@@ -81,22 +82,22 @@ public interface AuthApi {
                             @ExampleObject(name = "CorreoSinVerificar", summary = "Se envió el código OTP", value = SESION_PENDIENTE_OTP)
                     })),
             @ApiResponse(responseCode = "400", description = "DATOS_INVALIDOS (FA-01 a FA-05)", content = @Content(
-                    mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class),
+                    mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
                     examples = @ExampleObject(name = "DATOS_INVALIDOS", value = ERROR_DATOS_INVALIDOS))),
             @ApiResponse(responseCode = "401", description = "CREDENCIALES_INCORRECTAS (FA-06, RN-04)", content = @Content(
-                    mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class),
+                    mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
                     examples = @ExampleObject(name = "CREDENCIALES_INCORRECTAS", value = ERROR_CREDENCIALES))),
             @ApiResponse(responseCode = "403", description = "CUENTA_NO_ACTIVA (FA-07)", content = @Content(
-                    mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class),
+                    mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
                     examples = @ExampleObject(name = "CUENTA_NO_ACTIVA", value = ERROR_CUENTA_NO_ACTIVA))),
             @ApiResponse(responseCode = "429", description = "OTP_REENVIO_BLOQUEADO (FA-15) o LIMITE_SOLICITUDES (FA-08)",
                     headers = @Header(name = "Retry-After", description = "Segundos de espera", schema = @Schema(type = "integer")),
-                    content = @Content(mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class), examples = {
+                    content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class), examples = {
                             @ExampleObject(name = "OTP_REENVIO_BLOQUEADO", value = ERROR_REENVIO_BLOQUEADO),
                             @ExampleObject(name = "LIMITE_SOLICITUDES", value = ERROR_LIMITE)
                     })),
             @ApiResponse(responseCode = "503", description = "SERVICIO_NO_DISPONIBLE: ms-usuarios, SMTP o Redis no responden (FA-09)",
-                    content = @Content(mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class),
+                    content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
                             examples = @ExampleObject(name = "SERVICIO_NO_DISPONIBLE", value = ERROR_NO_DISPONIBLE)))
     })
     ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request);
@@ -115,19 +116,19 @@ public interface AuthApi {
                     mediaType = JSON, schema = @Schema(implementation = LoginResponseDTO.class),
                     examples = @ExampleObject(name = "CorreoVerificado", value = SESION_CON_TOKEN))),
             @ApiResponse(responseCode = "400", description = "DATOS_INVALIDOS: código vacío o sin 6 dígitos", content = @Content(
-                    mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(responseCode = "401", description = "OTP_INCORRECTO (con intentosRestantes), OTP_VENCIDO o SESION_OTP_INEXISTENTE",
-                    content = @Content(mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class), examples = {
+                    content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class), examples = {
                             @ExampleObject(name = "OTP_INCORRECTO", value = ERROR_OTP_INCORRECTO),
                             @ExampleObject(name = "OTP_VENCIDO", value = ERROR_OTP_VENCIDO),
                             @ExampleObject(name = "SESION_OTP_INEXISTENTE", value = ERROR_SESION_INEXISTENTE)
                     })),
             @ApiResponse(responseCode = "429", description = "OTP_INTENTOS_AGOTADOS (esperarSegundos=60) o LIMITE_SOLICITUDES",
                     headers = @Header(name = "Retry-After", description = "Segundos de espera", schema = @Schema(type = "integer")),
-                    content = @Content(mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class),
+                    content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
                             examples = @ExampleObject(name = "OTP_INTENTOS_AGOTADOS", value = ERROR_OTP_AGOTADO))),
             @ApiResponse(responseCode = "503", description = "SERVICIO_NO_DISPONIBLE: Redis no responde", content = @Content(
-                    mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class)))
+                    mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<LoginResponseDTO> verificarOtp(@Valid @RequestBody VerificarOtpRequestDTO request);
 
@@ -145,16 +146,16 @@ public interface AuthApi {
                     mediaType = JSON, schema = @Schema(implementation = OtpMensajeResponseDTO.class),
                     examples = @ExampleObject(name = "CodigoReenviado", value = OTP_REENVIADO))),
             @ApiResponse(responseCode = "401", description = "SESION_OTP_INEXISTENTE: no hay verificación en curso o venció",
-                    content = @Content(mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class),
+                    content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
                             examples = @ExampleObject(name = "SESION_OTP_INEXISTENTE", value = ERROR_SESION_INEXISTENTE))),
             @ApiResponse(responseCode = "429", description = "OTP_REENVIO_BLOQUEADO, REENVIOS_AGOTADOS o LIMITE_SOLICITUDES",
                     headers = @Header(name = "Retry-After", description = "Segundos de espera", schema = @Schema(type = "integer")),
-                    content = @Content(mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class), examples = {
+                    content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class), examples = {
                             @ExampleObject(name = "OTP_REENVIO_BLOQUEADO", value = ERROR_REENVIO_BLOQUEADO),
                             @ExampleObject(name = "REENVIOS_AGOTADOS", value = ERROR_REENVIOS_AGOTADOS)
                     })),
             @ApiResponse(responseCode = "503", description = "SERVICIO_NO_DISPONIBLE: correo o Redis no responden", content = @Content(
-                    mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class)))
+                    mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<OtpMensajeResponseDTO> reenviarOtp(@Valid @RequestBody ReenviarOtpRequestDTO request);
 
@@ -171,7 +172,7 @@ public interface AuthApi {
             @ApiResponse(responseCode = "200", description = "Token rotado", content = @Content(
                     mediaType = JSON, schema = @Schema(implementation = LoginResponseDTO.class))),
             @ApiResponse(responseCode = "401", description = "TOKEN_INVALIDO", content = @Content(
-                    mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class),
+                    mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
                     examples = @ExampleObject(name = "TOKEN_INVALIDO", value = ERROR_TOKEN_INVALIDO)))
     })
     ResponseEntity<LoginResponseDTO> refresh(@Valid @RequestBody RefreshTokenRequestDTO request);
@@ -184,9 +185,9 @@ public interface AuthApi {
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Sesión cerrada y token revocado"),
             @ApiResponse(responseCode = "401", description = "TOKEN_INVALIDO: Authorization ausente, vencido o revocado",
-                    content = @Content(mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(responseCode = "503", description = "SERVICIO_NO_DISPONIBLE: Redis no responde",
-                    content = @Content(mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class)))
+                    content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<Void> logout(
             @Parameter(hidden = true) @RequestHeader(value = "Authorization", required = false) String authorizationHeader);
@@ -204,9 +205,9 @@ public interface AuthApi {
                     mediaType = JSON, schema = @Schema(implementation = UsuarioAuthResponseDTO.class),
                     examples = @ExampleObject(name = "UsuarioRegistrado", value = USUARIO_REGISTRADO))),
             @ApiResponse(responseCode = "400", description = "DATOS_INVALIDOS", content = @Content(
-                    mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(responseCode = "503", description = "SERVICIO_NO_DISPONIBLE en QA y PROD", content = @Content(
-                    mediaType = JSON, schema = @Schema(implementation = ErrorResponseDTO.class)))
+                    mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<UsuarioAuthResponseDTO> registrar(@Valid @RequestBody RegistroAuthRequestDTO request);
 }

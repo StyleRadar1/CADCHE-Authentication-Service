@@ -56,23 +56,23 @@ public interface GoogleOAuth2Api {
             @ApiResponse(
                     responseCode = "400",
                     description = "Solicitud inválida por ID Token faltante o formato incorrecto",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "401",
                     description = "ID Token de Google inválido, expirado, con firma/audiencia inválida o correo sin verificar",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "403",
                     description = "Cuenta en StyleRadar inactiva o bloqueada",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "429",
                     description = "Límite de tasa excedido por ventana de tiempo",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "503",
                     description = "GOOGLE_CLIENT_ID no configurado o dependencia crítica externa (Google JWKS / ms-usuarios) no disponible",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class)))
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<LoginResponseDTO> autenticarConGoogle(@Valid @RequestBody GoogleLoginRequestDTO request);
 
@@ -92,11 +92,11 @@ public interface GoogleOAuth2Api {
             @ApiResponse(
                     responseCode = "400",
                     description = "La redirectUri solicitada no está incluida en GOOGLE_ALLOWED_REDIRECT_URIS (prevención Open Redirect)",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "503",
                     description = "GOOGLE_CLIENT_ID no configurado o Redis no disponible (fail-closed)",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class)))
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<GoogleAuthUrlResponseDTO> obtenerUrlAutorizacion(
             @Parameter(
@@ -119,19 +119,19 @@ public interface GoogleOAuth2Api {
             @ApiResponse(
                     responseCode = "400",
                     description = "Parámetros code/state faltantes o redirectUri no autorizada",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "401",
                     description = "Parámetro state inválido/expirado/reutilizado, acceso denegado en Google o authorization code inválido",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "403",
                     description = "Cuenta de StyleRadar inactiva o bloqueada",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "503",
                     description = "Credenciales Google OAuth2 no configuradas o falla de conectividad con Google/Redis/ms-usuarios",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class)))
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<LoginResponseDTO> callbackGoogle(
             @Parameter(description = "Authorization code emitido por Google")
@@ -162,19 +162,19 @@ public interface GoogleOAuth2Api {
             @ApiResponse(
                     responseCode = "400",
                     description = "Datos faltantes o redirectUri no autorizada",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "401",
                     description = "State anti-CSRF inválido/expirado/reutilizado o código rechazado por Google",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "403",
                     description = "Cuenta de StyleRadar inactiva o bloqueada",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class))),
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "503",
                     description = "Credenciales Google OAuth2 no configuradas o dependencia externa no disponible",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponseDTO.class)))
+                    content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<LoginResponseDTO> autenticarConCodigo(@Valid @RequestBody GoogleCodeLoginRequestDTO request);
 }

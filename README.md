@@ -85,7 +85,7 @@
 | • **SR-RF-92 · Verificar el correo con OTP:** el código dura `300 s`, admite `3` intentos y se pide **una sola vez por cuenta** (decisión D2). Al tercer fallo anula solo el código y bloquea pedir otro durante `60 s` (D1); la verificación en curso dura `15 min`. Al verificar, marca el correo en `ms-usuarios`. | • NO administra almacenes ni fundaciones (`ms-tiendas`). |
 | • **Google OAuth2 / OIDC:** ID Token RS256 validado contra JWKS o *Authorization Code* con `state` anti-CSRF de un solo uso; no pide OTP y marca el correo como verificado (B8). | • NO publica eventos hacia otros servicios. |
 | • **Sesiones:** renovación con rotación (`/refresh`), cierre con lista negra (`/logout`) y **revocación global** al recibir `UsuarioEstadoCambiadoEvent` (cuenta `INACTIVA`/`BLOQUEADA`), con idempotencia por `eventoId`. | • NO gestiona catálogo, inventario ni pagos. |
-| • **Contrato de errores v1.2:** cada error trae `codigo` del catálogo, `intentosRestantes`, `esperarSegundos` y la cabecera `Retry-After` en todos los `429`. | • NO expone el registro real (el `/registro` es un stub solo para `dev`/`test`; en QA/PROD responde `503`). |
+| • **Contrato de errores v1.2 (ProblemDetail RFC 9457):** cada error trae `type`/`title`/`detail`/`instance`, `codigo` del catálogo, `intentosRestantes`, `esperarSegundos` y la cabecera `Retry-After` en todos los `429`. | • NO expone el registro real (el `/registro` es un stub solo para `dev`/`test`; en QA/PROD responde `503`). |
 
 ---
 
@@ -270,11 +270,15 @@ Login con correo **sin verificar** (se envía el OTP):
 
 `expiresIn` sale de `JWT_DURATION`. Con el correo verificado llega `accessToken` y `requiereOtp=false`.
 
-Error con el formato único (tercer código incorrecto):
+Los errores salen en formato **ProblemDetail (RFC 9457)** con `Content-Type: application/problem+json`, el mismo formato de ms-usuarios y ms-tiendas (CADCHE-121). Además de `type`, `title`, `status`, `detail` e `instance` lleva las extensiones del contrato (`codigo`, `timestamp`, `validationErrors`, `intentosRestantes`, `esperarSegundos`). `error`, `message` y `path` se mantienen como alias de `title`, `detail` e `instance` para no romper al front. Ejemplo (tercer código incorrecto):
 
 ```json
 {
-  "timestamp": "2026-11-16T10:15:30", "status": 429, "error": "Too Many Requests",
+  "type": "https://api.styleradar.com/errores/otp-intentos-agotados",
+  "title": "Too Many Requests", "status": 429,
+  "detail": "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.",
+  "instance": "/api/v1/auth/otp/verificar",
+  "timestamp": "2026-11-16T10:15:30", "error": "Too Many Requests",
   "codigo": "OTP_INTENTOS_AGOTADOS",
   "message": "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.",
   "path": "/api/v1/auth/otp/verificar", "validationErrors": {},
