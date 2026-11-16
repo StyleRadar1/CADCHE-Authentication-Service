@@ -13,31 +13,6 @@ spring:
     name: ms-auth
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
-
-  datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/styleradar_auth}
-    username: ${DB_USERNAME:}
-    password: ${DB_PASSWORD:}
-    driver-class-name: org.postgresql.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:validate}
-    show-sql: false
-    open-in-view: false
-    properties:
-      hibernate:
-        format_sql: false
-
-  flyway:
-    enabled: ${FLYWAY_ENABLED:false}
-    locations: classpath:db/migration
-
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
@@ -94,13 +69,11 @@ management:
       enabled: false
     redis:
       enabled: false
-    db:
-      enabled: false
-
 styleradar:
   usuarios:
     base-url: ${USUARIOS_QA_SERVICE_URL:https://styleradar-usuarios-qa.azurewebsites.net}
     oauth2-path: ${USUARIOS_OAUTH2_PATH:/internal/api/v1/usuarios/oauth2}
+    correo-verificado-path: ${USUARIOS_CORREO_VERIFICADO_PATH:/internal/api/v1/usuarios/{id}/verificar-correo}
     username: ${USUARIOS_INTERNAL_USERNAME:ms-auth}
     password: ${USUARIOS_INTERNAL_PASSWORD:}
     dev-fallback-enabled: false
@@ -116,6 +89,8 @@ styleradar:
       ttl-seconds: 300
       max-attempts: 3
       max-resends: 3
+      lockout-seconds: ${OTP_LOCKOUT_SECONDS:60}
+      session-ttl-seconds: ${OTP_SESSION_TTL_SECONDS:900}
     oauth2:
       google:
         client-id: ${GOOGLE_CLIENT_ID:}
@@ -135,4 +110,4 @@ styleradar:
       window-seconds: ${RATE_LIMIT_WINDOW_SECONDS:60}
 
   cors:
-    allowed-origins: ${CORS_QA_ALLOWED_ORIGINS:https://styleradar.com,https://*.styleradar.com,https://*.azurewebsites.net,http://localhost:3000,http://127.0.0.1:*}
+    allowed-origins: ${CORS_QA_ALLOWED_ORIGINS:https://styleradar.com,https://*.styleradar.com,https://*.azurewebsites.net,http://localhost:3000,http://localhost:5173,http://127.0.0.1:*}

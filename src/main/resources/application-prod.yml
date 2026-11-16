@@ -7,34 +7,6 @@ spring:
   config:
     activate:
       on-profile: prod
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
-
-  datasource:
-    url: ${DB_URL:jdbc:postgresql://styleradar-pg-prod.postgres.database.azure.com:5432/styleradar_auth?sslmode=require}
-    username: ${DB_USERNAME:styleradaradmin}
-    password: ${DB_PASSWORD:}
-    driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 3
-      idle-timeout: 300000
-      max-lifetime: 600000
-      connection-timeout: 20000
-
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
-    open-in-view: false
-
-  flyway:
-    enabled: ${FLYWAY_ENABLED:false}
-    locations: classpath:db/migration
-
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -92,9 +64,6 @@ management:
       enabled: false
     redis:
       enabled: false
-    db:
-      enabled: false
-
 styleradar:
   usuarios:
     base-url: ${USUARIOS_SERVICE_URL:https://styleradar-usuarios-prod.azurewebsites.net}
@@ -113,6 +82,8 @@ styleradar:
       ttl-seconds: 300
       max-attempts: 3
       max-resends: 3
+      lockout-seconds: ${OTP_LOCKOUT_SECONDS:60}
+      session-ttl-seconds: ${OTP_SESSION_TTL_SECONDS:900}
     oauth2:
       google:
         client-id: ${GOOGLE_CLIENT_ID:}

@@ -1,11 +1,6 @@
 spring:
   config:
     import: optional:file:.env[.properties]
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -49,6 +44,8 @@ styleradar:
       ttl-seconds: 300
       max-attempts: 3
       max-resends: 3
+      lockout-seconds: ${OTP_LOCKOUT_SECONDS:60}
+      session-ttl-seconds: ${OTP_SESSION_TTL_SECONDS:900}
     oauth2:
       google:
         redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8100/api/v1/auth/oauth2/google/callback}
@@ -58,4 +55,4 @@ styleradar:
       stub-enabled: true
 
   cors:
-    allowed-origins: ${CORS_DEV_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:*,https://*.styleradar.com,https://*.azurewebsites.net}
+    allowed-origins: ${CORS_DEV_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://127.0.0.1:*,https://*.styleradar.com,https://*.azurewebsites.net}
