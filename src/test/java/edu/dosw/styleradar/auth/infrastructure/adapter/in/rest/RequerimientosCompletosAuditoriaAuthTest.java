@@ -2,6 +2,7 @@ package edu.dosw.styleradar.auth.infrastructure.adapter.in.rest;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -181,6 +182,7 @@ class RequerimientosCompletosAuditoriaAuthTest {
                 .andExpect(jsonPath("$.title").value("Too Many Requests"))
                 .andExpect(jsonPath("$.detail").value(containsString("48 segundos")))
                 .andExpect(jsonPath("$.instance").value("/api/v1/auth/otp/reenviar"))
+                .andExpect(jsonPath("$.timestamp").value(matchesPattern("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")))
                 .andExpect(jsonPath("$.status").value(429))
                 .andExpect(jsonPath("$.error").value("Too Many Requests"))
                 .andExpect(jsonPath("$.codigo").value("OTP_REENVIO_BLOQUEADO"))

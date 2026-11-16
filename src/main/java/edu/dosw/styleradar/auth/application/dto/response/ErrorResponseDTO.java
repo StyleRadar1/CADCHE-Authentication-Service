@@ -3,7 +3,10 @@ package edu.dosw.styleradar.auth.application.dto.response;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import edu.dosw.styleradar.auth.domain.model.CodigoError;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Value;
@@ -19,6 +22,8 @@ import lombok.Value;
 @Schema(description = "Error en formato ProblemDetail (RFC 9457) con las extensiones del contrato StyleRadar")
 public class ErrorResponseDTO {
 
+    /** Formato de fecha del contrato: AAAA-MM-DDThh:mm:ss, sin fracciones de segundo. */
+    public static final String FORMATO_FECHA = "yyyy-MM-dd'T'HH:mm:ss";
     public static final String MEDIA_TYPE = "application/problem+json";
     public static final String TIPO_BASE = "https://api.styleradar.com/errores/";
 
@@ -35,6 +40,7 @@ public class ErrorResponseDTO {
     String instance;
 
     @Schema(description = "Fecha y hora en que ocurrió el error", example = "2026-11-13T10:15:30")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = FORMATO_FECHA)
     LocalDateTime timestamp;
 
     @Schema(description = "Código de estado HTTP", example = "429")
