@@ -285,6 +285,11 @@ public final class OtpServiceImpl implements OtpService {
     }
 
     @Override
+    public boolean eventoYaProcesado(String eventoId) {
+        return obtenerValor(KEY_EVENTO_PROCESADO + eventoId) != null;
+    }
+
+    @Override
     public boolean registrarEventoProcesado(String eventoId) {
         String clave = KEY_EVENTO_PROCESADO + eventoId;
         return ejecutar("registrando idempotencia de evento",

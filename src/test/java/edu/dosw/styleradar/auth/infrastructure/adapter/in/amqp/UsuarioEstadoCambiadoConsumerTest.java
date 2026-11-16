@@ -121,9 +121,9 @@ class UsuarioEstadoCambiadoConsumerTest {
     @DisplayName("Debe descartar eventos duplicados cuando eventoId ya fue procesado en Redis")
     void debeDescartarEventosDuplicadosPorEventoId() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("evento:procesado:evt-usr-999")).thenReturn(null).thenReturn("1");
         when(valueOperations.setIfAbsent(eq("evento:procesado:evt-usr-999"), eq("1"), anyLong(), eq(TimeUnit.SECONDS)))
-                .thenReturn(true)
-                .thenReturn(false);
+                .thenReturn(true);
 
         UsuarioEstadoCambiadoEventDTO conId = evento("evt-usr-999", 20L, EstadoCuenta.BLOQUEADA, AHORA);
         consumer.recibir(conId);
@@ -132,5 +132,25 @@ class UsuarioEstadoCambiadoConsumerTest {
 
         consumer.recibir(evento("   ", 21L, EstadoCuenta.BLOQUEADA, AHORA));
         verify(valueOperations).set("usuario:revocado:21", "1700000000000");
+    }
+
+    @Test
+    @DisplayName("CADCHE-129: si Redis falla al revocar, el evento no queda marcado y el reintento sí revoca")
+    void fallaPasajeraDeRedis_elReintentoRevocaLasSesiones() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("evento:procesado:evt-retry")).thenReturn(null);
+        doThrow(new DataAccessResourceFailureException("Redis caído"))
+                .doNothing()
+                .when(valueOperations).set("usuario:revocado:30", "1700000000000");
+        when(valueOperations.setIfAbsent(eq("evento:procesado:evt-retry"), eq("1"), anyLong(), eq(TimeUnit.SECONDS)))
+                .thenReturn(true);
+
+        UsuarioEstadoCambiadoEventDTO bloqueo = evento("evt-retry", 30L, EstadoCuenta.BLOQUEADA, AHORA);
+        assertThatThrownBy(() -> consumer.recibir(bloqueo)).isInstanceOf(ServicioExternoNoDisponibleException.class);
+        verify(valueOperations, never()).setIfAbsent(anyString(), anyString(), anyLong(), org.mockito.ArgumentMatchers.any());
+
+        consumer.recibir(bloqueo);
+        verify(valueOperations, times(2)).set("usuario:revocado:30", "1700000000000");
+        verify(valueOperations).setIfAbsent(eq("evento:procesado:evt-retry"), eq("1"), anyLong(), eq(TimeUnit.SECONDS));
     }
 }

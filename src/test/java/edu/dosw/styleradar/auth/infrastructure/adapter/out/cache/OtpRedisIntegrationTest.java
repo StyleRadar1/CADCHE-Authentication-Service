@@ -97,7 +97,9 @@ class OtpRedisIntegrationTest {
         assertThat(otpService.estaUsuarioRevocado(8L, 9_000L)).isTrue();
         assertThat(otpService.estaUsuarioRevocado(8L, 11_000L)).isFalse();
 
+        assertThat(otpService.eventoYaProcesado("evt-1")).isFalse();
         assertThat(otpService.registrarEventoProcesado("evt-1")).isTrue();
+        assertThat(otpService.eventoYaProcesado("evt-1")).isTrue();
         assertThat(otpService.registrarEventoProcesado("evt-1")).isFalse();
     }
 }

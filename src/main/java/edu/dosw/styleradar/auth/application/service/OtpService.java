@@ -43,7 +43,13 @@ public interface OtpService {
     void revocarSesionesUsuario(Long usuarioId, Instant fechaCambio);
 
     /**
-     * Registra el identificador del evento procesado. Devuelve {@code false} si ya se había procesado.
+     * Indica si el evento ya se procesó con éxito (idempotencia del consumidor AMQP).
+     */
+    boolean eventoYaProcesado(String eventoId);
+
+    /**
+     * Marca el evento como procesado. Se llama solo después de aplicar su efecto.
+     * Devuelve {@code false} si ya estaba marcado.
      */
     boolean registrarEventoProcesado(String eventoId);
 }
