@@ -34,8 +34,13 @@ import lombok.extern.slf4j.Slf4j;
 public final class JwtServiceImpl implements JwtService {
 
     public static final int MIN_SECRET_KEY_BYTES = 32;
-    private static final String DISALLOWED_EXAMPLE_FINGERPRINT =
-            "2cf5e6ec387461b4bf954f587ad4d957753fcbc48bf892b5e49996b90cf3b476";
+    /**
+     * Huellas SHA-256 de los secretos de ejemplo publicados en el repositorio (dev y pruebas).
+     * Nunca se aceptan en los perfiles qa/prod (OWASP A02/A04:2025).
+     */
+    private static final Set<String> DISALLOWED_EXAMPLE_FINGERPRINTS = Set.of(
+            "2cf5e6ec387461b4bf954f587ad4d957753fcbc48bf892b5e49996b90cf3b476",
+            "d555cde718645d420c533072c69f70469efa375df07fa8c63ee180b4d8b86d99");
 
     private final SecretKey secretKey;
     private final Duration duration;
@@ -88,7 +93,7 @@ public final class JwtServiceImpl implements JwtService {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
                     .digest(rawValue.getBytes(StandardCharsets.UTF_8));
-            return DISALLOWED_EXAMPLE_FINGERPRINT.equals(HexFormat.of().formatHex(digest));
+            return DISALLOWED_EXAMPLE_FINGERPRINTS.contains(HexFormat.of().formatHex(digest));
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("Algoritmo SHA-256 no disponible en la JVM.", ex);
         }

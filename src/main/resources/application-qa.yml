@@ -80,7 +80,7 @@ styleradar:
 
   security:
     jwt:
-      secret-base64: ${JWT_SECRET_QA_BASE64:VGhpc0lzQVN1ZmZpY2llbnRseUxvbmdTZWNyZXRLZXlGb3JUZXN0czEyMzQ1Ng==}
+      secret-base64: ${JWT_SECRET_QA_BASE64}
       duration: ${JWT_DURATION:PT12H}
     otp:
       ttl-seconds: 300
