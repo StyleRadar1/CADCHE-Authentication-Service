@@ -62,8 +62,9 @@ management:
       enabled: false
     mail:
       enabled: false
+    # Redis es obligatorio (OTP, sesiones y límite de solicitudes): el health refleja si responde.
     redis:
-      enabled: false
+      enabled: true
 styleradar:
   usuarios:
     base-url: ${USUARIOS_SERVICE_URL:https://styleradar-usuarios-prod.azurewebsites.net}
