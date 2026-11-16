@@ -18,6 +18,14 @@ import jakarta.servlet.http.HttpServletResponse;
  */
 public final class SecurityErrorResponseWriter {
 
+    /** Mensajes exactos del catálogo 1.5 del contrato ms-auth ↔ Frontend; el detalle técnico va solo al log. */
+    static final Map<CodigoError, String> MENSAJES_CONTRATO = Map.of(
+            CodigoError.TOKEN_INVALIDO, "El token presentado es inválido o expirado",
+            CodigoError.SERVICIO_NO_DISPONIBLE,
+            "El servicio requerido no está disponible temporalmente. Intente nuevamente más tarde.",
+            CodigoError.LIMITE_SOLICITUDES, "Demasiadas solicitudes en un período corto. Intente nuevamente más tarde.",
+            CodigoError.ERROR_INTERNO, "Ocurrió un error interno. Intente nuevamente más tarde.");
+
     private SecurityErrorResponseWriter() {
     }
 
@@ -45,7 +53,8 @@ public final class SecurityErrorResponseWriter {
             response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(esperarSegundos));
         }
 
-        ErrorResponseDTO body = ErrorResponseDTO.problema(status.value(), status.getReasonPhrase(), codigo, message,
+        String mensaje = MENSAJES_CONTRATO.getOrDefault(codigo, message);
+        ErrorResponseDTO body = ErrorResponseDTO.problema(status.value(), status.getReasonPhrase(), codigo, mensaje,
                         SecuritySanitizer.sanitizeForLog(path))
                 .validationErrors(Map.of())
                 .esperarSegundos(esperarSegundos)

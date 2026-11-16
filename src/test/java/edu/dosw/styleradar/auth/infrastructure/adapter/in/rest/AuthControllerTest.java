@@ -103,6 +103,39 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("Contrato 1.6: si un campo incumple varias reglas se responde la de mayor prioridad (obligatorio > longitud > formato)")
+    void login_conVariasReglasIncumplidas_respondeElMensajeDelContrato() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + "a".repeat(250) + "@x.co\",\"password\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo", is("DATOS_INVALIDOS")))
+                .andExpect(jsonPath("$.validationErrors.email", is("El correo electrónico excede la longitud máxima permitida")))
+                .andExpect(jsonPath("$.validationErrors.password", is("La contraseña es obligatoria")));
+
+        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"\",\"codigoOtp\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.validationErrors.email", is("El correo electrónico es obligatorio")))
+                .andExpect(jsonPath("$.validationErrors.codigoOtp", is("El código OTP es obligatorio")));
+    }
+
+    @Test
+    @DisplayName("Contrato 3.2: el correo con espacios alrededor se acepta y se normaliza (sin espacios y en minúsculas)")
+    void login_conEspaciosEnElCorreo_seNormaliza() throws Exception {
+        when(usuarioClient.verificarCredenciales(anyString(), eq("Password123*")))
+                .thenReturn(new VerificarCredencialesResponseDTO(10L, "comprador@styleradar.com", "COMPRADOR", "ACTIVA", true));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"  Comprador@StyleRadar.com \",\"password\":\"Password123*\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email", is("comprador@styleradar.com")))
+                .andExpect(jsonPath("$.requiereOtp", is(false)));
+    }
+
+    @Test
     @DisplayName("Login exitoso debe validar credenciales, generar OTP y retornar requiereOtp=true con 200 OK")
     void login_conCredencialesValidas_debeRetornar200YDesafioOtp() throws Exception {
         LoginRequestDTO request = new LoginRequestDTO("comprador@styleradar.com", "Password123*");

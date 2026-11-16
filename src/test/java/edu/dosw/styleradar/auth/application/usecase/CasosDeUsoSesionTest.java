@@ -133,13 +133,14 @@ class CasosDeUsoSesionTest {
     class Otp {
 
         @Test
-        @DisplayName("Sin verificación en curso responde SESION_OTP_INEXISTENTE sin consumir intentos")
+        @DisplayName("Contrato 4.1: sin verificación en curso (código ya usado o vencido) responde OTP_VENCIDO sin consumir intentos")
         void sinSesion_noConsumeIntentos() {
             VerificarOtpUseCaseImpl useCase = new VerificarOtpUseCaseImpl(otp, jwt, usuarios);
 
             assertThatThrownBy(() -> useCase.verificar(CORREO, "123456"))
                     .isInstanceOf(OtpExpiradoException.class)
-                    .extracting("codigo").isEqualTo(CodigoError.SESION_OTP_INEXISTENTE);
+                    .hasMessage("El código OTP expiró o no existe. Debe solicitar uno nuevo.")
+                    .extracting("codigo").isEqualTo(CodigoError.OTP_VENCIDO);
             verify(otp, never()).verificarOtp(anyString(), anyString());
         }
 

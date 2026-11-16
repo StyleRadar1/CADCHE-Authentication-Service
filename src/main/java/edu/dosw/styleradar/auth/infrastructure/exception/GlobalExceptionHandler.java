@@ -1,5 +1,6 @@
 package edu.dosw.styleradar.auth.infrastructure.exception;
 
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -13,6 +14,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -109,9 +111,23 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<ErrorResponseDTO> datosInvalidos(BindException exception, HttpServletRequest request) {
         Map<String, String> validationErrors = new LinkedHashMap<>();
-        exception.getBindingResult().getFieldErrors().forEach(error ->
-                validationErrors.putIfAbsent(error.getField(), error.getDefaultMessage()));
+        exception.getBindingResult().getFieldErrors().stream()
+                .sorted(Comparator.comparingInt(GlobalExceptionHandler::prioridadValidacion))
+                .forEach(error -> validationErrors.putIfAbsent(error.getField(), error.getDefaultMessage()));
         return build(CodigoError.DATOS_INVALIDOS, DATOS_INVALIDOS, request, validationErrors, null, null);
+    }
+
+    /**
+     * Cuando un campo incumple varias reglas, el contrato fija qué mensaje se muestra: primero "obligatorio",
+     * luego la longitud y por último el formato (por ejemplo, un correo de más de 254 caracteres).
+     */
+    private static int prioridadValidacion(FieldError error) {
+        String regla = error.getCode() == null ? "" : error.getCode();
+        return switch (regla) {
+            case "NotBlank", "NotNull", "NotEmpty" -> 0;
+            case "Size", "Length", "Min", "Max" -> 1;
+            default -> 2;
+        };
     }
 
     private ResponseEntity<ErrorResponseDTO> build(

@@ -85,7 +85,7 @@ class JwtAuthenticationFilterTest {
         filter.doFilter(request, response, filterChain);
 
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).contains("Token inv");
+        assertThat(response.getContentAsString()).contains("El token presentado es inválido o expirado");
         verifyNoInteractions(filterChain);
     }
 
