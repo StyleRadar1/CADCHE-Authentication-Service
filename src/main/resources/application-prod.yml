@@ -95,7 +95,7 @@ styleradar:
       stub-enabled: false
     rate-limit:
       enabled: true
-      max-requests: ${RATE_LIMIT_MAX_REQUESTS:10}
+      max-requests: ${RATE_LIMIT_MAX_REQUESTS:15}
       window-seconds: ${RATE_LIMIT_WINDOW_SECONDS:60}
 
   cors:
