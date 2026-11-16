@@ -1,0 +1,24 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+
+styleradar:
+  usuarios:
+    dev-fallback-enabled: false
+  mail:
+    dev-console-fallback-enabled: false
+  security:
+    redis-local-fallback-enabled: false
+    registration:
+      stub-enabled: true

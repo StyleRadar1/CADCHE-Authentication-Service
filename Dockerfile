@@ -1,0 +1,44 @@
+# ==============================================================================
+# STYLE RADAR - PRODUCTION-GRADE MULTI-STAGE DOCKERFILE
+# Microservicio: CADCHE-Authentication-Service (ms-auth :8100)
+# Estándares: OCI, CIS Benchmark, Non-Root User, JVM Container-Aware
+# ==============================================================================
+
+# Runtime de la aplicación. El JAR se compila y valida en CI antes de construir la imagen.
+FROM eclipse-temurin:21-jre-alpine
+
+LABEL org.opencontainers.image.title="StyleRadar CADCHE Authentication Service" \
+      org.opencontainers.image.description="Microservicio de Autenticación JWT + OTP 2FA (Arquitectura Hexagonal)" \
+      org.opencontainers.image.version="1.0.0" \
+      org.opencontainers.image.vendor="StyleRadar Team CADche" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
+WORKDIR /app
+
+# Seguridad: Usuario sin privilegios (CIS Docker Benchmark - Non-Root User)
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Certificado público CA del broker RabbitMQ QA (AMQPS TLS :5671)
+COPY rabbitmq-ca.pem /tmp/rabbitmq-ca.pem
+RUN keytool -importcert -trustcacerts -cacerts -storepass changeit -noprompt -alias styleradar-rabbitmq-ca -file /tmp/rabbitmq-ca.pem && rm -f /tmp/rabbitmq-ca.pem
+
+COPY --chown=appuser:appgroup target/ms-auth-*.jar app.jar
+
+ENV SPRING_PROFILES_ACTIVE=qa \
+    WEBSITES_PORT=8100 \
+    TZ=America/Bogota
+
+EXPOSE 8100
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
+  CMD wget -q -O /dev/null http://localhost:${PORT:-8100}/actuator/health || exit 1
+
+USER appuser:appgroup
+
+ENTRYPOINT ["java", \
+  "-Djava.security.egd=file:/dev/./urandom", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-XX:InitialRAMPercentage=50.0", \
+  "-XX:+ExitOnOutOfMemoryError", \
+  "-jar", "app.jar"]
