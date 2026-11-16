@@ -184,4 +184,9 @@ public final class JwtServiceImpl implements JwtService {
                 .parseSignedClaims(token)
                 .getPayload();
     }
+
+    @Override
+    public long obtenerVigenciaSegundos() {
+        return duration.toSeconds();
+    }
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import edu.dosw.styleradar.auth.application.dto.request.OAuthUsuarioRequestDTO;
@@ -25,9 +26,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public final class UsuarioClient {
 
+    static final String DEFAULT_CORREO_VERIFICADO_PATH = "/internal/api/v1/usuarios/{id}/verificar-correo";
+
     private final RestClient restClient;
     private final String baseUrl;
     private final String oauth2Path;
+    private final String correoVerificadoPath;
     private final boolean devFallbackEnabled;
     private final Environment environment;
 
@@ -36,7 +40,7 @@ public final class UsuarioClient {
             String baseUrl,
             String username,
             String password) {
-        this(restClientBuilder, baseUrl, username, password, false, null, "/internal/api/v1/usuarios/oauth2");
+        this(restClientBuilder, baseUrl, username, password, false, null);
     }
 
     public UsuarioClient(
@@ -45,7 +49,7 @@ public final class UsuarioClient {
             String username,
             String password,
             boolean devFallbackEnabled) {
-        this(restClientBuilder, baseUrl, username, password, devFallbackEnabled, null, "/internal/api/v1/usuarios/oauth2");
+        this(restClientBuilder, baseUrl, username, password, devFallbackEnabled, null);
     }
 
     public UsuarioClient(
@@ -55,7 +59,8 @@ public final class UsuarioClient {
             String password,
             boolean devFallbackEnabled,
             Environment environment) {
-        this(restClientBuilder, baseUrl, username, password, devFallbackEnabled, environment, "/internal/api/v1/usuarios/oauth2");
+        this(restClientBuilder, baseUrl, username, password, devFallbackEnabled, environment,
+                "/internal/api/v1/usuarios/oauth2", DEFAULT_CORREO_VERIFICADO_PATH);
     }
 
     @SuppressFBWarnings(
@@ -69,13 +74,18 @@ public final class UsuarioClient {
             @Value("${styleradar.usuarios.password}") String password,
             @Value("${styleradar.usuarios.dev-fallback-enabled:false}") boolean devFallbackEnabled,
             Environment environment,
-            @Value("${styleradar.usuarios.oauth2-path:/internal/api/v1/usuarios/oauth2}") String oauth2Path) {
+            @Value("${styleradar.usuarios.oauth2-path:/internal/api/v1/usuarios/oauth2}") String oauth2Path,
+            @Value("${styleradar.usuarios.correo-verificado-path:" + DEFAULT_CORREO_VERIFICADO_PATH + "}")
+            String correoVerificadoPath) {
 
         this.baseUrl = SecuritySanitizer.validateExternalServiceUrl(
                 baseUrl, environment, "USUARIOS_SERVICE_URL");
         this.oauth2Path = (oauth2Path == null || oauth2Path.isBlank())
                 ? "/internal/api/v1/usuarios/oauth2"
                 : oauth2Path.trim();
+        this.correoVerificadoPath = (correoVerificadoPath == null || correoVerificadoPath.isBlank())
+                ? DEFAULT_CORREO_VERIFICADO_PATH
+                : correoVerificadoPath.trim();
         this.devFallbackEnabled = devFallbackEnabled;
         this.environment = environment;
         this.restClient = restClientBuilder
@@ -98,6 +108,17 @@ public final class UsuarioClient {
                     .body(request)
                     .retrieve()
                     .body(VerificarCredencialesResponseDTO.class);
+        } catch (HttpClientErrorException.Unauthorized exception) {
+            log.warn("Credenciales incorrectas para: {}", SecuritySanitizer.maskEmail(normalizedEmail));
+            throw new CredencialesIncorrectasException("El correo o la contraseña son incorrectos");
+        } catch (HttpClientErrorException.Forbidden exception) {
+            log.warn("Cuenta no activa para: {}", SecuritySanitizer.maskEmail(normalizedEmail));
+            throw new CuentaNoActivaException("La cuenta se encuentra inactiva o bloqueada");
+        } catch (RestClientResponseException exception) {
+            log.error("Fallo al verificar credenciales en ms-usuarios (HTTP {}): {}",
+                    exception.getStatusCode().value(), SecuritySanitizer.sanitizeForLog(exception.getMessage()));
+            throw new ServicioExternoNoDisponibleException(
+                    "No fue posible verificar las credenciales con el servicio de usuarios", exception);
         } catch (ResourceAccessException exception) {
             if (isDevFallbackActive()) {
                 log.warn("No fue posible conectar con ms-usuarios en {}. Usando respaldo local dev para {}",
@@ -156,18 +177,23 @@ public final class UsuarioClient {
         }
     }
 
+    /**
+     * Marca el correo como verificado en ms-usuarios (contrato U3). Es tolerante a fallos: el usuario ya
+     * demostró la propiedad del correo, así que no se le niega la sesión; el fallo queda en ERROR para
+     * reintentar la sincronización (en el siguiente login se le volvería a pedir el código).
+     */
     public void marcarCorreoVerificado(Long usuarioId) {
         if (usuarioId == null) {
             return;
         }
         try {
             restClient.patch()
-                    .uri("/internal/api/v1/usuarios/{id}/verificar-correo", usuarioId)
+                    .uri(correoVerificadoPath, usuarioId)
                     .retrieve()
                     .toBodilessEntity();
             log.info("Notificación enviada a ms-usuarios: correo verificado para usuario ID {}", usuarioId);
-        } catch (Exception ex) {
-            log.warn("ms-usuarios no disponible para actualizar verificación de correo (modo tolerante) para usuario ID {}: {}",
+        } catch (RestClientException ex) {
+            log.error("No fue posible marcar el correo como verificado en ms-usuarios para usuario ID {}: {}",
                     usuarioId, SecuritySanitizer.sanitizeForLog(ex.getMessage()));
         }
     }

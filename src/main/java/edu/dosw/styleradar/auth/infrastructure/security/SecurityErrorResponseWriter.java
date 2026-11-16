@@ -4,12 +4,14 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import edu.dosw.styleradar.auth.application.dto.response.ErrorResponseDTO;
+import edu.dosw.styleradar.auth.domain.model.CodigoError;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
@@ -27,21 +29,47 @@ public final class SecurityErrorResponseWriter {
             HttpStatus status,
             String path,
             String message) throws IOException {
+        write(response, objectMapper, status, codigoPorEstado(status), path, message, null);
+    }
+
+    public static void write(
+            HttpServletResponse response,
+            ObjectMapper objectMapper,
+            HttpStatus status,
+            CodigoError codigo,
+            String path,
+            String message,
+            Long esperarSegundos) throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
+        if (esperarSegundos != null) {
+            response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(esperarSegundos));
+        }
 
         ErrorResponseDTO body = ErrorResponseDTO.builder()
                 .timestamp(LocalDateTime.now())
                 .status(status.value())
                 .error(status.getReasonPhrase())
+                .codigo(codigo)
                 .message(message)
                 .path(SecuritySanitizer.sanitizeForLog(path))
                 .validationErrors(Map.of())
+                .esperarSegundos(esperarSegundos)
                 .build();
 
         ObjectMapper mapper = objectMapper != null ? objectMapper : new ObjectMapper().findAndRegisterModules();
         response.getWriter().write(mapper.writeValueAsString(body));
     }
-}
 
+    static CodigoError codigoPorEstado(HttpStatus status) {
+        return switch (status) {
+            case UNAUTHORIZED -> CodigoError.TOKEN_INVALIDO;
+            case FORBIDDEN -> CodigoError.ACCESO_DENEGADO;
+            case TOO_MANY_REQUESTS -> CodigoError.LIMITE_SOLICITUDES;
+            case SERVICE_UNAVAILABLE -> CodigoError.SERVICIO_NO_DISPONIBLE;
+            case BAD_REQUEST -> CodigoError.DATOS_INVALIDOS;
+            default -> CodigoError.ERROR_INTERNO;
+        };
+    }
+}

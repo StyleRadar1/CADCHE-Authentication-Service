@@ -21,6 +21,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import edu.dosw.styleradar.auth.domain.model.CodigoError;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -132,10 +133,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         if (count > maxRequests) {
             log.warn("Rate limit excedido ({}/{}) en ruta {} para cliente {}",
                     count, maxRequests, SecuritySanitizer.sanitizeForLog(path), clientIp);
-            response.setHeader("Retry-After", String.valueOf(windowSeconds));
             SecurityErrorResponseWriter.write(
-                    response, objectMapper, HttpStatus.TOO_MANY_REQUESTS, path,
-                    "Demasiadas solicitudes en un período corto. Intente nuevamente más tarde.");
+                    response, objectMapper, HttpStatus.TOO_MANY_REQUESTS, CodigoError.LIMITE_SOLICITUDES, path,
+                    "Demasiadas solicitudes en un período corto. Intente nuevamente más tarde.", windowSeconds);
             return;
         }
 

@@ -11,7 +11,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,7 +33,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.dosw.styleradar.auth.application.dto.request.GoogleCodeLoginRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.request.GoogleLoginRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.response.GoogleAuthUrlResponseDTO;
-import edu.dosw.styleradar.auth.application.dto.response.LoginResponseDTO;
+import edu.dosw.styleradar.auth.application.mapper.out.AuthResponseMapperImpl;
 import edu.dosw.styleradar.auth.application.service.GoogleOAuth2Service;
 import edu.dosw.styleradar.auth.application.service.JwtService;
 import edu.dosw.styleradar.auth.application.service.OtpService;
@@ -42,12 +41,13 @@ import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasExceptio
 import edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException;
 import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
 import edu.dosw.styleradar.auth.domain.model.Rol;
+import edu.dosw.styleradar.auth.domain.model.SesionAutenticada;
 import edu.dosw.styleradar.auth.infrastructure.config.SecurityConfig;
 import edu.dosw.styleradar.auth.infrastructure.exception.GlobalExceptionHandler;
 import edu.dosw.styleradar.auth.infrastructure.security.RateLimitingFilter;
 
 @WebMvcTest(controllers = GoogleOAuth2Controller.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@Import({AuthResponseMapperImpl.class, SecurityConfig.class, GlobalExceptionHandler.class})
 @ActiveProfiles("test")
 @DisplayName("Pruebas WebMVC de GoogleOAuth2Controller y Seguridad de Rutas Públicas")
 class GoogleOAuth2ControllerTest {
@@ -77,8 +77,7 @@ class GoogleOAuth2ControllerTest {
     @DisplayName("POST /api/v1/auth/oauth2/google debe emitir JWT 200 OK con ID Token válido sin Header Authorization")
     void autenticarConGoogle_conIdTokenValido_debeRetornar200() throws Exception {
         GoogleLoginRequestDTO request = new GoogleLoginRequestDTO("google.id.token.valido");
-        LoginResponseDTO expected = new LoginResponseDTO(
-                "styleradar.jwt.token", "Bearer", 86400L, 25L, Set.of(Rol.COMPRADOR));
+        SesionAutenticada expected = SesionAutenticada.conToken("styleradar.jwt.token", 86400L, 25L, Rol.COMPRADOR, "google@styleradar.com");
 
         when(googleOAuth2Service.autenticarConIdToken("google.id.token.valido")).thenReturn(expected);
 
@@ -153,8 +152,7 @@ class GoogleOAuth2ControllerTest {
     @Test
     @DisplayName("GET /api/v1/auth/oauth2/google/callback debe completar login, rechazar access_denied (401) o falta de code/state (400)")
     void callbackGoogle_debeManejarExitoCancelacionYParametrosFaltantes() throws Exception {
-        LoginResponseDTO expected = new LoginResponseDTO(
-                "styleradar.jwt.callback", "Bearer", 86400L, 30L, Set.of(Rol.COMPRADOR));
+        SesionAutenticada expected = SesionAutenticada.conToken("styleradar.jwt.callback", 86400L, 30L, Rol.COMPRADOR, "google@styleradar.com");
         when(googleOAuth2Service.autenticarConCodigo("code-ok", "state-ok", null)).thenReturn(expected);
 
         mockMvc.perform(get("/api/v1/auth/oauth2/google/callback")
@@ -183,8 +181,7 @@ class GoogleOAuth2ControllerTest {
     void autenticarConCodigo_debeRetornar200OValidarDto() throws Exception {
         GoogleCodeLoginRequestDTO request = new GoogleCodeLoginRequestDTO(
                 "code-xyz", "state-xyz", "http://localhost:3000/auth/google/callback");
-        LoginResponseDTO expected = new LoginResponseDTO(
-                "styleradar.jwt.code", "Bearer", 86400L, 90L, Set.of(Rol.ADMIN_STYLERADAR));
+        SesionAutenticada expected = SesionAutenticada.conToken("styleradar.jwt.code", 86400L, 90L, Rol.ADMIN_STYLERADAR, "google@styleradar.com");
 
         when(googleOAuth2Service.autenticarConCodigo(
                 "code-xyz", "state-xyz", "http://localhost:3000/auth/google/callback"))

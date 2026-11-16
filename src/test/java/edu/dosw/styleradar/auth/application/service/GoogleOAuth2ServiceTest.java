@@ -28,15 +28,17 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mock.env.MockEnvironment;
 
 import edu.dosw.styleradar.auth.application.dto.response.GoogleAuthUrlResponseDTO;
-import edu.dosw.styleradar.auth.application.dto.response.LoginResponseDTO;
 import edu.dosw.styleradar.auth.application.dto.response.VerificarCredencialesResponseDTO;
 import edu.dosw.styleradar.auth.application.service.impl.GoogleOAuth2ServiceImpl;
 import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException;
 import edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException;
 import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
+import edu.dosw.styleradar.auth.domain.model.GoogleIdentityClaims;
 import edu.dosw.styleradar.auth.domain.model.Rol;
+import edu.dosw.styleradar.auth.domain.model.SesionAutenticada;
 import edu.dosw.styleradar.auth.domain.port.out.GoogleOAuthPort;
 import edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioClient;
+import edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioIdentidadAdapter;
 
 @DisplayName("Pruebas Unitarias de GoogleOAuth2ServiceImpl")
 class GoogleOAuth2ServiceTest {
@@ -62,10 +64,11 @@ class GoogleOAuth2ServiceTest {
         redisTemplate = mock(StringRedisTemplate.class);
         valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(jwtService.obtenerVigenciaSegundos()).thenReturn(86400L);
 
         service = new GoogleOAuth2ServiceImpl(
                 googleOAuthPort,
-                usuarioClient,
+                new UsuarioIdentidadAdapter(usuarioClient),
                 jwtService,
                 redisTemplate,
                 TEST_CLIENT_ID,
@@ -124,14 +127,16 @@ class GoogleOAuth2ServiceTest {
                 .thenReturn(new VerificarCredencialesResponseDTO(42L, "antonia@styleradar.com", "COMPRADOR", "ACTIVA"));
         when(jwtService.generarToken(42L, Set.of(Rol.COMPRADOR))).thenReturn("jwt-styleradar-42");
 
-        LoginResponseDTO response = service.autenticarConIdToken("id-token-valido");
+        SesionAutenticada response = service.autenticarConIdToken("id-token-valido");
 
         assertEquals("jwt-styleradar-42", response.accessToken());
-        assertEquals("Bearer", response.tokenType());
-        assertEquals(86400L, response.expiresIn());
+        assertEquals(86400L, response.expiraEnSegundos());
         assertEquals(42L, response.usuarioId());
-        assertEquals(Set.of(Rol.COMPRADOR), response.roles());
+        assertEquals(Set.of(Rol.COMPRADOR), Set.of(response.rol()));
         assertFalse(response.requiereOtp());
+        assertTrue(response.correoVerificado());
+        assertEquals("antonia@styleradar.com", response.email());
+        verify(usuarioClient).marcarCorreoVerificado(42L);
     }
 
     @Test
@@ -175,10 +180,10 @@ class GoogleOAuth2ServiceTest {
                         88L, "admin.tienda@gmail.com", "ADMIN_ALMACEN", "ACTIVA"));
         when(jwtService.generarToken(88L, Set.of(Rol.ADMIN_ALMACEN))).thenReturn("jwt-almacen-88");
 
-        LoginResponseDTO response = service.autenticarConCodigo("auth-code-999", "state-123", null);
+        SesionAutenticada response = service.autenticarConCodigo("auth-code-999", "state-123", null);
 
         assertEquals("jwt-almacen-88", response.accessToken());
-        assertEquals(Set.of(Rol.ADMIN_ALMACEN), response.roles());
+        assertEquals(Set.of(Rol.ADMIN_ALMACEN), Set.of(response.rol()));
         assertFalse(response.requiereOtp());
         verify(valueOperations).getAndDelete("oauth2:state:state-123");
     }
@@ -210,7 +215,7 @@ class GoogleOAuth2ServiceTest {
 
         GoogleOAuth2ServiceImpl unconfigured = new GoogleOAuth2ServiceImpl(
                 googleOAuthPort,
-                usuarioClient,
+                new UsuarioIdentidadAdapter(usuarioClient),
                 jwtService,
                 redisTemplate,
                 "",
@@ -234,7 +239,7 @@ class GoogleOAuth2ServiceTest {
 
         GoogleOAuth2ServiceImpl devService = new GoogleOAuth2ServiceImpl(
                 googleOAuthPort,
-                usuarioClient,
+                new UsuarioIdentidadAdapter(usuarioClient),
                 jwtService,
                 redisTemplate,
                 devEnv,
@@ -243,9 +248,9 @@ class GoogleOAuth2ServiceTest {
                 ALLOWED_REDIRECTS,
                 "https://accounts.google.com/o/oauth2/v2/auth",
                 300L,
-                "PT12H",
                 true);
 
+        when(jwtService.obtenerVigenciaSegundos()).thenReturn(43200L);
         GoogleAuthUrlResponseDTO generated = devService.generarUrlAutorizacion(null);
         when(googleOAuthPort.intercambiarCodigoPorIdToken("code-dev", DEFAULT_REDIRECT)).thenReturn("id-dev");
         when(googleOAuthPort.verificarIdToken("id-dev"))
@@ -254,12 +259,28 @@ class GoogleOAuth2ServiceTest {
                 .thenReturn(new VerificarCredencialesResponseDTO(5L, "dev@gmail.com", "COMPRADOR", "ACTIVA"));
         when(jwtService.generarToken(5L, Set.of(Rol.COMPRADOR))).thenReturn("jwt-dev");
 
-        LoginResponseDTO firstAttempt = devService.autenticarConCodigo("code-dev", generated.state(), null);
-        assertEquals(43200L, firstAttempt.expiresIn());
+        SesionAutenticada firstAttempt = devService.autenticarConCodigo("code-dev", generated.state(), null);
+        assertEquals(43200L, firstAttempt.expiraEnSegundos());
 
         String usedState = generated.state();
         assertThrows(
                 CredencialesIncorrectasException.class,
                 () -> devService.autenticarConCodigo("code-dev", usedState, null));
+    }
+
+    @Test
+    @DisplayName("B8: si la cuenta vinculada con Google ya tiene el correo verificado no se vuelve a marcar en ms-usuarios")
+    void autenticarConIdToken_conCorreoYaVerificado_noDebeMarcarDeNuevo() {
+        GoogleIdentityClaims claims = new GoogleIdentityClaims("sub-7", "ana@gmail.com", true, "Ana");
+        when(googleOAuthPort.verificarIdToken("id-ok")).thenReturn(claims);
+        when(usuarioClient.resolverUsuarioOAuth("ana@gmail.com", "Ana", "GOOGLE", "sub-7"))
+                .thenReturn(new VerificarCredencialesResponseDTO(7L, "ana@gmail.com", "COMPRADOR", "ACTIVA", true));
+        when(jwtService.generarToken(7L, Set.of(Rol.COMPRADOR))).thenReturn("jwt-7");
+
+        SesionAutenticada sesion = service.autenticarConIdToken("id-ok");
+
+        assertEquals("jwt-7", sesion.accessToken());
+        assertFalse(sesion.requiereOtp());
+        verify(usuarioClient, never()).marcarCorreoVerificado(anyLong());
     }
 }
