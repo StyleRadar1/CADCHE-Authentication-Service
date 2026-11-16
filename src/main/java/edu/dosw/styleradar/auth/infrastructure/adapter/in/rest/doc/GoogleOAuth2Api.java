@@ -46,13 +46,13 @@ public interface GoogleOAuth2Api {
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "ID Token válido y cuenta activa; retorna JWT Bearer emitido por StyleRadar",
+                    description = "ID Token válido y cuenta activa; retorna JWT Bearer de StyleRadar sin OTP (D2). Si la cuenta no tenía el correo verificado, ms-auth lo marca como verificado en ms-usuarios",
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(implementation = LoginResponseDTO.class),
                             examples = @ExampleObject(
                                     name = "LoginGoogleExitoso",
-                                    value = "{\"accessToken\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyNSIsInJvbGVzIjpbIkNPTVBSQURPUiJdfQ.firma\",\"tokenType\":\"Bearer\",\"expiresIn\":86400,\"usuarioId\":25,\"roles\":[\"COMPRADOR\"],\"requiereOtp\":false,\"otpExpiraEnSegundos\":0,\"intentosOtpRestantes\":0}"))),
+                                    value = AuthApiEjemplos.SESION_CON_TOKEN))),
             @ApiResponse(
                     responseCode = "400",
                     description = "Solicitud inválida por ID Token faltante o formato incorrecto",
