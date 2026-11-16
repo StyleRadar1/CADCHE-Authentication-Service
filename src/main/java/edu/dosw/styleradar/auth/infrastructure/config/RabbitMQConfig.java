@@ -1,8 +1,10 @@
 package edu.dosw.styleradar.auth.infrastructure.config;
 
 import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.config.RetryInterceptorBuilder;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -25,6 +27,20 @@ public class RabbitMQConfig {
 
     @org.springframework.beans.factory.annotation.Value("${spring.rabbitmq.password:}")
     private String rabbitPassword = "";
+
+    /**
+     * Exchanges del broker del curso (topic y direct, durables). Se declaran de forma idempotente para que los
+     * enlaces de la cola no fallen en un broker nuevo; con el broker de QA coinciden con los ya creados.
+     */
+    @Bean
+    TopicExchange eventosExchange() {
+        return new TopicExchange(EXCHANGE, true, false);
+    }
+
+    @Bean
+    DirectExchange mensajesMuertosExchange() {
+        return new DirectExchange(DLX_EXCHANGE, true, false);
+    }
 
     @Bean
     Queue usuarioEstadoQueue() {
