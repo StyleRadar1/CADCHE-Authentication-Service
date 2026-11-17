@@ -3,7 +3,7 @@ package edu.dosw.styleradar.auth.domain.exception;
 import edu.dosw.styleradar.auth.domain.model.CodigoError;
 
 /**
- * Espera obligatoria tras agotar los intentos del código (decisión D1). Aplica a {@code /otp/reenviar}
+ * Espera obligatoria tras agotar los intentos del código (decisión D1). Aplica a {@code /otp/resend}
  * y a {@code /login} con correo sin verificar (SR-RF-02 FA-15).
  */
 public class OtpBloqueadoTemporalmenteException extends AuthDomainException {

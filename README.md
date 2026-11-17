@@ -85,7 +85,7 @@
 | • **SR-RF-92 · Verificar el correo con OTP:** el código dura `300 s`, admite `3` intentos y se pide **una sola vez por cuenta** (decisión D2). Al tercer fallo anula solo el código y bloquea pedir otro durante `60 s` (D1); la verificación en curso dura `15 min`. Al verificar, marca el correo en `ms-usuarios`. | • NO administra almacenes ni fundaciones (`ms-tiendas`). |
 | • **Google OAuth2 / OIDC:** ID Token RS256 validado contra JWKS o *Authorization Code* con `state` anti-CSRF de un solo uso; no pide OTP y marca el correo como verificado (B8). | • NO publica eventos hacia otros servicios. |
 | • **Sesiones:** renovación con rotación (`/refresh`), cierre con lista negra (`/logout`) y **revocación global** al recibir `UsuarioEstadoCambiadoEvent` (cuenta `INACTIVA`/`BLOQUEADA`), con idempotencia por `eventoId`. | • NO gestiona catálogo, inventario ni pagos. |
-| • **Contrato de errores v1.2 (ProblemDetail RFC 9457):** cada error trae `type`/`title`/`detail`/`instance`, `codigo` del catálogo, `intentosRestantes`, `esperarSegundos` y la cabecera `Retry-After` en todos los `429`. | • NO expone el registro real (el `/registro` es un stub solo para `dev`/`test`; en QA/PROD responde `503`). |
+| • **Contrato de errores v1.2 (ProblemDetail RFC 9457):** cada error trae `type`/`title`/`detail`/`instance`, `codigo` del catálogo, `intentosRestantes`, `esperarSegundos` y la cabecera `Retry-After` en todos los `429`. | • NO expone el registro real (el `/register` es un stub solo para `dev`/`test`; en QA/PROD responde `503`). |
 
 ---
 
@@ -245,11 +245,11 @@ El front **siempre** llama al API Gateway (`:8080`), que enruta `/api/v1/auth/**
 | Método | Ruta | Entrada | Respuesta | Acceso |
 | :---: | :--- | :--- | :--- | :--- |
 | `POST` | `/api/v1/auth/login` | `email`, `password` | `200 LoginResponseDTO` (token directo o `requiereOtp=true`) | Público · 15 req/min |
-| `POST` | `/api/v1/auth/otp/verificar` | `email`, `codigoOtp` | `200 LoginResponseDTO` con token | Público |
-| `POST` | `/api/v1/auth/otp/reenviar` | `email` | `200 OtpMensajeResponseDTO` (`reenviosRestantes`) | Público |
+| `POST` | `/api/v1/auth/otp/verify` | `email`, `codigoOtp` | `200 LoginResponseDTO` con token | Público |
+| `POST` | `/api/v1/auth/otp/resend` | `email` | `200 OtpMensajeResponseDTO` (`reenviosRestantes`) | Público |
 | `POST` | `/api/v1/auth/refresh` | `refreshToken` (JWT vigente) | `200 LoginResponseDTO` (token rotado) | Público |
 | `POST` | `/api/v1/auth/logout` | `Authorization: Bearer` | `204` | JWT |
-| `POST` | `/api/v1/auth/registro` | Datos de registro | `201` en `dev`/`test` · `503` en QA/PROD | Público |
+| `POST` | `/api/v1/auth/register` | Datos de registro | `201` en `dev`/`test` · `503` en QA/PROD | Público |
 | `POST` | `/api/v1/auth/oauth2/google` | `idToken` | `200 LoginResponseDTO` | Público |
 | `GET` | `/api/v1/auth/oauth2/google/url` | `redirectUri` (opcional) | `200` URL de autorización + `state` | Público |
 | `GET` | `/api/v1/auth/oauth2/google/callback` | `code`, `state` | `200 LoginResponseDTO` | Público |
@@ -277,11 +277,11 @@ Los errores salen en formato **ProblemDetail (RFC 9457)** con `Content-Type: app
   "type": "https://api.styleradar.com/errores/otp-intentos-agotados",
   "title": "Too Many Requests", "status": 429,
   "detail": "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.",
-  "instance": "/api/v1/auth/otp/verificar",
+  "instance": "/api/v1/auth/otp/verify",
   "timestamp": "2026-11-16T10:15:30", "error": "Too Many Requests",
   "codigo": "OTP_INTENTOS_AGOTADOS",
   "message": "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.",
-  "path": "/api/v1/auth/otp/verificar", "validationErrors": {},
+  "path": "/api/v1/auth/otp/verify", "validationErrors": {},
   "intentosRestantes": 0, "esperarSegundos": 60
 }
 ```
@@ -501,7 +501,7 @@ El seguimiento de requerimientos, historias de usuario, evidencias y artefactos 
 
 | ID | Criterio de Aceptación (Verificado en Código y Pruebas) | Evidencia Automática |
 | :---: | :--- | :--- |
-| **CA-01** | El acceso tradicional (`POST /api/v1/auth/login`) delega la validación en `ms-usuarios`, almacena el OTP salteado en SHA-256 (`300 s`, máx `3` intentos/reenvíos), aplica rollback si falla SMTP y emite JWT `HS256` en `/otp/verificar` (`401` si inválido/expirado, `429` si agotado). | `AuthControllerTest`, `OtpServiceTest`, `EmailServiceTest` |
+| **CA-01** | El acceso tradicional (`POST /api/v1/auth/login`) delega la validación en `ms-usuarios`, almacena el OTP salteado en SHA-256 (`300 s`, máx `3` intentos/reenvíos), aplica rollback si falla SMTP y emite JWT `HS256` en `/otp/verify` (`401` si inválido/expirado, `429` si agotado). | `AuthControllerTest`, `OtpServiceTest`, `EmailServiceTest` |
 | **CA-02** | El acceso directo (`POST /api/v1/auth/oauth2/google`) verifica firma `RS256` contra Google JWKS (`NimbusJwtDecoder`), emisor Google, audiencia `GOOGLE_CLIENT_ID`, vigencia y `email_verified=true`; resuelve/aprovisiona en `ms-usuarios` (`/internal/api/v1/usuarios/oauth2`), valida `ACTIVA` y emite JWT sin desafío OTP adicional. | `GoogleOAuthAdapterTest`, `GoogleOAuth2ServiceTest` |
 | **CA-03** | El flujo navegable desde Swagger UI (`GET /oauth2/google/url` &rarr; Consentimiento Google &rarr; `GET /callback` o `POST /code`) protege contra CSRF con `oauth2:state:{state}` de un solo uso (`getAndDelete`, TTL `300 s`) y restringe redirecciones con `GOOGLE_ALLOWED_REDIRECT_URIS` (anti-Open Redirect). | `GoogleOAuth2ControllerTest`, `GoogleOAuth2SwaggerIntegrationTest` |
 | **CA-04** | Ambos métodos comparten un único ciclo JWT: rotación en `/refresh`, revocación en `/logout` (`blacklist:*`), revocación administrativa desde RabbitMQ (`auth.usuario.estado.cambiado` -> `usuario:revocado:*`), rate limiting (`429`) y respuestas homogéneas `ErrorResponseDTO` (`503` fail-closed en `qa`/`prod`). | `JwtAuthenticationFilterTest`, `RateLimitingFilterTest`, `OwaspTop10SecurityTest`, `UsuarioEstadoCambiadoConsumerTest` |
@@ -844,7 +844,7 @@ Evaluación técnica y verificación automatizada de **`CADCHE-Authentication-Se
 | **A03:2025** | **Software Supply Chain Failures** | Alto | **SÍ** | 🟢 **PASS *(Mitigado)*** | Actualizado a **Java 21 LTS** en `pom.xml`, `Dockerfile` y CI; `Dockerfile` multi-stage con usuario no-root `appuser:appgroup`, etiquetas OCI y `HEALTHCHECK`; `cyclonedx-maven-plugin:2.9.3` genera SBOM CycloneDX 1.6 subido en CI; Actions fijadas por SHA, Buildx `provenance: true`/`sbom: true`, `SpotBugs` (`0` bugs) y SonarCloud Quality Gate. |
 | **A04:2025** | **Cryptographic Failures** | Crítico | **SÍ** | 🟢 **PASS *(Mitigado)*** | `JwtServiceImpl` firma `HS256` exigiendo clave Base64 `>= 256` bits y rechaza el secreto de ejemplo en `qa`/`prod`; `GoogleOAuthAdapter` valida firma RS256 de ID Tokens Google contra JWKS (`NimbusJwtDecoder`); `OtpServiceImpl` genera OTP con `SecureRandom` y almacena hash SHA-256 salteado de 16 bytes (`MessageDigest.isEqual`); `GoogleOAuth2ServiceImpl` genera `state` de 32 bytes con `SecureRandom`; TLS en SMTP, DB, Redis y RabbitMQ. |
 | **A05:2025** | **Injection** | Alto | **SÍ** | 🟢 **PASS *(Mitigado)*** | `@Valid` con regex de nombre seguro, contraseña fuerte (`8–72` chars con mayúscula, minúscula, dígito y símbolo), longitud de correo/token y `^\d{6}$`; `SecuritySanitizer.normalizeEmail()` rechaza `\r\n\t`; `sanitizeForLog()` evita CRLF Injection; `RabbitMQConfig` restringe `setTrustedPackages`. |
-| **A06:2025** | **Insecure Design** | Crítico | **SÍ** | 🟢 **PASS *(Mitigado)*** | `RateLimitingFilter` distribuido en Redis con `429` + `Retry-After` en OTP y `/oauth2/google/**`; tope `maxResends = 3`; tokens `oauth2:state:{state}` consumidos atómicamente de un solo uso (`getAndDelete`) y vinculados al `redirectUri`; rotación en `/refresh`; fallback aislado a `dev` puro; stub `/registro` bloqueado (`503`) fuera de `dev`/`test`. |
+| **A06:2025** | **Insecure Design** | Crítico | **SÍ** | 🟢 **PASS *(Mitigado)*** | `RateLimitingFilter` distribuido en Redis con `429` + `Retry-After` en OTP y `/oauth2/google/**`; tope `maxResends = 3`; tokens `oauth2:state:{state}` consumidos atómicamente de un solo uso (`getAndDelete`) y vinculados al `redirectUri`; rotación en `/refresh`; fallback aislado a `dev` puro; stub `/register` bloqueado (`503`) fuera de `dev`/`test`. |
 | **A07:2025** | **Authentication Failures** | Crítico | **SÍ** | 🟢 **PASS *(Mitigado)*** | Doble modalidad autenticada: 2FA clásico (`ms-users` -> OTP hash SHA-256 -> JWT `HS256`) y Google OAuth2 / OIDC (`iss` Google, `aud` StyleRadar, `exp`, `email_verified=true` -> `UsuarioClient.resolverUsuarioOAuth` -> estado `ACTIVA`); `/logout` autenticado con revocación en Redis y eventos RabbitMQ. |
 | **A08:2025** | **Software or Data Integrity Failures** | Alto | **SÍ** | 🟢 **PASS *(Mitigado)*** | Firma `HS256` verificada contra alteraciones; caché local RAM deshabilitada en `qa`/`prod` (`fail-closed`); `UsuarioEstadoCambiadoConsumer` filtra `BLOQUEADA`/`INACTIVA`, valida campos nulos y relanza `DataAccessException`; `DefaultJackson2JavaTypeMapper` acotado y `provenance`/`sbom` en Buildx. |
 | **A09:2025** | **Security Logging and Alerting Failures** | Medio-Alto | **SÍ** | 🟢 **PASS *(Mitigado)*** | `SecuritySanitizer.maskEmail()` oculta PII en logs; `EmailServiceImpl` suprime códigos OTP fuera de `dev` puro; trazas de auditoría SLF4J en bloqueos `401`/`403`/`429`, rotaciones, revocaciones globales y fallos externos `503` con sanitización anti-CRLF. |
@@ -904,7 +904,7 @@ Evaluación técnica y verificación automatizada de **`CADCHE-Authentication-Se
 * **¿Aplica?:** **SÍ (Crítico).** Cubre fuerza bruta sobre login/OTP, reenvíos, Open Redirect OAuth2, rotación de sesiones y stubs.
 * **Estado:** 🟢 **PASS *(Mitigado)***
 * **Controles verificados en código:**
-  1. `RateLimitingFilter` (`@Order(Ordered.HIGHEST_PRECEDENCE + 5)`) aplica limitación distribuida por IP/ruta en Redis sobre `/login`, `/otp/verificar`, `/otp/reenviar`, `/refresh`, `/registro`, `/oauth2/google`, `/oauth2/google/url`, `/oauth2/google/callback` y `/oauth2/google/code`, devolviendo `429` con cabecera `Retry-After`.
+  1. `RateLimitingFilter` (`@Order(Ordered.HIGHEST_PRECEDENCE + 5)`) aplica limitación distribuida por IP/ruta en Redis sobre `/login`, `/otp/verify`, `/otp/resend`, `/refresh`, `/register`, `/oauth2/google`, `/oauth2/google/url`, `/oauth2/google/callback` y `/oauth2/google/code`, devolviendo `429` con cabecera `Retry-After`.
   2. `OtpServiceImpl` impone TTL de `300 s`, máx. `3` intentos fallidos y límite de reenvíos (`maxResends = 3` en `otp:reenvios:<email>`) lanzando `OtpIntentosAgotadosException` (`429`) con limpieza de sesión al excederse; `GoogleOAuth2ServiceImpl` valida `allowed-redirect-uris` contra Open Redirect y consume `oauth2:state:{state}` de un solo uso (`getAndDelete`).
   3. `AuthController.refresh()` revoca el token previo al rotar uno nuevo (`invalidarToken`), valida `estaUsuarioRevocado()`, y `AuthController.registrar()` bloquea el stub (`503`) cuando `registration.stub-enabled=false` (activo en `application.yml`, `qa` y `prod`).
 

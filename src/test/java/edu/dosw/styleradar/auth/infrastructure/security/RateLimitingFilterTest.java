@@ -97,7 +97,7 @@ class RateLimitingFilterTest {
 
         when(redisTemplate.opsForValue()).thenThrow(new DataAccessResourceFailureException("Redis down"));
 
-        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/auth/otp/verificar");
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/auth/otp/verify");
         req.setRemoteAddr("10.0.0.8");
         MockHttpServletResponse res = new MockHttpServletResponse();
 

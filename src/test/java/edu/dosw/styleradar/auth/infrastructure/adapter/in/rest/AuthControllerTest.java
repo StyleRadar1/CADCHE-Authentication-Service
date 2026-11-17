@@ -113,7 +113,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.validationErrors.email", is("El correo electrónico excede la longitud máxima permitida")))
                 .andExpect(jsonPath("$.validationErrors.password", is("La contraseña es obligatoria")));
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"\",\"codigoOtp\":\"\"}"))
                 .andExpect(status().isBadRequest())
@@ -221,7 +221,7 @@ class AuthControllerTest {
         doNothing().when(otpService).verificarOtp("comprador@styleradar.com", "482915");
         when(jwtService.generarToken(eq(10L), anySet())).thenReturn("jwt.token.firmado");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -245,7 +245,7 @@ class AuthControllerTest {
         doThrow(new OtpInvalidoException(2))
                 .when(otpService).verificarOtp("comprador@styleradar.com", "000000");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
@@ -263,7 +263,7 @@ class AuthControllerTest {
         doThrow(new OtpExpiradoException("El código OTP expiró o no existe. Debe solicitar uno nuevo."))
                 .when(otpService).verificarOtp("comprador@styleradar.com", "123456");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
@@ -280,7 +280,7 @@ class AuthControllerTest {
         doThrow(OtpIntentosAgotadosException.intentosAgotados(60L))
                 .when(otpService).verificarOtp("comprador@styleradar.com", "999999");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isTooManyRequests())
@@ -297,7 +297,7 @@ class AuthControllerTest {
     void verificarOtp_conFormatoInvalido_debeRetornar400() throws Exception {
         VerificarOtpRequestDTO request = new VerificarOtpRequestDTO("comprador@styleradar.com", "123");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -312,7 +312,7 @@ class AuthControllerTest {
         when(otpService.reenviarOtp("comprador@styleradar.com")).thenReturn("654321");
         doNothing().when(emailService).enviarOtp("comprador@styleradar.com", "654321");
 
-        mockMvc.perform(post("/api/v1/auth/otp/reenviar")
+        mockMvc.perform(post("/api/v1/auth/otp/resend")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -332,7 +332,7 @@ class AuthControllerTest {
         when(otpService.reenviarOtp("inactivo@styleradar.com"))
                 .thenThrow(OtpExpiradoException.sesionInexistente());
 
-        mockMvc.perform(post("/api/v1/auth/otp/reenviar")
+        mockMvc.perform(post("/api/v1/auth/otp/resend")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
@@ -411,7 +411,7 @@ class AuthControllerTest {
         RegistroAuthRequestDTO request = new RegistroAuthRequestDTO(
                 "Carlos Pérez", "carlos@styleradar.com", "+57 300 123 4567", "StyleRadar2026*", true);
 
-        mockMvc.perform(post("/api/v1/auth/registro")
+        mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -537,7 +537,7 @@ class AuthControllerTest {
         when(otpService.obtenerRol("comprador@styleradar.com")).thenReturn(null);
         doNothing().when(otpService).verificarOtp("comprador@styleradar.com", "482915");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(otpReq)))
                 .andExpect(status().isUnauthorized());

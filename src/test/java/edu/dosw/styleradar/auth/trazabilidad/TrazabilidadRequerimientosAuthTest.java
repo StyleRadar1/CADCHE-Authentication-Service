@@ -244,11 +244,11 @@ class TrazabilidadRequerimientosAuthTest {
     }
 
     private ResultActions verificar(String ip, String email, String codigo) throws Exception {
-        return llamar(ip, "/otp/verificar", Map.of("email", email, "codigoOtp", codigo));
+        return llamar(ip, "/otp/verify", Map.of("email", email, "codigoOtp", codigo));
     }
 
     private ResultActions reenviar(String ip, String email) throws Exception {
-        return llamar(ip, "/otp/reenviar", Map.of("email", email));
+        return llamar(ip, "/otp/resend", Map.of("email", email));
     }
 
     /** Formato único de error del Word: código HTTP, código de error, mensaje y fecha AAAA-MM-DDThh:mm:ss. */
@@ -693,7 +693,7 @@ class TrazabilidadRequerimientosAuthTest {
             assertThat(e.get("codigo").asText()).isEqualTo("OTP_INTENTOS_AGOTADOS");
             assertThat(e.get("message").asText())
                     .isEqualTo("Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.");
-            assertThat(e.get("path").asText()).isEqualTo("/api/v1/auth/otp/verificar");
+            assertThat(e.get("path").asText()).isEqualTo("/api/v1/auth/otp/verify");
             assertThat(e.get("validationErrors").isObject()).isTrue();
             assertThat(e.get("validationErrors").size()).isZero();
             assertThat(e.get("intentosRestantes").asInt()).isZero();

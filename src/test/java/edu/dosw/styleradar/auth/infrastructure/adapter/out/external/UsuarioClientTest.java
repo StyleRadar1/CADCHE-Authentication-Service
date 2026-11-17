@@ -240,7 +240,7 @@ class UsuarioClientTest {
         devEnv.setActiveProfiles("dev");
         UsuarioClient devClient = new UsuarioClient(
                 devBuilder, BASE_URL, "u", "p", true, devEnv, "/internal/api/v1/usuarios/oauth2",
-                "/internal/api/v1/usuarios/{id}/verificar-correo");
+                "/internal/api/v1/usuarios/{id}/verificar-correo", "/internal/api/v1/usuarios/verificar-credenciales");
 
         devServer.expect(ExpectedCount.once(), requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
                 .andRespond(request -> {

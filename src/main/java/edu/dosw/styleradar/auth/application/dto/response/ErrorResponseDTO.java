@@ -36,7 +36,7 @@ public class ErrorResponseDTO {
     @Schema(description = "Explicación del problema para esta ocurrencia (RFC 9457)", example = "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.")
     String detail;
 
-    @Schema(description = "Ruta de la solicitud que produjo el problema (RFC 9457)", example = "/api/v1/auth/otp/verificar")
+    @Schema(description = "Ruta de la solicitud que produjo el problema (RFC 9457)", example = "/api/v1/auth/otp/verify")
     String instance;
 
     @Schema(description = "Fecha y hora en que ocurrió el error", example = "2026-11-13T10:15:30")
@@ -55,7 +55,7 @@ public class ErrorResponseDTO {
     @Schema(description = "Alias de detail (compatibilidad)", example = "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.")
     String message;
 
-    @Schema(description = "Alias de instance (compatibilidad)", example = "/api/v1/auth/otp/verificar")
+    @Schema(description = "Alias de instance (compatibilidad)", example = "/api/v1/auth/otp/verify")
     String path;
 
     @Schema(description = "Detalle de errores de validación por campo cuando aplica", example = "{\"email\":\"El formato del correo electrónico es inválido\"}")

@@ -151,7 +151,7 @@ class RequerimientosCompletosAuditoriaAuthTest {
 
         VerificarOtpRequestDTO request = new VerificarOtpRequestDTO(EMAIL, "123456");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -172,7 +172,7 @@ class RequerimientosCompletosAuditoriaAuthTest {
 
         ReenviarOtpRequestDTO request = new ReenviarOtpRequestDTO(EMAIL);
 
-        mockMvc.perform(post("/api/v1/auth/otp/reenviar")
+        mockMvc.perform(post("/api/v1/auth/otp/resend")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isTooManyRequests())
@@ -181,7 +181,7 @@ class RequerimientosCompletosAuditoriaAuthTest {
                 .andExpect(jsonPath("$.type").value("https://api.styleradar.com/errores/otp-reenvio-bloqueado"))
                 .andExpect(jsonPath("$.title").value("Too Many Requests"))
                 .andExpect(jsonPath("$.detail").value(containsString("48 segundos")))
-                .andExpect(jsonPath("$.instance").value("/api/v1/auth/otp/reenviar"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/auth/otp/resend"))
                 .andExpect(jsonPath("$.timestamp").value(matchesPattern("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")))
                 .andExpect(jsonPath("$.status").value(429))
                 .andExpect(jsonPath("$.error").value("Too Many Requests"))

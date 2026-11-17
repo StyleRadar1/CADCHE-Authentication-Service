@@ -27,11 +27,13 @@ import lombok.extern.slf4j.Slf4j;
 public final class UsuarioClient {
 
     static final String DEFAULT_CORREO_VERIFICADO_PATH = "/internal/api/v1/usuarios/{id}/verificar-correo";
+    static final String DEFAULT_CREDENCIALES_PATH = "/internal/api/v1/usuarios/verificar-credenciales";
 
     private final RestClient restClient;
     private final String baseUrl;
     private final String oauth2Path;
     private final String correoVerificadoPath;
+    private final String credencialesPath;
     private final boolean devFallbackEnabled;
     private final Environment environment;
 
@@ -60,7 +62,7 @@ public final class UsuarioClient {
             boolean devFallbackEnabled,
             Environment environment) {
         this(restClientBuilder, baseUrl, username, password, devFallbackEnabled, environment,
-                "/internal/api/v1/usuarios/oauth2", DEFAULT_CORREO_VERIFICADO_PATH);
+                "/internal/api/v1/usuarios/oauth2", DEFAULT_CORREO_VERIFICADO_PATH, DEFAULT_CREDENCIALES_PATH);
     }
 
     @SuppressFBWarnings(
@@ -76,7 +78,9 @@ public final class UsuarioClient {
             Environment environment,
             @Value("${styleradar.usuarios.oauth2-path:/internal/api/v1/usuarios/oauth2}") String oauth2Path,
             @Value("${styleradar.usuarios.correo-verificado-path:" + DEFAULT_CORREO_VERIFICADO_PATH + "}")
-            String correoVerificadoPath) {
+            String correoVerificadoPath,
+            @Value("${styleradar.usuarios.credenciales-path:" + DEFAULT_CREDENCIALES_PATH + "}")
+            String credencialesPath) {
 
         this.baseUrl = SecuritySanitizer.validateExternalServiceUrl(
                 baseUrl, environment, "USUARIOS_SERVICE_URL");
@@ -86,6 +90,9 @@ public final class UsuarioClient {
         this.correoVerificadoPath = (correoVerificadoPath == null || correoVerificadoPath.isBlank())
                 ? DEFAULT_CORREO_VERIFICADO_PATH
                 : correoVerificadoPath.trim();
+        this.credencialesPath = (credencialesPath == null || credencialesPath.isBlank())
+                ? DEFAULT_CREDENCIALES_PATH
+                : credencialesPath.trim();
         this.devFallbackEnabled = devFallbackEnabled;
         this.environment = environment;
         this.restClient = restClientBuilder
@@ -104,7 +111,7 @@ public final class UsuarioClient {
 
         try {
             return restClient.post()
-                    .uri("/internal/api/v1/usuarios/verificar-credenciales")
+                    .uri(credencialesPath)
                     .body(request)
                     .retrieve()
                     .body(VerificarCredencialesResponseDTO.class);

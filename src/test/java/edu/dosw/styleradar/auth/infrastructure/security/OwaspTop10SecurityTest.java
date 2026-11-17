@@ -191,7 +191,7 @@ class OwaspTop10SecurityTest {
         RegistroAuthRequestDTO unsafeDto = new RegistroAuthRequestDTO(
                 "<script>alert(1)</script>", "carlos@styleradar.com", "300123", "12345", true);
 
-        mockMvc.perform(post("/api/v1/auth/registro")
+        mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(unsafeDto)))
                 .andExpect(status().isBadRequest())
