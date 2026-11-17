@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
@@ -105,6 +106,7 @@ public final class JwtServiceImpl implements JwtService {
         Instant expiracion = ahora.plus(duration);
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(usuarioId))
                 .claim("roles", roles.stream().map(Enum::name).toList())
                 .issuedAt(Date.from(ahora))

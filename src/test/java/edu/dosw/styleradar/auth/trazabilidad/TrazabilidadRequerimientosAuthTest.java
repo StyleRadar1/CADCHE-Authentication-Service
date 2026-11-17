@@ -10,6 +10,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -61,7 +62,7 @@ import edu.dosw.styleradar.auth.application.service.EmailService;
 import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
 
 /**
- * Trazabilidad del análisis de requerimientos de ms-auth (StyleRadar_Requerimientos_ms-auth_CADche, 13/11/2026).
+ * Trazabilidad del análisis de requerimientos y del contrato Front ↔ ms-auth (v1.2) de ms-auth (StyleRadar_Requerimientos_ms-auth_CADche, 13/11/2026).
  * Cada prueba corresponde a un flujo alterno (FA) o regla de negocio (RN) de SR-RF-02 y SR-RF-92 y verifica, a través
  * de la API real con Redis 7, el código HTTP, el código de error y el mensaje exactos del documento.
  * Solo se simulan los sistemas externos: ms-usuarios (servidor HTTP local), Google (decodificador del ID token) y el
@@ -74,7 +75,8 @@ import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleExce
         "styleradar.security.oauth2.google.client-id=cliente-styleradar.apps.googleusercontent.com",
         "styleradar.usuarios.username=ms-auth",
         "styleradar.usuarios.password=prueba",
-        "spring.rabbitmq.listener.simple.auto-startup=false"
+        "spring.rabbitmq.listener.simple.auto-startup=false",
+        "styleradar.security.jwt.duration=PT12H"
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -250,7 +252,7 @@ class TrazabilidadRequerimientosAuthTest {
     }
 
     /** Formato único de error del Word: código HTTP, código de error, mensaje y fecha AAAA-MM-DDThh:mm:ss. */
-    private static void error(ResultActions r, int http, String codigo, String mensaje) throws Exception {
+    private static ResultActions error(ResultActions r, int http, String codigo, String mensaje) throws Exception {
         r.andExpect(status().is(http))
                 .andExpect(jsonPath("$.codigo").value(codigo))
                 .andExpect(jsonPath("$.status").value(http))
@@ -258,6 +260,7 @@ class TrazabilidadRequerimientosAuthTest {
         if (mensaje != null) {
             r.andExpect(jsonPath("$.message").value(mensaje));
         }
+        return r;
     }
 
     private static Jwt tokenGoogle(String email, boolean verificado) {
@@ -280,7 +283,7 @@ class TrazabilidadRequerimientosAuthTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.accessToken").isNotEmpty())
                     .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                    .andExpect(jsonPath("$.expiresIn").value(86400))
+                    .andExpect(jsonPath("$.expiresIn").value(43200))
                     .andExpect(jsonPath("$.usuarioId").value(12))
                     .andExpect(jsonPath("$.roles[0]").value("COMPRADOR"))
                     .andExpect(jsonPath("$.email").value("verificado@styleradar.com"))
@@ -648,6 +651,261 @@ class TrazabilidadRequerimientosAuthTest {
         void rn02() {
             Long ttl = redis.getExpire("otp:nuevo@styleradar.com");
             assertThat(ttl).isBetween(290L, 300L);
+        }
+    }
+
+    // ---------------------------------------------------------------- Contrato Front ↔ ms-auth v1.2
+
+    @Nested
+    @DisplayName("Contrato Front ↔ ms-auth v1.2")
+    class ContratoFront {
+
+        private JsonNode cuerpo(ResultActions r) throws Exception {
+            return objectMapper.readTree(r.andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        }
+
+        private String tokenDe(ResultActions r) throws Exception {
+            return cuerpo(r).get("accessToken").asText();
+        }
+
+        private ResultActions logout(String ip, String token) throws Exception {
+            return mockMvc.perform(post("/api/v1/auth/logout").with(req -> {
+                req.setRemoteAddr(ip);
+                return req;
+            }).header(HttpHeaders.AUTHORIZATION, token == null ? "" : "Bearer " + token));
+        }
+
+        @Test
+        @DisplayName("1.4: el error trae timestamp, status, error, codigo, message, path, validationErrors, intentosRestantes y esperarSegundos")
+        void formatoUnicoDeError() throws Exception {
+            String ip = nuevaIp();
+            login(ip, "nuevo@styleradar.com", CLAVE).andExpect(status().isOk());
+            String codigo = ultimoCodigo.get("nuevo@styleradar.com");
+            String malo = "000000".equals(codigo) ? "111111" : "000000";
+            verificar(ip, "nuevo@styleradar.com", malo);
+            verificar(ip, "nuevo@styleradar.com", malo);
+            ResultActions r = verificar(ip, "nuevo@styleradar.com", malo);
+            JsonNode e = cuerpo(r);
+            assertThat(e.fieldNames()).toIterable().contains("timestamp", "status", "error", "codigo", "message", "path",
+                    "validationErrors", "intentosRestantes", "esperarSegundos");
+            assertThat(e.get("status").asInt()).isEqualTo(429);
+            assertThat(e.get("error").asText()).isEqualTo("Too Many Requests");
+            assertThat(e.get("codigo").asText()).isEqualTo("OTP_INTENTOS_AGOTADOS");
+            assertThat(e.get("message").asText())
+                    .isEqualTo("Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.");
+            assertThat(e.get("path").asText()).isEqualTo("/api/v1/auth/otp/verificar");
+            assertThat(e.get("validationErrors").isObject()).isTrue();
+            assertThat(e.get("validationErrors").size()).isZero();
+            assertThat(e.get("intentosRestantes").asInt()).isZero();
+            assertThat(e.get("esperarSegundos").asInt()).isEqualTo(60);
+            r.andExpect(header().string(HttpHeaders.RETRY_AFTER, "60"));
+
+            JsonNode sinExtras = cuerpo(login(nuevaIp(), "noexiste@styleradar.com", CLAVE));
+            assertThat(sinExtras.fieldNames()).toIterable().contains("intentosRestantes", "esperarSegundos", "validationErrors");
+            assertThat(sinExtras.get("intentosRestantes").isNull()).isTrue();
+            assertThat(sinExtras.get("esperarSegundos").isNull()).isTrue();
+        }
+
+        @Test
+        @DisplayName("1.2 y 1.4: todos los 429 llevan Retry-After igual a esperarSegundos")
+        void retryAfterEnTodos429() throws Exception {
+            String ip = nuevaIp();
+            for (int i = 0; i < 15; i++) {
+                login(ip, "noexiste@styleradar.com", CLAVE);
+            }
+            ResultActions limite = login(ip, "noexiste@styleradar.com", CLAVE);
+            String espera = limite.andReturn().getResponse().getHeader(HttpHeaders.RETRY_AFTER);
+            assertThat(espera).isNotBlank();
+            assertThat(cuerpo(limite).get("esperarSegundos").asText()).isEqualTo(espera);
+
+            String ip2 = nuevaIp();
+            login(ip2, "nuevo@styleradar.com", CLAVE);
+            for (int i = 0; i < 3; i++) {
+                verificar(ip2, "nuevo@styleradar.com", "000000".equals(ultimoCodigo.get("nuevo@styleradar.com")) ? "111111" : "000000");
+            }
+            ResultActions bloqueo = reenviar(ip2, "nuevo@styleradar.com");
+            error(bloqueo, 429, "OTP_REENVIO_BLOQUEADO", null);
+            assertThat(bloqueo.andReturn().getResponse().getHeader(HttpHeaders.RETRY_AFTER))
+                    .isEqualTo(cuerpo(bloqueo).get("esperarSegundos").asText());
+
+            String ip3 = nuevaIp();
+            login(ip3, "nuevo@styleradar.com", CLAVE);
+            redis.delete("otp:bloqueo:nuevo@styleradar.com");
+            for (int i = 0; i < 3; i++) {
+                reenviar(ip3, "nuevo@styleradar.com").andExpect(status().isOk());
+            }
+            ResultActions agotados = reenviar(ip3, "nuevo@styleradar.com");
+            error(agotados, 429, "REENVIOS_AGOTADOS", null);
+            agotados.andExpect(header().string(HttpHeaders.RETRY_AFTER, "0")).andExpect(jsonPath("$.esperarSegundos").value(0));
+        }
+
+        @Test
+        @DisplayName("1.5: OTP_INCORRECTO trae el mensaje con los intentos e intentosRestantes como número")
+        void otpIncorrecto() throws Exception {
+            String ip = nuevaIp();
+            login(ip, "nuevo@styleradar.com", CLAVE);
+            String malo = "000000".equals(ultimoCodigo.get("nuevo@styleradar.com")) ? "111111" : "000000";
+            error(verificar(ip, "nuevo@styleradar.com", malo), 401, "OTP_INCORRECTO",
+                    "El código OTP es incorrecto. Intentos restantes: 2")
+                    .andExpect(jsonPath("$.intentosRestantes").value(2));
+            error(verificar(ip, "nuevo@styleradar.com", malo), 401, "OTP_INCORRECTO",
+                    "El código OTP es incorrecto. Intentos restantes: 1")
+                    .andExpect(jsonPath("$.intentosRestantes").value(1));
+        }
+
+        @Test
+        @DisplayName("1.5: CREDENCIALES_INCORRECTAS y CUENTA_NO_ACTIVA con el mensaje del catálogo")
+        void credencialesYCuenta() throws Exception {
+            error(login(nuevaIp(), "verificado@styleradar.com", "OtraClave2026*"), 401, "CREDENCIALES_INCORRECTAS",
+                    "El correo o la contraseña son incorrectos");
+            error(login(nuevaIp(), "inactivo@styleradar.com", CLAVE), 403, "CUENTA_NO_ACTIVA",
+                    "La cuenta se encuentra inactiva o bloqueada");
+        }
+
+        @Test
+        @DisplayName("1.5: error no controlado → 500 ERROR_INTERNO sin detalles internos")
+        void errorInterno() throws Exception {
+            doThrow(new IllegalStateException("detalle interno"))
+                    .when(emailService).enviarOtp(anyString(), anyString());
+            ResultActions r = login(nuevaIp(), "nuevo@styleradar.com", CLAVE);
+            error(r, 500, "ERROR_INTERNO", "Ocurrió un error interno. Intente nuevamente más tarde.");
+            assertThat(r.andReturn().getResponse().getContentAsString()).doesNotContain("detalle interno");
+        }
+
+        @Test
+        @DisplayName("1.6: idToken vacío → 400 «El ID Token de Google es obligatorio»")
+        void idTokenObligatorio() throws Exception {
+            ResultActions r = llamar(nuevaIp(), "/oauth2/google", Map.of("idToken", ""));
+            error(r, 400, "DATOS_INVALIDOS", DATOS_INVALIDOS);
+            r.andExpect(jsonPath("$.validationErrors.idToken").value("El ID Token de Google es obligatorio"));
+        }
+
+        @Test
+        @DisplayName("3.3: correo verificado → todos los campos, expiresIn desde JWT_DURATION y JWT con sub y roles")
+        void salidaLoginVerificado() throws Exception {
+            ResultActions r = login(nuevaIp(), "verificado@styleradar.com", CLAVE).andExpect(status().isOk());
+            JsonNode b = cuerpo(r);
+            assertThat(b.fieldNames()).toIterable().contains("accessToken", "tokenType", "expiresIn", "usuarioId", "roles",
+                    "email", "correoVerificado", "requiereOtp", "otpExpiraEnSegundos", "intentosOtpRestantes");
+            assertThat(b.get("expiresIn").asLong()).isEqualTo(43200);
+            assertThat(b.get("roles").size()).isEqualTo(1);
+            assertThat(b.get("otpExpiraEnSegundos").isNull()).isTrue();
+            assertThat(b.get("intentosOtpRestantes").asInt()).isZero();
+            String[] partes = b.get("accessToken").asText().split("\\.");
+            JsonNode claims = objectMapper.readTree(java.util.Base64.getUrlDecoder().decode(partes[1]));
+            assertThat(claims.get("sub").asText()).isEqualTo("12");
+            assertThat(claims.get("roles").get(0).asText()).isEqualTo("COMPRADOR");
+            assertThat(claims.get("exp").asLong() - claims.get("iat").asLong()).isEqualTo(43200);
+        }
+
+        @Test
+        @DisplayName("3.3: correo sin verificar → accessToken null, tokenType Bearer y expiresIn desde la configuración")
+        void salidaLoginSinVerificar() throws Exception {
+            login(nuevaIp(), "nuevo@styleradar.com", CLAVE)
+                    .andExpect(jsonPath("$.accessToken").value(nullValue()))
+                    .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                    .andExpect(jsonPath("$.expiresIn").value(43200))
+                    .andExpect(jsonPath("$.usuarioId").value(13))
+                    .andExpect(jsonPath("$.roles[0]").value("ADMIN_ALMACEN"))
+                    .andExpect(jsonPath("$.email").value("nuevo@styleradar.com"));
+        }
+
+        @Test
+        @DisplayName("4.1: verificar → sesión completa con requiereOtp false, otpExpiraEnSegundos null e intentos 0")
+        void salidaVerificar() throws Exception {
+            String ip = nuevaIp();
+            login(ip, "nuevo@styleradar.com", CLAVE);
+            verificar(ip, "nuevo@styleradar.com", ultimoCodigo.get("nuevo@styleradar.com"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                    .andExpect(jsonPath("$.expiresIn").value(43200))
+                    .andExpect(jsonPath("$.usuarioId").value(13))
+                    .andExpect(jsonPath("$.requiereOtp").value(false))
+                    .andExpect(jsonPath("$.otpExpiraEnSegundos").value(nullValue()))
+                    .andExpect(jsonPath("$.intentosOtpRestantes").value(0));
+        }
+
+        @Test
+        @DisplayName("4.2: reenviosRestantes baja de 2 a 0 y P9: durante la espera no llega correo")
+        void reenviosRestantes() throws Exception {
+            String ip = nuevaIp();
+            login(ip, "nuevo@styleradar.com", CLAVE);
+            for (int esperado = 2; esperado >= 0; esperado--) {
+                reenviar(ip, "nuevo@styleradar.com").andExpect(jsonPath("$.reenviosRestantes").value(esperado));
+            }
+            String ip2 = nuevaIp();
+            cuenta("otro@styleradar.com", 19, "COMPRADOR", "ACTIVO", false);
+            login(ip2, "otro@styleradar.com", CLAVE);
+            for (int i = 0; i < 3; i++) {
+                verificar(ip2, "otro@styleradar.com", "000000".equals(ultimoCodigo.get("otro@styleradar.com")) ? "111111" : "000000");
+            }
+            ultimoCodigo.remove("otro@styleradar.com");
+            reenviar(ip2, "otro@styleradar.com").andExpect(status().isTooManyRequests());
+            assertThat(ultimoCodigo).doesNotContainKey("otro@styleradar.com");
+        }
+
+        @Test
+        @DisplayName("5 y P15: logout → 204; reutilizar el token o no enviarlo → 401 TOKEN_INVALIDO")
+        void cierreDeSesion() throws Exception {
+            String ip = nuevaIp();
+            String token = tokenDe(login(ip, "verificado@styleradar.com", CLAVE));
+            logout(ip, token).andExpect(status().isNoContent())
+                    .andExpect(r -> assertThat(r.getResponse().getContentAsString()).isEmpty());
+            error(logout(ip, token), 401, "TOKEN_INVALIDO", "El token presentado es inválido o expirado");
+            error(logout(ip, null), 401, "TOKEN_INVALIDO", null);
+            error(logout(ip, "no.es.jwt"), 401, "TOKEN_INVALIDO", null);
+        }
+
+        @Test
+        @DisplayName("5.3: refresh entrega un token nuevo y revoca el anterior")
+        void renovacion() throws Exception {
+            String ip = nuevaIp();
+            String token = tokenDe(login(ip, "verificado@styleradar.com", CLAVE));
+            ResultActions r = llamar(ip, "/refresh", Map.of("refreshToken", token)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.accessToken").isNotEmpty())
+                    .andExpect(jsonPath("$.expiresIn").value(43200));
+            String nuevo = tokenDe(r);
+            error(logout(ip, token), 401, "TOKEN_INVALIDO", null);
+            logout(ip, nuevo).andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("6 y P13: Google entrega la sesión completa y luego con contraseña entra sin código")
+        void googleYLuegoContrasena() throws Exception {
+            when(decodificadorGoogle.decode(any())).thenReturn(tokenGoogle("google@styleradar.com", true));
+            llamar(nuevaIp(), "/oauth2/google", Map.of("idToken", "id-token"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                    .andExpect(jsonPath("$.expiresIn").value(43200))
+                    .andExpect(jsonPath("$.usuarioId").value(17))
+                    .andExpect(jsonPath("$.email").value("google@styleradar.com"))
+                    .andExpect(jsonPath("$.correoVerificado").value(true))
+                    .andExpect(jsonPath("$.otpExpiraEnSegundos").value(nullValue()))
+                    .andExpect(jsonPath("$.intentosOtpRestantes").value(0));
+            login(nuevaIp(), "google@styleradar.com", CLAVE)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.requiereOtp").value(false))
+                    .andExpect(jsonPath("$.accessToken").isNotEmpty());
+            assertThat(ultimoCodigo).isEmpty();
+        }
+
+        @Test
+        @DisplayName("B10 y G3: CORS permite http://localhost:5173 y expone Retry-After")
+        void cors() throws Exception {
+            mockMvc.perform(options("/api/v1/auth/login")
+                            .header(HttpHeaders.ORIGIN, "http://localhost:5173")
+                            .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                            .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "content-type,authorization"))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5173"));
+            String expuestas = mockMvc.perform(post("/api/v1/auth/login").header(HttpHeaders.ORIGIN, "http://localhost:5173")
+                            .with(req -> {
+                                req.setRemoteAddr(nuevaIp());
+                                return req;
+                            })
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"x@y.co\",\"password\":\"" + CLAVE + "\"}"))
+                    .andReturn().getResponse().getHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS);
+            assertThat(expuestas).containsIgnoringCase("Retry-After");
         }
     }
 }
