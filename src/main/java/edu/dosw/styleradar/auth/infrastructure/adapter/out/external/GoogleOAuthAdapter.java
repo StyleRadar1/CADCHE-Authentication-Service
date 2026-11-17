@@ -29,7 +29,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
-import edu.dosw.styleradar.auth.application.service.GoogleIdentityClaims;
+import edu.dosw.styleradar.auth.domain.model.GoogleIdentityClaims;
 import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException;
 import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
 import edu.dosw.styleradar.auth.domain.port.out.GoogleOAuthPort;

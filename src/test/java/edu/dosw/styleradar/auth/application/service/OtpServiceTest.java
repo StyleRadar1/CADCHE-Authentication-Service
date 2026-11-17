@@ -2,6 +2,8 @@ package edu.dosw.styleradar.auth.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -24,6 +26,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import edu.dosw.styleradar.auth.application.service.impl.OtpServiceImpl;
+import edu.dosw.styleradar.auth.domain.exception.OtpBloqueadoTemporalmenteException;
 import edu.dosw.styleradar.auth.domain.exception.OtpExpiradoException;
 import edu.dosw.styleradar.auth.domain.exception.OtpIntentosAgotadosException;
 import edu.dosw.styleradar.auth.domain.exception.OtpInvalidoException;
@@ -72,8 +75,9 @@ class OtpServiceTest {
                 .contains("$");
 
         verify(valueOperations).set(eq("otp:intentos:" + email), eq("3"), eq(300L), eq(TimeUnit.SECONDS));
-        verify(valueOperations).set(eq("otp:usuario:" + email), eq("42"), eq(300L), eq(TimeUnit.SECONDS));
-        verify(valueOperations).set(eq("otp:rol:" + email), eq("COMPRADOR"), eq(300L), eq(TimeUnit.SECONDS));
+        // B4: la verificación en curso (usuario y rol) vive 15 minutos, más que el código (5 minutos)
+        verify(valueOperations).set(eq("otp:usuario:" + email), eq("42"), eq(900L), eq(TimeUnit.SECONDS));
+        verify(valueOperations).set(eq("otp:rol:" + email), eq("COMPRADOR"), eq(900L), eq(TimeUnit.SECONDS));
     }
 
     @Test
@@ -114,7 +118,7 @@ class OtpServiceTest {
     }
 
     @Test
-    @DisplayName("Debe eliminar todas las claves OTP cuando se agotan los intentos")
+    @DisplayName("D1: al tercer fallo anula solo el código, conserva la verificación y activa la espera de 60 s")
     void debeLanzarOtpIntentosAgotadosExceptionAlTercerFallo() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("otp:" + email)).thenReturn(otpService.hashearOtp("999999"));
@@ -122,13 +126,45 @@ class OtpServiceTest {
 
         assertThatThrownBy(() -> otpService.verificarOtp(email, "000000"))
                 .isInstanceOf(OtpIntentosAgotadosException.class)
-                .hasMessageContaining("agotaron los intentos");
+                .hasMessage("Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.");
 
         verify(redisTemplate).delete("otp:" + email);
         verify(redisTemplate).delete("otp:intentos:" + email);
-        verify(redisTemplate).delete("otp:usuario:" + email);
-        verify(redisTemplate).delete("otp:rol:" + email);
-        verify(redisTemplate).delete("otp:reenvios:" + email);
+        verify(redisTemplate, never()).delete("otp:usuario:" + email);
+        verify(redisTemplate, never()).delete("otp:rol:" + email);
+        verify(redisTemplate, never()).delete("otp:reenvios:" + email);
+        verify(valueOperations).set(eq("otp:bloqueo:" + email), anyString(), eq(60L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    @DisplayName("FA-15: durante la espera de 60 s no se genera código nuevo ni al iniciar sesión ni al reenviar")
+    void debeRechazarGenerarYReenviarDuranteElBloqueo() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("otp:bloqueo:" + email))
+                .thenReturn(String.valueOf(System.currentTimeMillis() + 30_000L));
+
+        assertThatThrownBy(() -> otpService.generarOtp(email, usuarioId, rol))
+                .isInstanceOf(OtpBloqueadoTemporalmenteException.class)
+                .satisfies(ex -> assertThat(((OtpBloqueadoTemporalmenteException) ex).getSegundosRestantes())
+                        .isBetween(29L, 30L));
+        assertThatThrownBy(() -> otpService.reenviarOtp(email))
+                .isInstanceOf(OtpBloqueadoTemporalmenteException.class);
+
+        verify(valueOperations, never()).set(eq("otp:" + email), anyString(), anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("D1: terminada la espera se puede pedir otro código sin volver a iniciar sesión")
+    void debePermitirReenvioTrasLaEsperaSinNuevoLogin() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("otp:bloqueo:" + email)).thenReturn(null);
+        when(valueOperations.get("otp:usuario:" + email)).thenReturn("42");
+        when(valueOperations.get("otp:rol:" + email)).thenReturn("COMPRADOR");
+        when(valueOperations.increment("otp:reenvios:" + email)).thenReturn(1L);
+        when(valueOperations.get("otp:reenvios:" + email)).thenReturn("1");
+
+        assertThat(otpService.reenviarOtp(email)).matches("^\\d{6}$");
+        assertThat(otpService.obtenerReenviosRestantes(email)).isEqualTo(2);
     }
 
     @Test
@@ -163,8 +199,7 @@ class OtpServiceTest {
                 .contains("$");
 
         verify(valueOperations).set(eq("otp:intentos:" + email), eq("3"), eq(300L), eq(TimeUnit.SECONDS));
-        verify(valueOperations).set(eq("otp:usuario:" + email), eq("42"), eq(300L), eq(TimeUnit.SECONDS));
-        verify(valueOperations).set(eq("otp:rol:" + email), eq("COMPRADOR"), eq(300L), eq(TimeUnit.SECONDS));
+        verify(valueOperations, never()).set(eq("otp:usuario:" + email), anyString(), anyLong(), any());
     }
 
     @Test

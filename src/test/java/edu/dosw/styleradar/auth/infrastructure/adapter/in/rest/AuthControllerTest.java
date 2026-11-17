@@ -2,6 +2,7 @@ package edu.dosw.styleradar.auth.infrastructure.adapter.in.rest;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anySet;
@@ -10,12 +11,14 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.Date;
 import java.util.Set;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,11 +28,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.client.HttpClientErrorException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -42,19 +43,27 @@ import edu.dosw.styleradar.auth.application.dto.response.VerificarCredencialesRe
 import edu.dosw.styleradar.auth.application.service.EmailService;
 import edu.dosw.styleradar.auth.application.service.JwtService;
 import edu.dosw.styleradar.auth.application.service.OtpService;
+import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException;
+import edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException;
 import edu.dosw.styleradar.auth.domain.exception.OtpExpiradoException;
 import edu.dosw.styleradar.auth.domain.exception.OtpIntentosAgotadosException;
 import edu.dosw.styleradar.auth.domain.exception.OtpInvalidoException;
 import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
 import edu.dosw.styleradar.auth.domain.model.Rol;
 import edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioClient;
+import edu.dosw.styleradar.auth.infrastructure.config.BeanConfig;
 import edu.dosw.styleradar.auth.infrastructure.config.SecurityConfig;
+import edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioIdentidadAdapter;
+import edu.dosw.styleradar.auth.application.mapper.out.AuthResponseMapperImpl;
+import edu.dosw.styleradar.auth.application.usecase.RegistrarUsuarioUseCaseImpl;
+import edu.dosw.styleradar.auth.domain.exception.OtpBloqueadoTemporalmenteException;
 import edu.dosw.styleradar.auth.infrastructure.exception.GlobalExceptionHandler;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 
 @WebMvcTest(controllers = AuthController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@Import({SecurityConfig.class, GlobalExceptionHandler.class, BeanConfig.class,
+        UsuarioIdentidadAdapter.class, AuthResponseMapperImpl.class})
 @ActiveProfiles("test")
 @DisplayName("Pruebas del Controlador REST AuthController - SR-RF-02 / SR-RF-92")
 class AuthControllerTest {
@@ -83,6 +92,49 @@ class AuthControllerTest {
     @MockBean
     private ValueOperations<String, String> valueOperations;
 
+    @BeforeEach
+    void configurarPoliticas() {
+        when(jwtService.obtenerVigenciaSegundos()).thenReturn(43200L);
+        when(otpService.obtenerVigenciaOtpSegundos()).thenReturn(300L);
+        when(otpService.obtenerMaxIntentos()).thenReturn(3);
+        when(otpService.obtenerReenviosRestantes(anyString())).thenReturn(2);
+        when(otpService.obtenerUsuarioId("comprador@styleradar.com")).thenReturn(10L);
+        when(otpService.obtenerRol("comprador@styleradar.com")).thenReturn("COMPRADOR");
+    }
+
+    @Test
+    @DisplayName("Contrato 1.6: si un campo incumple varias reglas se responde la de mayor prioridad (obligatorio > longitud > formato)")
+    void login_conVariasReglasIncumplidas_respondeElMensajeDelContrato() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + "a".repeat(250) + "@x.co\",\"password\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo", is("DATOS_INVALIDOS")))
+                .andExpect(jsonPath("$.validationErrors.email", is("El correo electrónico excede la longitud máxima permitida")))
+                .andExpect(jsonPath("$.validationErrors.password", is("La contraseña es obligatoria")));
+
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"\",\"codigoOtp\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.validationErrors.email", is("El correo electrónico es obligatorio")))
+                .andExpect(jsonPath("$.validationErrors.codigoOtp", is("El código OTP es obligatorio")));
+    }
+
+    @Test
+    @DisplayName("Contrato 3.2: el correo con espacios alrededor se acepta y se normaliza (sin espacios y en minúsculas)")
+    void login_conEspaciosEnElCorreo_seNormaliza() throws Exception {
+        when(usuarioClient.verificarCredenciales(anyString(), eq("Password123*")))
+                .thenReturn(new VerificarCredencialesResponseDTO(10L, "comprador@styleradar.com", "COMPRADOR", "ACTIVA", true));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"  Comprador@StyleRadar.com \",\"password\":\"Password123*\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email", is("comprador@styleradar.com")))
+                .andExpect(jsonPath("$.requiereOtp", is(false)));
+    }
+
     @Test
     @DisplayName("Login exitoso debe validar credenciales, generar OTP y retornar requiereOtp=true con 200 OK")
     void login_conCredencialesValidas_debeRetornar200YDesafioOtp() throws Exception {
@@ -102,7 +154,11 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.usuarioId", is(10)))
                 .andExpect(jsonPath("$.roles[0]", is("COMPRADOR")))
                 .andExpect(jsonPath("$.otpExpiraEnSegundos", is(300)))
-                .andExpect(jsonPath("$.intentosOtpRestantes", is(3)));
+                .andExpect(jsonPath("$.intentosOtpRestantes", is(3)))
+                .andExpect(jsonPath("$.accessToken").doesNotExist())
+                .andExpect(jsonPath("$.email", is("comprador@styleradar.com")))
+                .andExpect(jsonPath("$.correoVerificado", is(false)))
+                .andExpect(jsonPath("$.expiresIn", is(43200)));
 
         verify(emailService).enviarOtp("comprador@styleradar.com", "123456");
     }
@@ -113,13 +169,14 @@ class AuthControllerTest {
         LoginRequestDTO request = new LoginRequestDTO("comprador@styleradar.com", "Erronea123*");
 
         when(usuarioClient.verificarCredenciales(anyString(), anyString()))
-                .thenThrow(HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "Unauthorized", HttpHeaders.EMPTY, null, null));
+                .thenThrow(new CredencialesIncorrectasException("El correo o la contraseña son incorrectos"));
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
+                .andExpect(jsonPath("$.codigo", is("CREDENCIALES_INCORRECTAS")))
                 .andExpect(jsonPath("$.message", containsString("incorrectos")));
     }
 
@@ -129,13 +186,14 @@ class AuthControllerTest {
         LoginRequestDTO request = new LoginRequestDTO("bloqueado@styleradar.com", "Password123*");
 
         when(usuarioClient.verificarCredenciales(anyString(), anyString()))
-                .thenThrow(HttpClientErrorException.create(HttpStatus.FORBIDDEN, "Forbidden", HttpHeaders.EMPTY, null, null));
+                .thenThrow(new CuentaNoActivaException("La cuenta se encuentra inactiva o bloqueada"));
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status", is(403)))
+                .andExpect(jsonPath("$.codigo", is("CUENTA_NO_ACTIVA")))
                 .andExpect(jsonPath("$.message", containsString("inactiva o bloqueada")));
     }
 
@@ -148,7 +206,9 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status", is(400)));
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.codigo", is("DATOS_INVALIDOS")))
+                .andExpect(jsonPath("$.validationErrors.email").exists());
     }
 
     @Test
@@ -161,16 +221,20 @@ class AuthControllerTest {
         doNothing().when(otpService).verificarOtp("comprador@styleradar.com", "482915");
         when(jwtService.generarToken(eq(10L), anySet())).thenReturn("jwt.token.firmado");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken", is("jwt.token.firmado")))
                 .andExpect(jsonPath("$.tokenType", is("Bearer")))
                 .andExpect(jsonPath("$.requiereOtp", is(false)))
-                .andExpect(jsonPath("$.usuarioId", is(10)));
+                .andExpect(jsonPath("$.usuarioId", is(10)))
+                .andExpect(jsonPath("$.email", is("comprador@styleradar.com")))
+                .andExpect(jsonPath("$.correoVerificado", is(true)))
+                .andExpect(jsonPath("$.intentosOtpRestantes", is(0)));
 
         verify(otpService).eliminarOtp("comprador@styleradar.com");
+        verify(usuarioClient).marcarCorreoVerificado(10L);
     }
 
     @Test
@@ -178,14 +242,16 @@ class AuthControllerTest {
     void verificarOtp_conCodigoIncorrecto_debeRetornar401() throws Exception {
         VerificarOtpRequestDTO request = new VerificarOtpRequestDTO("comprador@styleradar.com", "000000");
 
-        doThrow(new OtpInvalidoException("El código OTP es incorrecto. Intentos restantes: 2"))
+        doThrow(new OtpInvalidoException(2))
                 .when(otpService).verificarOtp("comprador@styleradar.com", "000000");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
+                .andExpect(jsonPath("$.codigo", is("OTP_INCORRECTO")))
+                .andExpect(jsonPath("$.intentosRestantes", is(2)))
                 .andExpect(jsonPath("$.message", containsString("incorrecto")));
     }
 
@@ -197,11 +263,12 @@ class AuthControllerTest {
         doThrow(new OtpExpiradoException("El código OTP expiró o no existe. Debe solicitar uno nuevo."))
                 .when(otpService).verificarOtp("comprador@styleradar.com", "123456");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
+                .andExpect(jsonPath("$.codigo", is("OTP_VENCIDO")))
                 .andExpect(jsonPath("$.message", containsString("expiró")));
     }
 
@@ -210,15 +277,19 @@ class AuthControllerTest {
     void verificarOtp_conIntentosAgotados_debeRetornar429() throws Exception {
         VerificarOtpRequestDTO request = new VerificarOtpRequestDTO("comprador@styleradar.com", "999999");
 
-        doThrow(new OtpIntentosAgotadosException("Se agotaron los intentos disponibles para verificar el OTP. Debe solicitar un nuevo código."))
+        doThrow(OtpIntentosAgotadosException.intentosAgotados(60L))
                 .when(otpService).verificarOtp("comprador@styleradar.com", "999999");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.status", is(429)))
-                .andExpect(jsonPath("$.message", containsString("agotaron los intentos")));
+                .andExpect(jsonPath("$.codigo", is("OTP_INTENTOS_AGOTADOS")))
+                .andExpect(jsonPath("$.intentosRestantes", is(0)))
+                .andExpect(jsonPath("$.esperarSegundos", is(60)))
+                .andExpect(header().string(HttpHeaders.RETRY_AFTER, "60"))
+                .andExpect(jsonPath("$.message", is("Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.")));
     }
 
     @Test
@@ -226,7 +297,7 @@ class AuthControllerTest {
     void verificarOtp_conFormatoInvalido_debeRetornar400() throws Exception {
         VerificarOtpRequestDTO request = new VerificarOtpRequestDTO("comprador@styleradar.com", "123");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -241,13 +312,14 @@ class AuthControllerTest {
         when(otpService.reenviarOtp("comprador@styleradar.com")).thenReturn("654321");
         doNothing().when(emailService).enviarOtp("comprador@styleradar.com", "654321");
 
-        mockMvc.perform(post("/api/v1/auth/otp/reenviar")
+        mockMvc.perform(post("/api/v1/auth/otp/resend")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email", is("comprador@styleradar.com")))
                 .andExpect(jsonPath("$.expiraEnSegundos", is(300)))
-                .andExpect(jsonPath("$.intentosRestantes", is(3)));
+                .andExpect(jsonPath("$.intentosRestantes", is(3)))
+                .andExpect(jsonPath("$.reenviosRestantes", is(2)));
 
         verify(emailService).enviarOtp("comprador@styleradar.com", "654321");
     }
@@ -258,13 +330,14 @@ class AuthControllerTest {
         ReenviarOtpRequestDTO request = new ReenviarOtpRequestDTO("inactivo@styleradar.com");
 
         when(otpService.reenviarOtp("inactivo@styleradar.com"))
-                .thenThrow(new OtpExpiradoException("No se encontró una sesión activa o el tiempo de espera expiró."));
+                .thenThrow(OtpExpiradoException.sesionInexistente());
 
-        mockMvc.perform(post("/api/v1/auth/otp/reenviar")
+        mockMvc.perform(post("/api/v1/auth/otp/resend")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.status", is(401)));
+                .andExpect(jsonPath("$.status", is(401)))
+                .andExpect(jsonPath("$.codigo", is("SESION_OTP_INEXISTENTE")));
     }
 
     @Test
@@ -307,6 +380,7 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
+                .andExpect(jsonPath("$.codigo", is("TOKEN_INVALIDO")))
                 .andExpect(jsonPath("$.message", containsString("revocado")));
     }
 
@@ -337,7 +411,7 @@ class AuthControllerTest {
         RegistroAuthRequestDTO request = new RegistroAuthRequestDTO(
                 "Carlos Pérez", "carlos@styleradar.com", "+57 300 123 4567", "StyleRadar2026*", true);
 
-        mockMvc.perform(post("/api/v1/auth/registro")
+        mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -463,7 +537,7 @@ class AuthControllerTest {
         when(otpService.obtenerRol("comprador@styleradar.com")).thenReturn(null);
         doNothing().when(otpService).verificarOtp("comprador@styleradar.com", "482915");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(otpReq)))
                 .andExpect(status().isUnauthorized());
@@ -480,13 +554,78 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(refreshReq)))
                 .andExpect(status().isUnauthorized());
 
-        AuthController strictController = new AuthController(usuarioClient, otpService, emailService, jwtService);
-        org.junit.jupiter.api.Assertions.assertThrows(
-                edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException.class,
-                () -> strictController.logout("Bearer    "));
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .header("Authorization", "Bearer    "))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.codigo", is("TOKEN_INVALIDO")));
+
+        RegistrarUsuarioUseCaseImpl registroCerrado =
+                new RegistrarUsuarioUseCaseImpl(false, java.time.Clock.systemUTC());
         org.junit.jupiter.api.Assertions.assertThrows(
                 ServicioExternoNoDisponibleException.class,
-                () -> strictController.registrar(new RegistroAuthRequestDTO(
-                        "Ana", "ana@styleradar.com", "+57 300 000 0000", "StyleRadar2026*", true)));
+                () -> registroCerrado.registrar("Ana", "ana@styleradar.com", "+57 300 000 0000"));
+    }
+
+    @Test
+    @DisplayName("SR-RF-02 / RN-05: login con correo verificado entrega el token de una vez, sin enviar OTP")
+    void login_conCorreoVerificado_debeEntregarTokenSinOtp() throws Exception {
+        when(usuarioClient.verificarCredenciales("verificado@styleradar.com", "Password123*"))
+                .thenReturn(new VerificarCredencialesResponseDTO(
+                        11L, "verificado@styleradar.com", "ADMIN_ALMACEN", "ACTIVA", true));
+        when(jwtService.generarToken(eq(11L), anySet())).thenReturn("jwt.directo");
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new LoginRequestDTO("Verificado@StyleRadar.com", "Password123*"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken", is("jwt.directo")))
+                .andExpect(jsonPath("$.requiereOtp", is(false)))
+                .andExpect(jsonPath("$.correoVerificado", is(true)))
+                .andExpect(jsonPath("$.otpExpiraEnSegundos").doesNotExist())
+                .andExpect(jsonPath("$.intentosOtpRestantes", is(0)))
+                .andExpect(jsonPath("$.expiresIn", is(43200)))
+                .andExpect(jsonPath("$.roles[0]", is("ADMIN_ALMACEN")));
+
+        org.mockito.Mockito.verifyNoInteractions(emailService);
+        verify(otpService, org.mockito.Mockito.never()).generarOtp(anyString(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("SR-RF-02 FA-15: login con correo sin verificar durante la espera de 60 s responde 429 OTP_REENVIO_BLOQUEADO")
+    void login_durantePenalizacion_debeResponder429ConRetryAfter() throws Exception {
+        when(usuarioClient.verificarCredenciales("comprador@styleradar.com", "Password123*"))
+                .thenReturn(new VerificarCredencialesResponseDTO(10L, "comprador@styleradar.com", "COMPRADOR", "ACTIVA"));
+        when(otpService.generarOtp("comprador@styleradar.com", 10L, "COMPRADOR"))
+                .thenThrow(new OtpBloqueadoTemporalmenteException(42L));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new LoginRequestDTO("comprador@styleradar.com", "Password123*"))))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string(HttpHeaders.RETRY_AFTER, "42"))
+                .andExpect(jsonPath("$.codigo", is("OTP_REENVIO_BLOQUEADO")))
+                .andExpect(jsonPath("$.esperarSegundos", is(42)))
+                .andExpect(jsonPath("$.message", is("Debe esperar 42 segundos para solicitar un nuevo código.")));
+
+        org.mockito.Mockito.verifyNoInteractions(emailService);
+    }
+
+    @Test
+    @DisplayName("RN-03: una cuenta que ms-usuarios reporta INACTIVA nunca obtiene sesión (403 CUENTA_NO_ACTIVA)")
+    void login_conEstadoInactivoEnRespuesta_debeResponder403() throws Exception {
+        when(usuarioClient.verificarCredenciales("inactivo@styleradar.com", "Password123*"))
+                .thenReturn(new VerificarCredencialesResponseDTO(
+                        12L, "inactivo@styleradar.com", "COMPRADOR", "INACTIVA", true));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new LoginRequestDTO("inactivo@styleradar.com", "Password123*"))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo", is("CUENTA_NO_ACTIVA")));
+
+        org.mockito.Mockito.verifyNoInteractions(jwtService);
     }
 }

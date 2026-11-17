@@ -2,14 +2,17 @@ package edu.dosw.styleradar.auth.domain.model;
 
 import java.util.Locale;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-
+/**
+ * Estados de una cuenta de StyleRadar. Solo {@link #ACTIVA} puede iniciar sesión (RN-03).
+ */
 public enum EstadoCuenta {
     ACTIVA,
     INACTIVA,
     BLOQUEADA;
 
-    @JsonCreator
+    /**
+     * Acepta las variantes que publica ms-usuarios (masculino/femenino, mayúsculas o minúsculas).
+     */
     public static EstadoCuenta fromValue(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -21,5 +24,9 @@ public enum EstadoCuenta {
             case "BLOQUEADA", "BLOQUEADO" -> BLOQUEADA;
             default -> EstadoCuenta.valueOf(normalized);
         };
+    }
+
+    public boolean requiereRevocarSesiones() {
+        return this == INACTIVA || this == BLOQUEADA;
     }
 }

@@ -1,11 +1,8 @@
 package edu.dosw.styleradar.auth.application.service.impl;
 
 import java.security.SecureRandom;
-import java.time.Duration;
-import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,9 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import edu.dosw.styleradar.auth.application.dto.response.GoogleAuthUrlResponseDTO;
-import edu.dosw.styleradar.auth.application.dto.response.LoginResponseDTO;
-import edu.dosw.styleradar.auth.application.dto.response.VerificarCredencialesResponseDTO;
-import edu.dosw.styleradar.auth.application.service.GoogleIdentityClaims;
+import edu.dosw.styleradar.auth.domain.model.GoogleIdentityClaims;
 import edu.dosw.styleradar.auth.application.service.GoogleOAuth2Service;
 import edu.dosw.styleradar.auth.application.service.JwtService;
 import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException;
@@ -31,7 +26,9 @@ import edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException;
 import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
 import edu.dosw.styleradar.auth.domain.model.Rol;
 import edu.dosw.styleradar.auth.domain.port.out.GoogleOAuthPort;
-import edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioClient;
+import edu.dosw.styleradar.auth.domain.model.IdentidadUsuario;
+import edu.dosw.styleradar.auth.domain.model.SesionAutenticada;
+import edu.dosw.styleradar.auth.domain.port.out.UsuarioIdentidadPort;
 import edu.dosw.styleradar.auth.infrastructure.security.SecuritySanitizer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +45,7 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
     }
 
     private final GoogleOAuthPort googleOAuthPort;
-    private final UsuarioClient usuarioClient;
+    private final UsuarioIdentidadPort usuarioIdentidadPort;
     private final JwtService jwtService;
     private final StringRedisTemplate redisTemplate;
     private final Environment environment;
@@ -57,14 +54,13 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
     private final Set<String> allowedRedirectUris;
     private final String authorizationUri;
     private final long stateTtlSeconds;
-    private final long jwtExpiresInSeconds;
     private final boolean localFallbackEnabled;
     private final SecureRandom secureRandom = new SecureRandom();
     private final Map<String, LocalStateEntry> localStateStore = new ConcurrentHashMap<>();
 
     public GoogleOAuth2ServiceImpl(
             GoogleOAuthPort googleOAuthPort,
-            UsuarioClient usuarioClient,
+            UsuarioIdentidadPort usuarioIdentidadPort,
             JwtService jwtService,
             StringRedisTemplate redisTemplate,
             String clientId,
@@ -74,7 +70,7 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
             boolean localFallbackEnabled) {
         this(
                 googleOAuthPort,
-                usuarioClient,
+                usuarioIdentidadPort,
                 jwtService,
                 redisTemplate,
                 null,
@@ -83,7 +79,6 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
                 allowedRedirectUris,
                 "https://accounts.google.com/o/oauth2/v2/auth",
                 stateTtlSeconds,
-                "PT24H",
                 localFallbackEnabled);
     }
 
@@ -93,7 +88,7 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
     @Autowired
     public GoogleOAuth2ServiceImpl(
             GoogleOAuthPort googleOAuthPort,
-            UsuarioClient usuarioClient,
+            UsuarioIdentidadPort usuarioIdentidadPort,
             JwtService jwtService,
             StringRedisTemplate redisTemplate,
             Environment environment,
@@ -102,11 +97,10 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
             @Value("${styleradar.security.oauth2.google.allowed-redirect-uris:http://localhost:8100/api/v1/auth/oauth2/google/callback}") String allowedRedirectUris,
             @Value("${styleradar.security.oauth2.google.authorization-uri:https://accounts.google.com/o/oauth2/v2/auth}") String authorizationUri,
             @Value("${styleradar.security.oauth2.google.state-ttl-seconds:300}") long stateTtlSeconds,
-            @Value("${styleradar.security.jwt.duration:PT24H}") String jwtDuration,
             @Value("${styleradar.security.redis-local-fallback-enabled:false}") boolean localFallbackEnabled) {
 
         this.googleOAuthPort = googleOAuthPort;
-        this.usuarioClient = usuarioClient;
+        this.usuarioIdentidadPort = usuarioIdentidadPort;
         this.jwtService = jwtService;
         this.redisTemplate = redisTemplate;
         this.environment = environment;
@@ -116,7 +110,6 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
         this.authorizationUri = SecuritySanitizer.validateExternalServiceUrl(
                 authorizationUri, environment, "GOOGLE_AUTHORIZATION_URI");
         this.stateTtlSeconds = stateTtlSeconds > 0 ? stateTtlSeconds : 300L;
-        this.jwtExpiresInSeconds = parsearJwtDurationSegundos(jwtDuration);
         this.localFallbackEnabled = localFallbackEnabled;
     }
 
@@ -151,14 +144,14 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
     }
 
     @Override
-    public LoginResponseDTO autenticarConIdToken(String idToken) {
+    public SesionAutenticada autenticarConIdToken(String idToken) {
         exigirClientIdConfigurado();
         GoogleIdentityClaims claims = googleOAuthPort.verificarIdToken(idToken);
         return completarAutenticacionGoogle(claims);
     }
 
     @Override
-    public LoginResponseDTO autenticarConCodigo(String code, String state, String redirectUri) {
+    public SesionAutenticada autenticarConCodigo(String code, String state, String redirectUri) {
         exigirClientIdConfigurado();
         if (code == null || code.isBlank()) {
             throw new IllegalArgumentException("El código de autorización de Google es obligatorio");
@@ -169,7 +162,7 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
         return completarAutenticacionGoogle(claims);
     }
 
-    private LoginResponseDTO completarAutenticacionGoogle(GoogleIdentityClaims claims) {
+    private SesionAutenticada completarAutenticacionGoogle(GoogleIdentityClaims claims) {
         if (claims == null
                 || claims.email() == null || claims.email().isBlank()
                 || claims.subject() == null || claims.subject().isBlank()) {
@@ -184,34 +177,31 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
         }
 
         String normalizedEmail = SecuritySanitizer.normalizeEmail(claims.email());
-        VerificarCredencialesResponseDTO usuario = usuarioClient.resolverUsuarioOAuth(
+        IdentidadUsuario usuario = usuarioIdentidadPort.resolverUsuarioOAuth(
                 normalizedEmail,
                 claims.name(),
                 PROVEEDOR_GOOGLE,
                 claims.subject());
 
-        if (usuario == null || usuario.id() == null) {
-            throw new ServicioExternoNoDisponibleException(
-                    "El servicio de usuarios no retornó una identidad válida para la sesión Google OAuth2");
-        }
-
-        if (!"ACTIVA".equalsIgnoreCase(usuario.estado())) {
-            String estado = usuario.estado() != null ? usuario.estado() : "INACTIVA";
+        if (!usuario.estaActiva()) {
+            String estado = usuario.estado() != null ? usuario.estado().name() : "INACTIVA";
             log.warn("Acceso OAuth2 Google denegado por estado={} para {}",
-                    SecuritySanitizer.sanitizeForLog(estado),
-                    SecuritySanitizer.maskEmail(normalizedEmail));
+                    estado, SecuritySanitizer.maskEmail(normalizedEmail));
             throw new CuentaNoActivaException(
                     "Tu cuenta está " + estado + ". Contacta al soporte de StyleRadar.");
         }
 
-        Rol rol = parsearRol(usuario.rol());
+        Rol rol = usuario.rol();
         String jwt = jwtService.generarToken(usuario.id(), Set.of(rol));
+        if (!usuario.correoVerificado()) {
+            usuarioIdentidadPort.marcarCorreoVerificado(usuario.id());
+        }
 
         log.info("Sesión iniciada con Google OAuth2 para usuarioId={} ({})",
                 usuario.id(),
                 SecuritySanitizer.maskEmail(normalizedEmail));
 
-        return new LoginResponseDTO(jwt, "Bearer", jwtExpiresInSeconds, usuario.id(), Set.of(rol));
+        return SesionAutenticada.conToken(jwt, jwtService.obtenerVigenciaSegundos(), usuario.id(), rol, normalizedEmail);
     }
 
     private String resolverRedirectUriSolicitada(String requestedRedirectUri) {
@@ -330,18 +320,6 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
         }
     }
 
-    private static Rol parsearRol(String rawRol) {
-        if (rawRol == null || rawRol.isBlank()) {
-            throw new CredencialesIncorrectasException("La cuenta de usuario no tiene un rol asignado");
-        }
-        try {
-            return Rol.valueOf(rawRol.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            throw new CredencialesIncorrectasException(
-                    "El rol asignado a la cuenta no es válido para autenticación");
-        }
-    }
-
     private static String extraerPrimerClientId(String rawClientIds) {
         if (rawClientIds == null || rawClientIds.isBlank()) {
             return "";
@@ -363,15 +341,5 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    private static long parsearJwtDurationSegundos(String rawDuration) {
-        if (rawDuration == null || rawDuration.isBlank()) {
-            throw new IllegalArgumentException("Duración JWT inválida en styleradar.security.jwt.duration");
-        }
-        try {
-            return Duration.parse(rawDuration.trim()).toSeconds();
-        } catch (DateTimeParseException ex) {
-            throw new IllegalArgumentException("Duración JWT inválida en styleradar.security.jwt.duration", ex);
-        }
-    }
 }
 

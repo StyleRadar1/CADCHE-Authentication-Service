@@ -93,6 +93,12 @@ class JwtServiceTest {
                 .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> new JwtServiceImpl(secretBase64, duration, qaEnv))
                 .isInstanceOf(IllegalStateException.class);
+
+        String secretoPublicadoQa = "VGhpc0lzQVN1ZmZpY2llbnRseUxvbmdTZWNyZXRLZXlGb3JUZXN0czEyMzQ1Ng==";
+        assertThatThrownBy(() -> new JwtServiceImpl(secretoPublicadoQa, duration, qaEnv))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> new JwtServiceImpl(secretoPublicadoQa, duration, prodEnv))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test

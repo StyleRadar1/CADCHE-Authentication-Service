@@ -1,15 +1,19 @@
 package edu.dosw.styleradar.auth.domain.exception;
 
-public class OtpBloqueadoTemporalmenteException extends RuntimeException {
+import edu.dosw.styleradar.auth.domain.model.CodigoError;
 
-    private final long segundosRestantes;
+/**
+ * Espera obligatoria tras agotar los intentos del código (decisión D1). Aplica a {@code /otp/resend}
+ * y a {@code /login} con correo sin verificar (SR-RF-02 FA-15).
+ */
+public class OtpBloqueadoTemporalmenteException extends AuthDomainException {
 
-    public OtpBloqueadoTemporalmenteException(String message, long segundosRestantes) {
-        super(message);
-        this.segundosRestantes = segundosRestantes;
+    public OtpBloqueadoTemporalmenteException(long segundosRestantes) {
+        super("Debe esperar " + segundosRestantes + " segundos para solicitar un nuevo código.",
+                CodigoError.OTP_REENVIO_BLOQUEADO, null, segundosRestantes, null);
     }
 
     public long getSegundosRestantes() {
-        return segundosRestantes;
+        return getEsperarSegundos();
     }
 }

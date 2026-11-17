@@ -1,6 +1,6 @@
 package edu.dosw.styleradar.auth.domain.port.out;
 
-import edu.dosw.styleradar.auth.application.service.GoogleIdentityClaims;
+import edu.dosw.styleradar.auth.domain.model.GoogleIdentityClaims;
 
 /**
  * Puerto de salida para verificación criptográfica de ID Tokens y
