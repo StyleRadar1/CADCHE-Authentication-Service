@@ -34,7 +34,7 @@
       <img src="https://sonarcloud.io/api/project_badges/measure?project=StyleRadar1_CADCHE-Authentication-Service&metric=alert_status" alt="Quality Gate" />
     </a>
     <a href="https://sonarcloud.io/component_measures?id=StyleRadar1_CADCHE-Authentication-Service&metric=coverage">
-      <img src="https://img.shields.io/badge/JaCoCo_Coverage-94.8%25-16A34A?style=for-the-badge&logo=codecov&logoColor=white" alt="Coverage" />
+      <img src="https://img.shields.io/badge/JaCoCo_Coverage-95.1%25-16A34A?style=for-the-badge&logo=codecov&logoColor=white" alt="Coverage" />
     </a>
   </p>
   <p>
@@ -153,6 +153,8 @@ flowchart LR
     APP --> SMTP["SMTP"]
 ```
 
+**Justificación del diagrama de capas.** Muestra en una sola vista la regla de dependencia de la arquitectura hexagonal: todo lo externo (Gateway, RabbitMQ, ms-usuarios, Google, Redis y SMTP) entra o sale por un adaptador, y el núcleo solo conoce puertos. Sirve para revisar de un vistazo que ningún controlador llame directamente a Redis o a un cliente HTTP, y que el consumidor AMQP use el mismo puerto de entrada que la API REST.
+
 ### 3.1 Diagrama de Clases
 
 <div align="center">
@@ -164,12 +166,16 @@ flowchart LR
 * **Enumeraciones:** `Rol` (`desde(String)` rechaza roles desconocidos), `EstadoCuenta` (acepta `ACTIVO`/`ACTIVA` y similares) y `CodigoError` (15 códigos del contrato con su estado HTTP).
 * **Excepciones:** `AuthDomainException` transporta `codigo`, `intentosRestantes` y `esperarSegundos`; la infraestructura las traduce a HTTP sin que el dominio conozca HTTP.
 
+**Justificación del diagrama de clases.** Se genera desde el código fuente, así que refleja las clases que realmente existen. Documenta el modelo del dominio, que es donde viven las reglas del análisis de requerimientos: el estado de la cuenta (RN-03), los roles válidos, el desafío OTP y el catálogo de errores del contrato con el front. Al no depender de Spring, el diagrama también prueba que el dominio no tiene dependencias de infraestructura.
+
 ### 3.2 Diagrama de Base de Datos
 
 <div align="center">
   <img src="docs/uml/DiagramaBaseDatos.png" alt="Modelo de datos ms-auth" width="100%" />
   <sub>Figura 3.2: claves de Redis 7 con su TTL y contratos externos (<a href="docs/uml/DiagramaBaseDatos.drawio">DiagramaBaseDatos.drawio</a>).</sub>
 </div>
+
+**Justificación del diagrama de base de datos.** ms-auth no tiene tablas, por eso el modelo de datos es el de Redis: cada familia de claves con su valor y su TTL. Este diagrama responde dónde queda cada dato de la sesión, cuánto dura y quién lo borra, que es lo que exigen las reglas del OTP (5 minutos, 3 intentos, espera de 60 s y verificación de 15 minutos). También muestra los contratos con ms-usuarios, que es el dueño de las credenciales.
 
 **Decisión (ADR):** ms-auth **no usa PostgreSQL**. El análisis de integración consolidado lo establece así ("ms-auth no guarda datos en PostgreSQL; usa Redis") y conviene por seguridad:
 
@@ -198,6 +204,42 @@ Si Redis no responde, ms-auth falla cerrado con `503 SERVICIO_NO_DISPONIBLE`. El
   <img src="docs/uml/DiagramaComponentesEspecifico.png" alt="Componentes ms-auth" width="100%" />
   <sub>Figura 3.3: componentes por capa hexagonal (<a href="docs/uml/DiagramaComponentesEspecifico.drawio">DiagramaComponentesEspecifico.drawio</a>).</sub>
 </div>
+
+**Justificación del diagrama de componentes específico.** Baja un nivel respecto al diagrama de capas: muestra cada controlador, filtro, consumidor, caso de uso, servicio y adaptador real de ms-auth, y las interfaces por las que se conectan (provistas y requeridas). Se usa para ubicar dónde se implementa cada historia y para comprobar que cada puerto de salida tiene exactamente un adaptador.
+
+### 3.4 Diagrama de Componentes General (ecosistema StyleRadar)
+
+<div align="center">
+  <img src="docs/uml/DiagramaComponentesGeneral.webp" alt="Diagrama de componentes general de StyleRadar" width="100%" />
+  <sub>Figura 3.4: los 13 microservicios del back, sus bases de datos, los brokers RabbitMQ, Redis y los sistemas externos.</sub>
+</div>
+
+**Justificación.** Ubica a ms-auth dentro del ecosistema y deja claro con quién se comunica y con quién no:
+
+* **Cliente → API Gateway → ms-auth.** El front nunca llama directo a un microservicio; el Gateway publica `/api/v1/auth/**`.
+* **ms-auth ↔ ms-usuarios.** ms-auth requiere la interfaz de ms-usuarios para validar credenciales, crear o vincular cuentas de Google y marcar el correo verificado. Por eso ms-auth no tiene base de datos propia en el diagrama: las credenciales tienen un único dueño.
+* **ms-auth → Google OAuth** (sistema externo) para el ingreso con Google, y **ms-auth → Redis** para OTP, lista negra y límite de solicitudes.
+* **RabbitMQ:** ms-auth consume el cambio de estado de cuenta que publica ms-usuarios para revocar sesiones.
+* El resto de microservicios valida el JWT que emite ms-auth con el mismo secreto; ninguno lo llama por cada petición.
+
+### 3.5 Diagrama de Despliegue
+
+<div align="center">
+  <img src="docs/uml/DiagramaDespliegue.webp" alt="Diagrama de despliegue de StyleRadar" width="100%" />
+  <sub>Figura 3.5: nodos de ejecución (Container Apps), puertos, PostgreSQL, Redis y el adaptador de RabbitMQ.</sub>
+</div>
+
+**Justificación.** Muestra dónde corre cada pieza y por qué puertos se habla. Para ms-auth confirma:
+
+* **Puerto 8100**, detrás del API Gateway (8080), que es el único punto de entrada del artefacto web.
+* **Redis** como nodo de datos de ms-auth (instancia `Auth`), que es donde realmente vive su estado.
+* Conexión al **RabbitMQAdapter** para los eventos de cuenta.
+
+**Diferencias con lo implementado hoy (para corregir en el diagrama):**
+
+1. El nodo PostgreSQL incluye una base `Auth`. ms-auth no la usa (ver el ADR de la sección 3.2); se recomienda quitarla para no reservar un recurso sin uso.
+2. ms-auth hoy se despliega en **Azure App Service** (`styleradar-auth-qa` y `styleradar-auth-prod`), no en Container Apps. El diagrama representa la arquitectura objetivo.
+3. `Donations` y `Virtual Try-on` aparecen con el mismo puerto `8520`; uno de los dos debe cambiar.
 
 ### Estructura de Paquetes en `src/main/java/edu/dosw/styleradar/auth/`
 
@@ -239,6 +281,12 @@ auth/
 | **Local** | `http://localhost:8100` | [Swagger local](http://localhost:8100/swagger-ui.html) | `http://localhost:8100/actuator/health` |
 
 El front **siempre** llama al API Gateway (`:8080`), que enruta `/api/v1/auth/**` a este servicio.
+
+### Convención de rutas
+
+* Todas las rutas están **en inglés** y empiezan por **`/api/v1`**. Los nombres de los campos JSON se mantienen como los define el contrato con el front.
+* El proyecto **no usa `/me`**. Cuando un recurso pertenece a un usuario, la ruta lo nombra explícitamente con `/users/{id}` y el backend comprueba que quien hace la petición tenga permiso sobre ese usuario. ms-auth no expone recursos por usuario: identifica a la persona con las credenciales o con el JWT.
+* `/actuator/health` y la documentación OpenAPI (`/v3/api-docs`, `/swagger-ui`) son rutas de operación y quedan fuera de esta convención.
 
 ### Endpoints Expuestos
 
@@ -385,7 +433,7 @@ Plantilla completa en [`.env.example`](.env.example). Los secretos nunca van al 
 | `RABBITMQ_HOST` / `RABBITMQ_PORT` / `RABBITMQ_USER` / `RABBITMQ_PASSWORD` / `RABBITMQ_VHOST` / `RABBITMQ_SSL_ENABLED` | Broker del equipo Guatoque Jiraguas | `localhost` / `5672` |
 | `USUARIOS_SERVICE_URL` (dev) · `USUARIOS_QA_SERVICE_URL` | URL de `ms-usuarios` | `http://ms-usuarios:8120` |
 | `USUARIOS_INTERNAL_USERNAME` / `USUARIOS_INTERNAL_PASSWORD` | Credenciales Basic internas hacia ms-usuarios | `ms-auth` / — |
-| `USUARIOS_OAUTH2_PATH` / `USUARIOS_CORREO_VERIFICADO_PATH` | Rutas internas para cuentas Google y para marcar el correo verificado | `/internal/api/v1/usuarios/oauth2` · `/internal/api/v1/usuarios/{id}/verificar-correo` |
+| `USUARIOS_CREDENCIALES_PATH` / `USUARIOS_OAUTH2_PATH` / `USUARIOS_CORREO_VERIFICADO_PATH` | Rutas internas de ms-usuarios para validar credenciales, cuentas Google y marcar el correo verificado. Son de ms-usuarios: cuando ese servicio publique sus rutas en inglés se cambian aquí sin tocar código | `/internal/api/v1/usuarios/verificar-credenciales` · `/internal/api/v1/usuarios/oauth2` · `/internal/api/v1/usuarios/{id}/verificar-correo` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` / `GOOGLE_ALLOWED_REDIRECT_URIS` | Google OAuth2 (lista blanca anti Open Redirect) | — |
 | `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | SMTP para los códigos OTP | `smtp.gmail.com` / `587` |
 | `CORS_DEV_ALLOWED_ORIGINS` · `CORS_QA_ALLOWED_ORIGINS` · `CORS_ALLOWED_ORIGINS` | Orígenes permitidos (dev incluye `localhost:5173` y `:3000`) | Ver YAML |
@@ -404,9 +452,9 @@ mvn -B com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check -Dspotbugs.exclud
 
 | Métrica (`mvn verify`, rama `feature/arreglos`) | Resultado | Umbral |
 | :--- | :---: | :---: |
-| Pruebas | **146**, 0 fallos | 100 % en verde |
-| Cobertura de instrucciones (JaCoCo) | **94.8 %** | ≥ 85 % (rompe el build) |
-| Cobertura de ramas | **74.3 %** | — |
+| Pruebas | **197**, 0 fallos | 100 % en verde |
+| Cobertura de instrucciones (JaCoCo) | **95.1 %** | ≥ 85 % (rompe el build) |
+| Cobertura de ramas | **75.0 %** | — |
 | SpotBugs | 0 hallazgos | 0 |
 
 ### Pirámide de pruebas (espejo de `src/main`)
@@ -418,6 +466,7 @@ mvn -B com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check -Dspotbugs.exclud
 | **Integración con Redis 7 real** | `OtpRedisIntegrationTest`: 3 fallos → espera → reenvío sin nuevo login, lista negra, revocación e idempotencia | Testcontainers (`redis:7-alpine`) |
 | **Seguridad** | `OwaspTop10SecurityTest` (A01–A10), filtros y cabeceras | MockMvc |
 | **Requerimientos** | `RequerimientosCompletosAuditoriaAuthTest` (SR-RF-02 / SR-RF-92) | MockMvc |
+| **Trazabilidad Word y contrato** | `TrazabilidadRequerimientosAuthTest`: un caso por flujo alterno y regla de negocio de SR-RF-02 y SR-RF-92, y por cada punto del contrato Front ↔ ms-auth v1.2, sobre Redis 7 real | Testcontainers, MockMvc |
 
 > Las pruebas de Testcontainers se omiten solas si la máquina no tiene Docker. Con Docker 29+ y Testcontainers 1.19 en local, exporte `DOCKER_API_VERSION=1.44`.
 
@@ -833,7 +882,7 @@ La adopción de Java 21 LTS y Spring Boot 3.2.x garantiza un ecosistema robusto,
 Evaluación técnica y verificación automatizada de **`CADCHE-Authentication-Service` (`ms-auth`)** frente a las **10 categorías oficiales del estándar OWASP Top 10:2025** (`A01:2025` – `A10:2025`), contrastada directamente contra el código endurecido, la configuración por perfiles (`dev`, `test`, `qa`, `prod`), el contenedor `Dockerfile` y el pipeline `.github/workflows/ci.yml`.
 
 > [!NOTE]
-> **Verificación automatizada post-remediación y Google OAuth2 / OIDC:** Suite ejecutada sobre **Java 21 LTS** y **Spring Boot 3.2.12** mediante `mvn -B clean verify com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check --no-transfer-progress`: **22 clases de prueba (`src/test/java`)**, **149 pruebas ejecutadas (0 fallos, 0 errores, 0 omitidas)** incluyendo [`OwaspTop10SecurityTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/security/OwaspTop10SecurityTest.java), [`GoogleOAuth2ServiceTest`](src/test/java/edu/dosw/styleradar/auth/application/service/GoogleOAuth2ServiceTest.java), [`GoogleOAuthAdapterTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/adapter/out/external/GoogleOAuthAdapterTest.java), [`GoogleOAuth2ControllerTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/adapter/in/rest/GoogleOAuth2ControllerTest.java) y [`GoogleOAuth2SwaggerIntegrationTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/GoogleOAuth2SwaggerIntegrationTest.java); cobertura **JaCoCo `0.8.12`** de **94.89 % en instrucciones (`6241 / 6577`, mínimo 85 %)**, **SpotBugs `0` bugs / `0` errores** y generación de **SBOM CycloneDX 1.6 (`target/bom.json` / `target/bom.xml`, 99 componentes)**. *(ms-auth no usa base SQL: el estado vive en Redis 7 y las credenciales en ms-usuarios).*
+> **Verificación automatizada post-remediación y Google OAuth2 / OIDC:** Suite ejecutada sobre **Java 21 LTS** y **Spring Boot 3.2.12** mediante `mvn -B clean verify com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check --no-transfer-progress`: **23 clases de prueba (`src/test/java`)**, **197 pruebas ejecutadas (0 fallos, 0 errores, 0 omitidas)** incluyendo [`OwaspTop10SecurityTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/security/OwaspTop10SecurityTest.java), [`GoogleOAuth2ServiceTest`](src/test/java/edu/dosw/styleradar/auth/application/service/GoogleOAuth2ServiceTest.java), [`GoogleOAuthAdapterTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/adapter/out/external/GoogleOAuthAdapterTest.java), [`GoogleOAuth2ControllerTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/adapter/in/rest/GoogleOAuth2ControllerTest.java) y [`GoogleOAuth2SwaggerIntegrationTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/GoogleOAuth2SwaggerIntegrationTest.java); cobertura **JaCoCo `0.8.12`** de **95.1 % en instrucciones (`6268 / 6594`, mínimo 85 %)**, **SpotBugs `0` bugs / `0` errores** y generación de **SBOM CycloneDX 1.6 (`target/bom.json` / `target/bom.xml`, 99 componentes)**. *(ms-auth no usa base SQL: el estado vive en Redis 7 y las credenciales en ms-usuarios).*
 
 ### 14.1 Matriz Consolidada OWASP Top 10:2025
 
@@ -879,7 +928,7 @@ Evaluación técnica y verificación automatizada de **`CADCHE-Authentication-Se
 * **Controles verificados en código:**
   1. Runtime y compilación unificados a **Java 21 LTS** en `pom.xml`, `Dockerfile` y `.github/workflows/ci.yml`, junto con dependencias fijadas (`Spring Boot 3.2.12`, `jjwt 0.12.6`, `postgresql 42.7.4`, `flyway 10.20.1`).
   2. `Dockerfile` multi-stage construye con `maven:3.9.9-eclipse-temurin-21-alpine` y ejecuta sobre `eclipse-temurin:21-jre-alpine` con usuario sin privilegios `appuser:appgroup`, etiquetas OCI, flags JVM conscientes de contenedor y `HEALTHCHECK` contra `/actuator/health`.
-  3. `cyclonedx-maven-plugin:2.9.3` genera en fase `package` el SBOM CycloneDX 1.6 (`target/bom.xml` y `target/bom.json`, `99` componentes), publicado en CI (`sbom-cyclone-dx-auth`), junto a Actions fijadas por hash SHA, `SpotBugs` (`0` bugs), `JaCoCo` (`94.89 % >= 85 %`), SonarCloud Quality Gate y `provenance: true` / `sbom: true` en Docker Buildx.
+  3. `cyclonedx-maven-plugin:2.9.3` genera en fase `package` el SBOM CycloneDX 1.6 (`target/bom.xml` y `target/bom.json`, `99` componentes), publicado en CI (`sbom-cyclone-dx-auth`), junto a Actions fijadas por hash SHA, `SpotBugs` (`0` bugs), `JaCoCo` (`95.1 % >= 85 %`), SonarCloud Quality Gate y `provenance: true` / `sbom: true` en Docker Buildx.
 
 #### A04:2025 – Cryptographic Failures
 
@@ -955,4 +1004,4 @@ Evaluación técnica y verificación automatizada de **`CADCHE-Authentication-Se
 | **Fail-Closed, Auditoría y Mensajería (`A08`, `A09`, `A10`)** | Excepción `503` unificada fuera de `dev`, rollback OTP en fallo SMTP, máscara PII, filtro `BLOQUEADA`/`INACTIVA` y paquetes confiables RabbitMQ. | `ServicioExternoNoDisponibleException.java`, `EmailServiceImpl.java`, `UsuarioEstadoCambiadoConsumer.java`, `RabbitMQConfig.java`, `GlobalExceptionHandlerTest.java` |
 | **Endurecimiento de Infraestructura y Supply Chain (`A02`, `A03`)** | Cabeceras defensivas, perfiles `qa`/`prod`, Java 21 LTS, `Dockerfile` no-root con `HEALTHCHECK`, SBOM CycloneDX 1.6 y `SpotBugs` `0` bugs. | `SecurityHeadersFilter.java`, `application*.yml`, `pom.xml`, `Dockerfile`, `.github/workflows/ci.yml`, `OwaspTop10SecurityTest.java`, `GoogleOAuth2SwaggerIntegrationTest.java` |
 
-*Última actualización del análisis: Remediación integral y autenticación Google OAuth2 / OIDC sobre la rama `feature/arreglos` (`149` pruebas PASS, JaCoCo `94.89 %`, SpotBugs `0` bugs, SBOM CycloneDX `99` componentes).*
+*Última actualización del análisis: Remediación integral y autenticación Google OAuth2 / OIDC sobre la rama `feature/arreglos` (`197` pruebas PASS, JaCoCo `95.1 %`, SpotBugs `0` bugs, SBOM CycloneDX `99` componentes).*
