@@ -1,22 +1,30 @@
 package edu.dosw.styleradar.auth.infrastructure.security;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.Map;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import edu.dosw.styleradar.auth.application.dto.response.ErrorResponseDTO;
+import edu.dosw.styleradar.auth.domain.model.CodigoError;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Escritor uniforme de respuestas JSON {@link ErrorResponseDTO} para filtros
+ * Escritor uniforme de respuestas ProblemDetail {@link ErrorResponseDTO} para filtros
  * y puntos de entrada de Spring Security (OWASP A09:2025 y A10:2025).
  */
 public final class SecurityErrorResponseWriter {
+
+    /** Mensajes exactos del catálogo 1.5 del contrato ms-auth ↔ Frontend; el detalle técnico va solo al log. */
+    static final Map<CodigoError, String> MENSAJES_CONTRATO = Map.of(
+            CodigoError.TOKEN_INVALIDO, "El token presentado es inválido o expirado",
+            CodigoError.SERVICIO_NO_DISPONIBLE,
+            "El servicio requerido no está disponible temporalmente. Intente nuevamente más tarde.",
+            CodigoError.LIMITE_SOLICITUDES, "Demasiadas solicitudes en un período corto. Intente nuevamente más tarde.",
+            CodigoError.ERROR_INTERNO, "Ocurrió un error interno. Intente nuevamente más tarde.");
 
     private SecurityErrorResponseWriter() {
     }
@@ -27,21 +35,43 @@ public final class SecurityErrorResponseWriter {
             HttpStatus status,
             String path,
             String message) throws IOException {
-        response.setStatus(status.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.setCharacterEncoding("UTF-8");
+        write(response, objectMapper, status, codigoPorEstado(status), path, message, null);
+    }
 
-        ErrorResponseDTO body = ErrorResponseDTO.builder()
-                .timestamp(LocalDateTime.now())
-                .status(status.value())
-                .error(status.getReasonPhrase())
-                .message(message)
-                .path(SecuritySanitizer.sanitizeForLog(path))
+    public static void write(
+            HttpServletResponse response,
+            ObjectMapper objectMapper,
+            HttpStatus status,
+            CodigoError codigo,
+            String path,
+            String message,
+            Long esperarSegundos) throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(ErrorResponseDTO.MEDIA_TYPE);
+        response.setCharacterEncoding("UTF-8");
+        if (esperarSegundos != null) {
+            response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(esperarSegundos));
+        }
+
+        String mensaje = MENSAJES_CONTRATO.getOrDefault(codigo, message);
+        ErrorResponseDTO body = ErrorResponseDTO.problema(status.value(), status.getReasonPhrase(), codigo, mensaje,
+                        SecuritySanitizer.sanitizeForLog(path))
                 .validationErrors(Map.of())
+                .esperarSegundos(esperarSegundos)
                 .build();
 
         ObjectMapper mapper = objectMapper != null ? objectMapper : new ObjectMapper().findAndRegisterModules();
         response.getWriter().write(mapper.writeValueAsString(body));
     }
-}
 
+    static CodigoError codigoPorEstado(HttpStatus status) {
+        return switch (status) {
+            case UNAUTHORIZED -> CodigoError.TOKEN_INVALIDO;
+            case FORBIDDEN -> CodigoError.ACCESO_DENEGADO;
+            case TOO_MANY_REQUESTS -> CodigoError.LIMITE_SOLICITUDES;
+            case SERVICE_UNAVAILABLE -> CodigoError.SERVICIO_NO_DISPONIBLE;
+            case BAD_REQUEST -> CodigoError.DATOS_INVALIDOS;
+            default -> CodigoError.ERROR_INTERNO;
+        };
+    }
+}

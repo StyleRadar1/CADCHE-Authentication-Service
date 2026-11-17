@@ -1,4 +1,4 @@
-package edu.dosw.styleradar.auth.application.service;
+package edu.dosw.styleradar.auth.domain.model;
 
 /**
  * Claims verificados de identidad retornados por Google OpenID Connect.

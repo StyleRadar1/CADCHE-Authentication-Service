@@ -7,34 +7,6 @@ spring:
   config:
     activate:
       on-profile: qa
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
-
-  datasource:
-    url: ${DB_URL:jdbc:postgresql://styleradar-pg-qa.postgres.database.azure.com:5432/styleradar_auth?sslmode=require}
-    username: ${DB_USERNAME:styleradaradmin}
-    password: ${DB_PASSWORD:}
-    driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 5
-      minimum-idle: 2
-      idle-timeout: 300000
-      max-lifetime: 600000
-      connection-timeout: 20000
-
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
-    open-in-view: false
-
-  flyway:
-    enabled: ${FLYWAY_ENABLED:false}
-    locations: classpath:db/migration
-
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -94,11 +66,9 @@ management:
       enabled: false
     mail:
       enabled: false
+    # Redis es obligatorio (OTP, sesiones y límite de solicitudes): el health refleja si responde.
     redis:
-      enabled: false
-    db:
-      enabled: false
-
+      enabled: true
 styleradar:
   usuarios:
     base-url: ${USUARIOS_QA_SERVICE_URL:https://styleradar-usuarios-qa.azurewebsites.net}
@@ -111,12 +81,14 @@ styleradar:
 
   security:
     jwt:
-      secret-base64: ${JWT_SECRET_QA_BASE64:VGhpc0lzQVN1ZmZpY2llbnRseUxvbmdTZWNyZXRLZXlGb3JUZXN0czEyMzQ1Ng==}
+      secret-base64: ${JWT_SECRET_QA_BASE64}
       duration: ${JWT_DURATION:PT12H}
     otp:
       ttl-seconds: 300
       max-attempts: 3
       max-resends: 3
+      lockout-seconds: ${OTP_LOCKOUT_SECONDS:60}
+      session-ttl-seconds: ${OTP_SESSION_TTL_SECONDS:900}
     oauth2:
       google:
         client-id: ${GOOGLE_CLIENT_ID:}

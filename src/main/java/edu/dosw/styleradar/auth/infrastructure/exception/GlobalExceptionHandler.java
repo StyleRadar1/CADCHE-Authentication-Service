@@ -1,10 +1,12 @@
 package edu.dosw.styleradar.auth.infrastructure.exception;
 
-import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -12,53 +14,40 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import edu.dosw.styleradar.auth.application.dto.response.ErrorResponseDTO;
-import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException;
-import edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException;
-import edu.dosw.styleradar.auth.domain.exception.OtpBloqueadoTemporalmenteException;
-import edu.dosw.styleradar.auth.domain.exception.OtpExpiradoException;
-import edu.dosw.styleradar.auth.domain.exception.OtpIntentosAgotadosException;
-import edu.dosw.styleradar.auth.domain.exception.OtpInvalidoException;
-import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
+import edu.dosw.styleradar.auth.domain.exception.AuthDomainException;
+import edu.dosw.styleradar.auth.domain.model.CodigoError;
 import edu.dosw.styleradar.auth.infrastructure.security.SecuritySanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Traduce las excepciones a la estructura única de error del contrato v1.2 (sección 1.4): estado HTTP,
+ * {@code codigo} del catálogo, {@code intentosRestantes}, {@code esperarSegundos} y cabecera
+ * {@code Retry-After} en todos los 429. El dominio nunca conoce HTTP.
+ */
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
+    private static final String DATOS_INVALIDOS = "La solicitud contiene datos inválidos";
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponseDTO> handleValidation(
             MethodArgumentNotValidException exception, HttpServletRequest request) {
-
-        Map<String, String> validationErrors = new LinkedHashMap<>();
-
-        exception.getBindingResult().getFieldErrors().forEach(error ->
-                validationErrors.putIfAbsent(error.getField(), error.getDefaultMessage()));
-
-        return buildResponse(HttpStatus.BAD_REQUEST,
-                "La solicitud contiene datos inválidos",
-                request.getRequestURI(), validationErrors);
+        return datosInvalidos(exception, request);
     }
 
     @ExceptionHandler(BindException.class)
     public ResponseEntity<ErrorResponseDTO> handleBindingValidation(
             BindException exception, HttpServletRequest request) {
-
-        Map<String, String> validationErrors = new LinkedHashMap<>();
-
-        exception.getBindingResult().getFieldErrors().forEach(error ->
-                validationErrors.putIfAbsent(error.getField(), error.getDefaultMessage()));
-
-        return buildResponse(HttpStatus.BAD_REQUEST,
-                "La solicitud contiene datos inválidos",
-                request.getRequestURI(), validationErrors);
+        return datosInvalidos(exception, request);
     }
 
     @ExceptionHandler({
@@ -69,116 +58,99 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<ErrorResponseDTO> handleInvalidHttpRequest(
             Exception exception, HttpServletRequest request) {
-
-        return buildResponse(HttpStatus.BAD_REQUEST,
-                "La solicitud contiene parámetros inválidos",
-                request.getRequestURI(), Map.of());
+        return build(CodigoError.DATOS_INVALIDOS, "La solicitud contiene parámetros inválidos",
+                request, Map.of(), null, null);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponseDTO> handleMethodNotSupported(
             HttpRequestMethodNotSupportedException exception, HttpServletRequest request) {
-
-        return buildResponse(HttpStatus.METHOD_NOT_ALLOWED,
-                "El método HTTP no está permitido para esta ruta",
-                request.getRequestURI(), Map.of());
+        return build(CodigoError.METODO_NO_PERMITIDO, "El método HTTP no está permitido para esta ruta",
+                request, Map.of(), null, null);
     }
 
-    @ExceptionHandler({CredencialesIncorrectasException.class, AuthenticationException.class})
-    public ResponseEntity<ErrorResponseDTO> handleUnauthorized(
-            Exception exception, HttpServletRequest request) {
-
-        return buildResponse(HttpStatus.UNAUTHORIZED,
-                exception.getMessage(), request.getRequestURI(), Map.of());
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAuthentication(
+            AuthenticationException exception, HttpServletRequest request) {
+        return build(CodigoError.TOKEN_INVALIDO, "El token presentado es inválido o expirado",
+                request, Map.of(), null, null);
     }
 
-    @ExceptionHandler({CuentaNoActivaException.class, AccessDeniedException.class})
-    public ResponseEntity<ErrorResponseDTO> handleForbidden(
-            Exception exception, HttpServletRequest request) {
-
-        log.warn("Acceso prohibido (403) en ruta {}: {}",
-                SecuritySanitizer.sanitizeForLog(request.getRequestURI()),
-                SecuritySanitizer.sanitizeForLog(exception.getMessage()));
-        return buildResponse(HttpStatus.FORBIDDEN,
-                exception.getMessage(), request.getRequestURI(), Map.of());
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAccessDenied(
+            AccessDeniedException exception, HttpServletRequest request) {
+        log.warn("Acceso denegado (403) en ruta {}", SecuritySanitizer.sanitizeForLog(request.getRequestURI()));
+        return build(CodigoError.ACCESO_DENEGADO, "Acceso denegado: no cuenta con permisos suficientes",
+                request, Map.of(), null, null);
     }
 
-    @ExceptionHandler({OtpInvalidoException.class, OtpExpiradoException.class})
-    public ResponseEntity<ErrorResponseDTO> handleOtpInvalido(
-            RuntimeException exception, HttpServletRequest request) {
+    @ExceptionHandler(AuthDomainException.class)
+    public ResponseEntity<ErrorResponseDTO> handleDomain(AuthDomainException exception, HttpServletRequest request) {
+        CodigoError codigo = exception.getCodigo();
+        String ruta = SecuritySanitizer.sanitizeForLog(request.getRequestURI());
+        String mensaje = exception.getMessage();
 
-        return buildResponse(HttpStatus.UNAUTHORIZED,
-                exception.getMessage(), request.getRequestURI(), Map.of());
-    }
+        if (codigo == CodigoError.SERVICIO_NO_DISPONIBLE) {
+            log.error("Dependencia externa no disponible en ruta {}: {}", ruta, SecuritySanitizer.sanitizeForLog(mensaje));
+            mensaje = "El servicio requerido no está disponible temporalmente. Intente nuevamente más tarde.";
+        } else if (codigo.estadoHttp() == HttpStatus.FORBIDDEN.value()
+                || codigo.estadoHttp() == HttpStatus.TOO_MANY_REQUESTS.value()) {
+            log.warn("Solicitud rechazada ({}) en ruta {}: {}", codigo, ruta, SecuritySanitizer.sanitizeForLog(mensaje));
+        }
 
-    @ExceptionHandler(OtpIntentosAgotadosException.class)
-    public ResponseEntity<ErrorResponseDTO> handleOtpIntentosAgotados(
-            OtpIntentosAgotadosException exception, HttpServletRequest request) {
-
-        return buildResponse(HttpStatus.TOO_MANY_REQUESTS,
-                exception.getMessage(), request.getRequestURI(), Map.of());
-    }
-
-    @ExceptionHandler(OtpBloqueadoTemporalmenteException.class)
-    public ResponseEntity<ErrorResponseDTO> handleOtpBloqueadoTemporalmente(
-            OtpBloqueadoTemporalmenteException exception, HttpServletRequest request) {
-
-        log.warn("Bloqueo temporal de OTP activo (429) en ruta {}: {}",
-                SecuritySanitizer.sanitizeForLog(request.getRequestURI()),
-                SecuritySanitizer.sanitizeForLog(exception.getMessage()));
-
-        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.TOO_MANY_REQUESTS.value())
-                .error(HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase())
-                .message(exception.getMessage())
-                .path(SecuritySanitizer.sanitizeForLog(request.getRequestURI()))
-                .validationErrors(Map.of())
-                .build();
-
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                .header(org.springframework.http.HttpHeaders.RETRY_AFTER, String.valueOf(exception.getSegundosRestantes()))
-                .body(errorResponse);
-    }
-
-    @ExceptionHandler(ServicioExternoNoDisponibleException.class)
-    public ResponseEntity<ErrorResponseDTO> handleExternalServiceUnavailable(
-            ServicioExternoNoDisponibleException exception, HttpServletRequest request) {
-
-        log.error("Dependencia externa no disponible en ruta {}: {}",
-                SecuritySanitizer.sanitizeForLog(request.getRequestURI()),
-                SecuritySanitizer.sanitizeForLog(exception.getMessage()));
-
-        return buildResponse(HttpStatus.SERVICE_UNAVAILABLE,
-                "El servicio requerido no está disponible temporalmente. Intente nuevamente más tarde.",
-                request.getRequestURI(), Map.of());
+        return build(codigo, mensaje, request, Map.of(), exception.getIntentosRestantes(), exception.getEsperarSegundos());
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponseDTO> handleUnexpected(
-            Exception exception, HttpServletRequest request) {
-
+    public ResponseEntity<ErrorResponseDTO> handleUnexpected(Exception exception, HttpServletRequest request) {
         log.error("Error no controlado al procesar la ruta {}",
                 SecuritySanitizer.sanitizeForLog(request.getRequestURI()), exception);
-
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR,
-                "Ocurrió un error interno. Intente nuevamente más tarde.",
-                request.getRequestURI(), Map.of());
+        return build(CodigoError.ERROR_INTERNO, "Ocurrió un error interno. Intente nuevamente más tarde.",
+                request, Map.of(), null, null);
     }
 
-    private ResponseEntity<ErrorResponseDTO> buildResponse(
-            HttpStatus status, String message, String path,
-            Map<String, String> validationErrors) {
+    private ResponseEntity<ErrorResponseDTO> datosInvalidos(BindException exception, HttpServletRequest request) {
+        Map<String, String> validationErrors = new LinkedHashMap<>();
+        exception.getBindingResult().getFieldErrors().stream()
+                .sorted(Comparator.comparingInt(GlobalExceptionHandler::prioridadValidacion))
+                .forEach(error -> validationErrors.putIfAbsent(error.getField(), error.getDefaultMessage()));
+        return build(CodigoError.DATOS_INVALIDOS, DATOS_INVALIDOS, request, validationErrors, null, null);
+    }
 
-        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
-                .timestamp(LocalDateTime.now())
-                .status(status.value())
-                .error(status.getReasonPhrase())
-                .message(message)
-                .path(SecuritySanitizer.sanitizeForLog(path))
+    /**
+     * Cuando un campo incumple varias reglas, el contrato fija qué mensaje se muestra: primero "obligatorio",
+     * luego la longitud y por último el formato (por ejemplo, un correo de más de 254 caracteres).
+     */
+    private static int prioridadValidacion(FieldError error) {
+        String regla = error.getCode() == null ? "" : error.getCode();
+        return switch (regla) {
+            case "NotBlank", "NotNull", "NotEmpty" -> 0;
+            case "Size", "Length", "Min", "Max" -> 1;
+            default -> 2;
+        };
+    }
+
+    private ResponseEntity<ErrorResponseDTO> build(
+            CodigoError codigo,
+            String message,
+            HttpServletRequest request,
+            Map<String, String> validationErrors,
+            Integer intentosRestantes,
+            Long esperarSegundos) {
+
+        HttpStatus status = HttpStatus.valueOf(codigo.estadoHttp());
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.problema(status.value(), status.getReasonPhrase(), codigo,
+                        message, SecuritySanitizer.sanitizeForLog(request.getRequestURI()))
                 .validationErrors(validationErrors)
+                .intentosRestantes(intentosRestantes)
+                .esperarSegundos(esperarSegundos)
                 .build();
 
-        return ResponseEntity.status(status).body(errorResponse);
+        ResponseEntity.BodyBuilder respuesta = ResponseEntity.status(status)
+                .contentType(MediaType.valueOf(ErrorResponseDTO.MEDIA_TYPE));
+        if (status == HttpStatus.TOO_MANY_REQUESTS && esperarSegundos != null) {
+            respuesta.header(HttpHeaders.RETRY_AFTER, String.valueOf(esperarSegundos));
+        }
+        return respuesta.body(errorResponse);
     }
 }

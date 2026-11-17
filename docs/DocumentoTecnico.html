@@ -1,6 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>STYLE RADAR · ms-auth | Documento Técnico de Arquitectura</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700&family=Montserrat:wght@700;800&family=Open+Sans:wght@400;600;700&family=Source+Code+Pro:wght@400;700&family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600;700&family=DM+Mono:wght@400;500&family=Bebas+Neue&family=DM+Sans:wght@400;600;700&family=Oswald:wght@600;700&family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;700&display=swap">
 <style>
 :root{--fd:'Anton',Impact,sans-serif;--fb:'Poppins',Arial,sans-serif;--fm:'Space Mono',monospace;--fw:400;--ts:1;--st:#EFE8DC;--fg:#262626;--mut:#5A5A66;--ctl:#FFFFFF;--line:#D9D0C0;--acc:#48119A;--accfg:#FFFFFF}
@@ -293,9 +292,9 @@ svgw('0 0 510 248',
 '<table style="font-size:9.7px;line-height:1.18;table-layout:fixed;width:100%"><tr><th style="width:12%">Mét.</th><th style="width:37%">Ruta (/api/v1/auth)</th><th style="width:20%">Acceso</th><th style="width:31%">HU / Comportamiento</th></tr>'+
 [
   ['POST','/login','Público (RL)','SR-RF-02 · Login 2FA + OTP'],
-  ['POST','/registro','Público (RL)','SR-RF-01 · Stub 12L / 503'],
-  ['POST','/otp/verificar','Público (RL)','SR-RF-92 · JWT 401/429 (422*)'],
-  ['POST','/otp/reenviar','Público (RL)','SR-RF-92 · Máx 3 (300 s)'],
+  ['POST','/register','Público (RL)','SR-RF-01 · Stub 12L / 503'],
+  ['POST','/otp/verify','Público (RL)','SR-RF-92 · JWT 401/429 (422*)'],
+  ['POST','/otp/resend','Público (RL)','SR-RF-92 · Máx 3 (300 s)'],
   ['POST','/refresh','Público (RL)','SR-RF-02 · Rota + Blacklist'],
   ['POST','/logout','Bearer JWT','SR-RNF-01 · 204 Blacklist'],
   ['POST','/oauth2/google','Público (RL)','SR-RF-03 · ID Token RS256'],
@@ -310,7 +309,7 @@ svgw('0 0 510 248',
 {c:'cream',t:'Flujos y HU Dual',tag:'06',tab:'Flujos',h:K('06 · Flujos')+H('Autenticación dual','OTP y Google en Swagger')+
 '<div style="display:flex;flex-direction:column;gap:5px;margin-top:2px">'+
 [
-  ['1 · Vía Clásica 2FA (POST /login → /otp/verificar)','UsuarioClient valida Basic contra ms-usuarios (:8120). OtpServiceImpl guarda SHA-256 salteado (16B) en Redis (300 s); rollback si falla SMTP.'],
+  ['1 · Vía Clásica 2FA (POST /login → /otp/verify)','UsuarioClient valida Basic contra ms-usuarios (:8120). OtpServiceImpl guarda SHA-256 salteado (16B) en Redis (300 s); rollback si falla SMTP.'],
   ['2 · Vía Google Swagger / OIDC (/oauth2/google/url → callback/code)','Genera URL Google con state 32B (300 s, 1 uso vía getAndDelete); valida allowlist redirectUri y canjea Authorization Code o ID Token JWKS RS256.'],
   ['3 · Aprovisionamiento y Estado ACTIVA (/internal/.../oauth2)','Verifica iss, aud (GOOGLE_CLIENT_ID), exp y email_verified=true; UsuarioClient resuelve cuenta en ms-usuarios y exige EstadoCuenta.ACTIVA.'],
   ['4 · Emisión JWT HS256, Rotación y Revocación','JwtServiceImpl firma HS256; /refresh revoca el previo e invalida si usuario:revocado existe; /logout añade token al blacklist restante en Redis.']
@@ -320,7 +319,7 @@ svgw('0 0 510 248',
 (idx<3?'<div style="text-align:center;color:#48119A;font:700 9.5px var(--fm);line-height:1;margin:1px 0">↓</div>':'')+'</div>'}).join('')+'</div>'+
 '<div class="card" style="padding:8px 12px;gap:2px;margin-top:auto;background:#F3ECFF;border:1px solid rgba(72,17,154,.25)">'+
 '<p class="lab" style="font-size:9.6px;color:#48119A;margin:0">HU Implementada (CA-01..CA-04) y Trazabilidad</p>'+
-'<p class="sm" style="font-size:10.6px;line-height:1.33;margin:0;opacity:1"><b>SR-RF-01:</b> /registro · <b>SR-RF-02/92:</b> Login 2FA + OTP SHA-256 + Refresh · <b>SR-RF-03:</b> Google OAuth2/OIDC · <b>SR-RNF-01/02:</b> Logout blacklist, AMQP, RateLimit, OWASP 2025.</p></div>'},
+'<p class="sm" style="font-size:10.6px;line-height:1.33;margin:0;opacity:1"><b>SR-RF-01:</b> /register · <b>SR-RF-02/92:</b> Login 2FA + OTP SHA-256 + Refresh · <b>SR-RF-03:</b> Google OAuth2/OIDC · <b>SR-RNF-01/02:</b> Logout blacklist, AMQP, RateLimit, OWASP 2025.</p></div>'},
 
 {c:'graf',t:'Datos Redis y SQL',tag:'07',tab:'Datos',h:K('07 · Datos')+H('Catálogo Redis 7','(9 prefijos) y PG diferido')+
 '<table style="font-size:10.4px;line-height:1.26;table-layout:fixed;width:100%"><tr><th style="width:31%">Prefijo Clave Redis</th><th style="width:17%">TTL / Tope</th><th style="width:52%">Contenido y Garantía Criptográfica</th></tr>'+
@@ -343,7 +342,7 @@ svgw('0 0 510 248',
   ['<span class="pill" style="font-size:9.3px;padding:1px 6px;border-color:#94A3B8;color:#475569">DEV</span>','localhost:8100 · Redis :6379<br><span style="font-size:9px;opacity:.75">Fallback RAM / registro stub 12L</span>','Swagger /v3/api-docs Activo<br><span style="font-size:9px;opacity:.75">localhost:8100 + :3000 callback</span>','PT24H<br>15/60s']
 ].map(function(r){return '<tr><td>'+r[0]+'</td><td style="font:400 9.3px var(--fm);word-break:break-word">'+r[1]+'</td><td style="font-size:10px">'+r[2]+'</td><td style="font:700 10px var(--fm);color:#48119A">'+r[3]+'</td></tr>'}).join('')+'</table>'+
 '<div class="g2" style="gap:8px;margin-top:auto;grid-template-columns:minmax(0,1fr) minmax(0,1fr)">'+
-cd('Guardia Criptográfica & Fail-Closed','JwtServiceImpl rechaza clave ejemplo dev en qa/prod por huella SHA-256. POST /registro responde 503 fuera de dev/test.','padding:10px 13px;gap:3px')+
+cd('Guardia Criptográfica & Fail-Closed','JwtServiceImpl rechaza clave ejemplo dev en qa/prod por huella SHA-256. POST /register responde 503 fuera de dev/test.','padding:10px 13px;gap:3px')+
 cd('FinOps TCO Azure (Ecosistema)','MVP / QA ~$33.00/mes (Container Apps Free + Redis C0 + PG B1ms) vs Producción ~$226.00/mes escalada.','padding:10px 13px;gap:3px')+
 '</div>'},
 
@@ -381,8 +380,8 @@ cdk('Matriz OWASP Top 10:2025 (10/10 PASS)','A01 SSRF/OpenRedirect (SecuritySani
   ['<span class="pill bad" style="font-size:8.6px;padding:1px 5px">500</span>','Error interno inesperado (sin trace)','Mensaje opaco anti-fuga de datos']
 ].map(function(r){return '<tr><td style="padding:6px 5px">'+r[0]+'</td><td style="padding:6px 5px;font:600 9.1px var(--fm);word-break:break-word">'+r[1]+'</td><td style="padding:6px 5px;font-size:9.6px">'+r[2]+'</td></tr>'}).join('')+'</table>'+
 '<div class="card" style="background:#18112C;color:#FBF7F0;border:1px solid #48119A;border-radius:10px;padding:8px 12px;gap:2px;margin-top:auto">'+
-'<p class="lab" style="font-size:9.3px;color:#C4B5FD;margin:0">ErrorResponseDTO · Nota de Auditoría Swagger (/otp/verificar)</p>'+
-'<div style="font:400 9.7px/1.32 var(--fm);color:#E8DCCB">{ "status": 401, "error": "Unauthorized", "message": "Código OTP inválido o expirado", "path": "/api/v1/auth/otp/verificar" }<br><span style="color:#FDE68A">* AuthApi documenta @ApiResponse 422, pero runtime emite 401/429.</span></div></div></div>'},
+'<p class="lab" style="font-size:9.3px;color:#C4B5FD;margin:0">ErrorResponseDTO · Nota de Auditoría Swagger (/otp/verify)</p>'+
+'<div style="font:400 9.7px/1.32 var(--fm);color:#E8DCCB">{ "status": 401, "error": "Unauthorized", "message": "Código OTP inválido o expirado", "path": "/api/v1/auth/otp/verify" }<br><span style="color:#FDE68A">* AuthApi documenta @ApiResponse 422, pero runtime emite 401/429.</span></div></div></div>'},
 
 {c:'arena',t:'Dominio e integraciones',tag:'12',tab:'Integraciones',h:K('12 · Dominio y Red')+H('Conexiones externas','y clases de dominio')+
 svgw('0 0 510 198',

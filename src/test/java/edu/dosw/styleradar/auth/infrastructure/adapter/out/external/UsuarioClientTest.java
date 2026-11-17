@@ -21,6 +21,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 import edu.dosw.styleradar.auth.application.dto.response.VerificarCredencialesResponseDTO;
+import edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException;
 import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException;
 import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
 
@@ -72,16 +73,34 @@ class UsuarioClientTest {
     }
 
     @Test
-    @DisplayName("Debe propagar HttpClientErrorException cuando ms-usuarios responde 401")
-    void verificarCredenciales_conRespuesta401_debeLanzarHttpClientError() {
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales"))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withStatus(HttpStatus.UNAUTHORIZED));
+    @DisplayName("Debe traducir 401/403/5xx de ms-usuarios a excepciones del dominio (RN-04, RN-03, fail-closed)")
+    void verificarCredenciales_conErroresHttp_debeTraducirAExcepcionesDeDominio() {
+        String ruta = BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales";
+        server.expect(requestTo(ruta)).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.UNAUTHORIZED));
+        server.expect(requestTo(ruta)).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.FORBIDDEN));
+        server.expect(requestTo(ruta)).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.BAD_GATEWAY));
 
-        assertThrows(
-                HttpClientErrorException.class,
-                () -> usuarioClient.verificarCredenciales("comprador@styleradar.com", "Erronea123*")
-        );
+        assertThrows(CredencialesIncorrectasException.class,
+                () -> usuarioClient.verificarCredenciales("comprador@styleradar.com", "Erronea123*"));
+        assertThrows(CuentaNoActivaException.class,
+                () -> usuarioClient.verificarCredenciales("comprador@styleradar.com", "Password123*"));
+        assertThrows(ServicioExternoNoDisponibleException.class,
+                () -> usuarioClient.verificarCredenciales("comprador@styleradar.com", "Password123*"));
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("Debe marcar el correo como verificado con PATCH y tolerar la caída de ms-usuarios")
+    void marcarCorreoVerificado_debeInvocarPatchYSerTolerante() {
+        String ruta = BASE_URL + "/internal/api/v1/usuarios/10/verificar-correo";
+        server.expect(requestTo(ruta)).andExpect(method(HttpMethod.PATCH)).andRespond(withStatus(HttpStatus.NO_CONTENT));
+        server.expect(requestTo(ruta)).andExpect(method(HttpMethod.PATCH))
+                .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+
+        usuarioClient.marcarCorreoVerificado(10L);
+        usuarioClient.marcarCorreoVerificado(10L);
+        usuarioClient.marcarCorreoVerificado(null);
+        server.verify();
     }
 
     @Test
@@ -220,7 +239,8 @@ class UsuarioClientTest {
         MockEnvironment devEnv = new MockEnvironment();
         devEnv.setActiveProfiles("dev");
         UsuarioClient devClient = new UsuarioClient(
-                devBuilder, BASE_URL, "u", "p", true, devEnv, "/internal/api/v1/usuarios/oauth2");
+                devBuilder, BASE_URL, "u", "p", true, devEnv, "/internal/api/v1/usuarios/oauth2",
+                "/internal/api/v1/usuarios/{id}/verificar-correo", "/internal/api/v1/usuarios/verificar-credenciales");
 
         devServer.expect(ExpectedCount.once(), requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
                 .andRespond(request -> {

@@ -12,6 +12,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 
 import edu.dosw.styleradar.auth.application.dto.response.ErrorResponseDTO;
+import edu.dosw.styleradar.auth.domain.model.CodigoError;
 import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException;
 import edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException;
 import edu.dosw.styleradar.auth.domain.exception.OtpExpiradoException;
@@ -34,19 +35,19 @@ class GlobalExceptionHandlerTest {
         assertThat(r400.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(r400.getBody().getPath()).doesNotContain("\r").doesNotContain("\n");
 
-        ResponseEntity<ErrorResponseDTO> r401 = handler.handleUnauthorized(
+        ResponseEntity<ErrorResponseDTO> r401 = handler.handleDomain(
                 new CredencialesIncorrectasException("Credenciales inválidas"), request);
         assertThat(r401.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        ResponseEntity<ErrorResponseDTO> r401Spring = handler.handleUnauthorized(
+        ResponseEntity<ErrorResponseDTO> r401Spring = handler.handleAuthentication(
                 new BadCredentialsException("Bad token"), request);
         assertThat(r401Spring.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        ResponseEntity<ErrorResponseDTO> r403Cuenta = handler.handleForbidden(
+        ResponseEntity<ErrorResponseDTO> r403Cuenta = handler.handleDomain(
                 new CuentaNoActivaException("Cuenta bloqueada"), request);
         assertThat(r403Cuenta.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 
-        ResponseEntity<ErrorResponseDTO> r403Access = handler.handleForbidden(
+        ResponseEntity<ErrorResponseDTO> r403Access = handler.handleAccessDenied(
                 new AccessDeniedException("Sin permisos"), request);
         assertThat(r403Access.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 
@@ -54,26 +55,36 @@ class GlobalExceptionHandlerTest {
                 new HttpRequestMethodNotSupportedException("DELETE"), request);
         assertThat(r405.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
 
-        ResponseEntity<ErrorResponseDTO> rOtpInv = handler.handleOtpInvalido(
-                new OtpInvalidoException("OTP incorrecto"), request);
+        ResponseEntity<ErrorResponseDTO> rOtpInv = handler.handleDomain(
+                new OtpInvalidoException(1), request);
         assertThat(rOtpInv.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        ResponseEntity<ErrorResponseDTO> rOtpExp = handler.handleOtpInvalido(
+        ResponseEntity<ErrorResponseDTO> rOtpExp = handler.handleDomain(
                 new OtpExpiradoException("OTP expirado"), request);
         assertThat(rOtpExp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        ResponseEntity<ErrorResponseDTO> r429 = handler.handleOtpIntentosAgotados(
-                new OtpIntentosAgotadosException("Intentos agotados"), request);
+        ResponseEntity<ErrorResponseDTO> r429 = handler.handleDomain(
+                OtpIntentosAgotadosException.intentosAgotados(60L), request);
         assertThat(r429.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(r429.getHeaders().getFirst("Retry-After")).isEqualTo("60");
+        assertThat(r429.getBody().getCodigo()).isEqualTo(CodigoError.OTP_INTENTOS_AGOTADOS);
+        assertThat(r429.getBody().getEsperarSegundos()).isEqualTo(60L);
+        assertThat(rOtpInv.getBody().getCodigo()).isEqualTo(CodigoError.OTP_INCORRECTO);
+        assertThat(rOtpInv.getBody().getIntentosRestantes()).isEqualTo(1);
+        assertThat(r401Spring.getBody().getCodigo()).isEqualTo(CodigoError.TOKEN_INVALIDO);
+        assertThat(r403Access.getBody().getCodigo()).isEqualTo(CodigoError.ACCESO_DENEGADO);
+        assertThat(r405.getBody().getCodigo()).isEqualTo(CodigoError.METODO_NO_PERMITIDO);
 
-        ResponseEntity<ErrorResponseDTO> r503 = handler.handleExternalServiceUnavailable(
+        ResponseEntity<ErrorResponseDTO> r503 = handler.handleDomain(
                 new ServicioExternoNoDisponibleException("Redis caído"), request);
         assertThat(r503.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(r503.getBody().getMessage()).doesNotContain("Redis caído");
+        assertThat(r503.getBody().getCodigo()).isEqualTo(CodigoError.SERVICIO_NO_DISPONIBLE);
 
         ResponseEntity<ErrorResponseDTO> r500 = handler.handleUnexpected(
                 new RuntimeException("Detalle interno SQL/JWT sensible"), request);
         assertThat(r500.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(r500.getBody().getCodigo()).isEqualTo(CodigoError.ERROR_INTERNO);
         assertThat(r500.getBody().getMessage())
                 .doesNotContain("SQL")
                 .doesNotContain("JWT")

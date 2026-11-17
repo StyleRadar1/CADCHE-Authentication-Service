@@ -202,19 +202,28 @@ jobs:
           SWAGGER_URL="https://styleradar-auth-qa.azurewebsites.net/swagger-ui/index.html"
           HEALTH_URL="https://styleradar-auth-qa.azurewebsites.net/actuator/health"
           echo "Ejecutando Smoke Test contra: $API_URL, $SWAGGER_URL y $HEALTH_URL"
-          for i in $(seq 1 20); do
+          # Espera a que App Service reemplace el contenedor anterior para no validar la versión vieja.
+          sleep 90
+          SEGUIDOS=0
+          for i in $(seq 1 25); do
             STATUS_API=$(curl --max-time 15 -s -o /dev/null -w "%{http_code}" "$API_URL" || true)
             STATUS_SWAGGER=$(curl --max-time 15 -s -o /dev/null -w "%{http_code}" "$SWAGGER_URL" || true)
             STATUS_HEALTH=$(curl --max-time 15 -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || true)
             echo "Intento $i: OpenAPI=$STATUS_API SwaggerUI=$STATUS_SWAGGER Health=$STATUS_HEALTH"
             if [ "$STATUS_API" = "200" ] && [ "$STATUS_SWAGGER" = "200" ] && [ "$STATUS_HEALTH" = "200" ]; then
+              SEGUIDOS=$((SEGUIDOS + 1))
+            else
+              SEGUIDOS=0
+            fi
+            if [ "$SEGUIDOS" -ge 3 ]; then
               echo "Microservicio Auth QA desplegado y respondiendo 200 OK (OpenAPI, Swagger UI y Actuator Health)"
               exit 0
             fi
             sleep 12
           done
           python3 - << 'PY' || true
-          import os, xml.etree.ElementTree as ET, urllib.request, base64, json
+          import os, xml.etree.ElementTree as ET, urllib.request, base64, json, datetime
+          hoy = datetime.datetime.now(datetime.timezone.utc).strftime("%Y_%m_%d")
           xml_data = os.environ.get("PUBLISH_PROFILE", "")
           if xml_data:
               root = ET.fromstring(xml_data)
@@ -230,7 +239,7 @@ jobs:
                           for item in logs:
                               href = item.get("href", "")
                               print("=== LOG:", item.get("machineName"), href)
-                              if href and "2026_11_15" in href:
+                              if href and hoy in href:
                                   r2 = urllib.request.Request(href, headers={"Authorization": f"Basic {auth}"})
                                   with urllib.request.urlopen(r2, timeout=15) as lf:
                                       lines = lf.read().decode(errors="replace").splitlines()
@@ -261,10 +270,17 @@ jobs:
         run: |
           HEALTH_URL="https://styleradar-auth-prod.azurewebsites.net/actuator/health"
           echo "Ejecutando Smoke Test contra: $HEALTH_URL"
-          for i in $(seq 1 25); do
+          sleep 90
+          SEGUIDOS=0
+          for i in $(seq 1 30); do
             STATUS_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || true)
             echo "Intento $i: Health=$STATUS_HEALTH"
             if [ "$STATUS_HEALTH" = "200" ]; then
+              SEGUIDOS=$((SEGUIDOS + 1))
+            else
+              SEGUIDOS=0
+            fi
+            if [ "$SEGUIDOS" -ge 3 ]; then
               echo "Microservicio Auth PROD desplegado y respondiendo 200 OK"
               exit 0
             fi

@@ -9,9 +9,6 @@ services:
     environment:
       SERVER_PORT: 8100
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
-      DB_URL: jdbc:postgresql://auth-db:5432/${POSTGRES_DB:-styleradar_auth}
-      DB_USERNAME: ${POSTGRES_USER:-postgres}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       REDIS_HOST: auth-redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -35,8 +32,6 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME:-styleradar1@gmail.com}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     depends_on:
-      auth-db:
-        condition: service_healthy
       auth-redis:
         condition: service_healthy
     networks:
@@ -57,27 +52,7 @@ services:
     networks:
       - auth-network
 
-  auth-db:
-    image: postgres:16-alpine
-    container_name: auth-db
-    ports:
-      - "5434:5432"
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-styleradar_auth}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-    volumes:
-      - auth-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-styleradar_auth}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - auth-network
-
 volumes:
-  auth-data:
   auth-redis-data:
 
 networks:

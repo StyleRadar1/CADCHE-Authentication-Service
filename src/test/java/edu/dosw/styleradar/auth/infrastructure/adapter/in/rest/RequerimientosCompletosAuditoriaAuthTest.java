@@ -2,6 +2,7 @@ package edu.dosw.styleradar.auth.infrastructure.adapter.in.rest;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -12,6 +13,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -46,9 +48,13 @@ import edu.dosw.styleradar.auth.domain.model.Rol;
 import edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioClient;
 import edu.dosw.styleradar.auth.infrastructure.config.SecurityConfig;
 import edu.dosw.styleradar.auth.infrastructure.exception.GlobalExceptionHandler;
+import edu.dosw.styleradar.auth.infrastructure.config.BeanConfig;
+import edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioIdentidadAdapter;
+import edu.dosw.styleradar.auth.application.mapper.out.AuthResponseMapperImpl;
 
 @WebMvcTest(controllers = AuthController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@Import({SecurityConfig.class, GlobalExceptionHandler.class, BeanConfig.class,
+        UsuarioIdentidadAdapter.class, AuthResponseMapperImpl.class})
 @ActiveProfiles("test")
 @DisplayName("Auditoría de Requerimientos Completos - ms-auth (SR-RF-02 y SR-RF-92)")
 class RequerimientosCompletosAuditoriaAuthTest {
@@ -76,6 +82,13 @@ class RequerimientosCompletosAuditoriaAuthTest {
 
     private static final String EMAIL = "comprador@styleradar.com";
     private static final String PASS = "Password123*";
+
+    @org.junit.jupiter.api.BeforeEach
+    void configurarPoliticas() {
+        when(jwtService.obtenerVigenciaSegundos()).thenReturn(86400L);
+        when(otpService.obtenerVigenciaOtpSegundos()).thenReturn(300L);
+        when(otpService.obtenerMaxIntentos()).thenReturn(3);
+    }
 
     @Test
     @DisplayName("Prueba 1 (SR-RF-02 Flujo Básico): Login con correo verificado emite JWT directo sin enviar OTP ni pedir código")
@@ -138,7 +151,7 @@ class RequerimientosCompletosAuditoriaAuthTest {
 
         VerificarOtpRequestDTO request = new VerificarOtpRequestDTO(EMAIL, "123456");
 
-        mockMvc.perform(post("/api/v1/auth/otp/verificar")
+        mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -155,25 +168,36 @@ class RequerimientosCompletosAuditoriaAuthTest {
     @DisplayName("Prueba 4 (SR-RF-92 FA-08): Reenvío de OTP durante bloqueo de 60s responde HTTP 429 con cabecera Retry-After")
     void prueba4_SRRF92_ReenviarOtpBajoBloqueoTemporal_Retorna429ConRetryAfter() throws Exception {
         when(otpService.reenviarOtp(EMAIL))
-                .thenThrow(new OtpBloqueadoTemporalmenteException(
-                        "Debe esperar 48 segundos para solicitar un nuevo código.", 48L));
+                .thenThrow(new OtpBloqueadoTemporalmenteException(48L));
 
         ReenviarOtpRequestDTO request = new ReenviarOtpRequestDTO(EMAIL);
 
-        mockMvc.perform(post("/api/v1/auth/otp/reenviar")
+        mockMvc.perform(post("/api/v1/auth/otp/resend")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().string(HttpHeaders.RETRY_AFTER, "48"))
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.type").value("https://api.styleradar.com/errores/otp-reenvio-bloqueado"))
+                .andExpect(jsonPath("$.title").value("Too Many Requests"))
+                .andExpect(jsonPath("$.detail").value(containsString("48 segundos")))
+                .andExpect(jsonPath("$.instance").value("/api/v1/auth/otp/resend"))
+                .andExpect(jsonPath("$.timestamp").value(matchesPattern("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")))
                 .andExpect(jsonPath("$.status").value(429))
                 .andExpect(jsonPath("$.error").value("Too Many Requests"))
+                .andExpect(jsonPath("$.codigo").value("OTP_REENVIO_BLOQUEADO"))
+                .andExpect(jsonPath("$.esperarSegundos").value(48))
                 .andExpect(jsonPath("$.message").value(containsString("48 segundos")));
     }
 
     @Test
     @DisplayName("Prueba 5 (SR-RF-92 Lógica de Dominio): OtpServiceImpl activa bloqueo de 60s tras 3 fallos e impide reenvío")
     void prueba5_SRRF92_OtpService_Bloqueo60SegundosTrasTresIntentosFallidos() {
-        // Usar OtpServiceImpl con fallback local de dev (en memoria) para validar la lógica del temporizador
+        // Redis caído + respaldo en memoria explícito (solo dev) para validar la lógica del temporizador
+        when(redisTemplate.opsForValue()).thenThrow(
+                new org.springframework.data.redis.RedisConnectionFailureException("Redis dev offline"));
+        when(redisTemplate.delete(anyString())).thenThrow(
+                new org.springframework.data.redis.RedisConnectionFailureException("Redis dev offline"));
         OtpServiceImpl service = new OtpServiceImpl(redisTemplate, true, null);
 
         // Generar OTP para la sesión
@@ -201,5 +225,14 @@ class RequerimientosCompletosAuditoriaAuthTest {
 
         org.junit.jupiter.api.Assertions.assertTrue(bloqueado.getSegundosRestantes() > 0);
         org.junit.jupiter.api.Assertions.assertTrue(bloqueado.getMessage().contains("Debe esperar"));
+
+        // Bug corregido: volver a iniciar sesión tampoco puede saltarse la espera (SR-RF-02 FA-15)
+        org.junit.jupiter.api.Assertions.assertThrows(
+                OtpBloqueadoTemporalmenteException.class, () -> service.generarOtp(EMAIL, 33L, "COMPRADOR"));
+
+        // D1: se anula solo el código; la verificación en curso se conserva para pedir otro al terminar la espera
+        org.junit.jupiter.api.Assertions.assertEquals(33L, service.obtenerUsuarioId(EMAIL));
+        org.junit.jupiter.api.Assertions.assertEquals("COMPRADOR", service.obtenerRol(EMAIL));
+        org.junit.jupiter.api.Assertions.assertEquals(0, service.obtenerIntentosRestantes(EMAIL));
     }
 }

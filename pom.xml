@@ -23,7 +23,6 @@
         <java.version>21</java.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <lombok.version>1.18.42</lombok.version>
-        <flyway.version>10.20.1</flyway.version>
         <testcontainers.version>1.19.8</testcontainers.version>
 
         <!-- SonarCloud -->
@@ -69,10 +68,6 @@
         </dependency>
 
         <!-- Persistencia -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
 
         <!-- Redis para códigos OTP -->
         <dependency>
@@ -81,12 +76,6 @@
         </dependency>
 
         <!-- PostgreSQL -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.7.4</version>
-            <scope>runtime</scope>
-        </dependency>
 
         <!-- RabbitMQ -->
         <dependency>
@@ -95,16 +84,6 @@
         </dependency>
 
         <!-- Flyway -->
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-            <version>${flyway.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-postgresql</artifactId>
-            <version>${flyway.version}</version>
-        </dependency>
 
         <!-- Validaciones -->
         <dependency>
@@ -166,20 +145,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <version>5.7.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>${testcontainers.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
             <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>

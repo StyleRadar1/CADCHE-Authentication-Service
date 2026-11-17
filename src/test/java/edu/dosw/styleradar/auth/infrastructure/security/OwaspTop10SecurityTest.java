@@ -56,7 +56,9 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 
 @WebMvcTest(controllers = AuthController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@Import({SecurityConfig.class, GlobalExceptionHandler.class, edu.dosw.styleradar.auth.infrastructure.config.BeanConfig.class,
+        edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioIdentidadAdapter.class,
+        edu.dosw.styleradar.auth.application.mapper.out.AuthResponseMapperImpl.class})
 @ActiveProfiles("test")
 @DisplayName("Suite de Verificación OWASP Top 10:2025 - CADCHE Authentication Service")
 class OwaspTop10SecurityTest {
@@ -137,11 +139,10 @@ class OwaspTop10SecurityTest {
 
         MockEnvironment prodEnv = new MockEnvironment();
         prodEnv.setActiveProfiles("prod");
-        AuthController prodController = new AuthController(
-                usuarioClient, otpService, emailService, jwtService, false, prodEnv);
-        RegistroAuthRequestDTO regDto = new RegistroAuthRequestDTO(
-                "Ana Gómez", "ana@styleradar.com", "+573001112233", "StyleRadar2026*", true);
-        assertThatThrownBy(() -> prodController.registrar(regDto))
+        // Aunque alguien active la propiedad del stub, en PROD el registro de soporte sigue cerrado (fail-closed)
+        var registroProd = new edu.dosw.styleradar.auth.infrastructure.config.BeanConfig()
+                .registrarUsuarioUseCase(true, prodEnv, java.time.Clock.systemUTC());
+        assertThatThrownBy(() -> registroProd.registrar("Ana Gómez", "ana@styleradar.com", "+573001112233"))
                 .isInstanceOf(ServicioExternoNoDisponibleException.class);
     }
 
@@ -190,7 +191,7 @@ class OwaspTop10SecurityTest {
         RegistroAuthRequestDTO unsafeDto = new RegistroAuthRequestDTO(
                 "<script>alert(1)</script>", "carlos@styleradar.com", "300123", "12345", true);
 
-        mockMvc.perform(post("/api/v1/auth/registro")
+        mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(unsafeDto)))
                 .andExpect(status().isBadRequest())

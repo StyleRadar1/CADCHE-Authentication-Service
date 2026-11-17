@@ -1,8 +1,14 @@
 package edu.dosw.styleradar.auth.domain.exception;
 
-public class OtpInvalidoException extends RuntimeException {
+import edu.dosw.styleradar.auth.domain.model.CodigoError;
 
-    public OtpInvalidoException(String message) {
-        super(message);
+/**
+ * Código OTP incorrecto con intentos disponibles ({@code OTP_INCORRECTO}, HTTP 401).
+ */
+public class OtpInvalidoException extends AuthDomainException {
+
+    public OtpInvalidoException(int intentosRestantes) {
+        super("El código OTP es incorrecto. Intentos restantes: " + intentosRestantes,
+                CodigoError.OTP_INCORRECTO, intentosRestantes, null, null);
     }
 }

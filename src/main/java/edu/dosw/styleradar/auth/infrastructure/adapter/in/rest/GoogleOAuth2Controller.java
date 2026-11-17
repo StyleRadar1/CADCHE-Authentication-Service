@@ -8,6 +8,7 @@ import edu.dosw.styleradar.auth.application.dto.request.GoogleCodeLoginRequestDT
 import edu.dosw.styleradar.auth.application.dto.request.GoogleLoginRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.response.GoogleAuthUrlResponseDTO;
 import edu.dosw.styleradar.auth.application.dto.response.LoginResponseDTO;
+import edu.dosw.styleradar.auth.application.mapper.out.AuthResponseMapper;
 import edu.dosw.styleradar.auth.application.service.GoogleOAuth2Service;
 import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException;
 import edu.dosw.styleradar.auth.infrastructure.adapter.in.rest.doc.GoogleOAuth2Api;
@@ -21,17 +22,19 @@ import lombok.extern.slf4j.Slf4j;
 public class GoogleOAuth2Controller implements GoogleOAuth2Api {
 
     private final GoogleOAuth2Service googleOAuth2Service;
+    private final AuthResponseMapper mapper;
 
     @SuppressFBWarnings(
             value = "EI_EXPOSE_REP2",
             justification = "Servicio de aplicación administrado por Spring e inyectado por constructor.")
-    public GoogleOAuth2Controller(GoogleOAuth2Service googleOAuth2Service) {
+    public GoogleOAuth2Controller(GoogleOAuth2Service googleOAuth2Service, AuthResponseMapper mapper) {
         this.googleOAuth2Service = googleOAuth2Service;
+        this.mapper = mapper;
     }
 
     @Override
     public ResponseEntity<LoginResponseDTO> autenticarConGoogle(GoogleLoginRequestDTO request) {
-        return ResponseEntity.ok(googleOAuth2Service.autenticarConIdToken(request.getIdToken()));
+        return ResponseEntity.ok(mapper.toLoginResponse(googleOAuth2Service.autenticarConIdToken(request.getIdToken())));
     }
 
     @Override
@@ -52,15 +55,15 @@ public class GoogleOAuth2Controller implements GoogleOAuth2Api {
             throw new IllegalArgumentException(
                     "Los parámetros code y state son obligatorios en el callback de Google OAuth2");
         }
-        return ResponseEntity.ok(googleOAuth2Service.autenticarConCodigo(code, state, redirectUri));
+        return ResponseEntity.ok(mapper.toLoginResponse(googleOAuth2Service.autenticarConCodigo(code, state, redirectUri)));
     }
 
     @Override
     public ResponseEntity<LoginResponseDTO> autenticarConCodigo(GoogleCodeLoginRequestDTO request) {
-        return ResponseEntity.ok(googleOAuth2Service.autenticarConCodigo(
+        return ResponseEntity.ok(mapper.toLoginResponse(googleOAuth2Service.autenticarConCodigo(
                 request.getCode(),
                 request.getState(),
-                request.getRedirectUri()));
+                request.getRedirectUri())));
     }
 }
 

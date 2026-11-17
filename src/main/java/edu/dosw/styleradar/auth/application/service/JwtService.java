@@ -16,4 +16,9 @@ public interface JwtService {
     Set<Rol> obtenerRoles(String token);
 
     long obtenerTiempoRestanteSegundos(String token);
+
+    /**
+     * Vigencia configurada de los tokens emitidos ({@code JWT_DURATION}), en segundos.
+     */
+    long obtenerVigenciaSegundos();
 }

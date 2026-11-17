@@ -46,9 +46,9 @@ public class SwaggerConfig {
     OpenApiCustomizer authenticationDocumentation() {
         Set<String> publicPosts = Set.of(
                 "/api/v1/auth/login",
-                "/api/v1/auth/registro",
-                "/api/v1/auth/otp/verificar",
-                "/api/v1/auth/otp/reenviar",
+                "/api/v1/auth/register",
+                "/api/v1/auth/otp/verify",
+                "/api/v1/auth/otp/resend",
                 "/api/v1/auth/refresh",
                 "/api/v1/auth/oauth2/google",
                 "/api/v1/auth/oauth2/google/code");
