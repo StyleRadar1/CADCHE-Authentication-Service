@@ -23,9 +23,13 @@ class SecurityErrorResponseWriterTest {
     }
 
     @Test
-    @DisplayName("401 por token revocado o mal formado responde siempre el texto de INVALID_TOKEN")
+    @DisplayName("401: sesión revocada con su mensaje (SR-RF-AUTH-01); token mal formado con el texto de INVALID_TOKEN")
     void tokenInvalidoUsaMensajeDelContrato() throws Exception {
-        JsonNode cuerpo = escribir(HttpStatus.UNAUTHORIZED, "El token ha sido revocado");
+        JsonNode revocado = escribir(HttpStatus.UNAUTHORIZED, "El token ha sido revocado");
+        // SR-RF-AUTH-01 FA-05: la sesión revocada por cambio de estado conserva su mensaje propio.
+        assertThat(revocado.get("code").asText()).isEqualTo("INVALID_TOKEN");
+        assertThat(revocado.get("detail").asText()).isEqualTo("El token ha sido revocado");
+        JsonNode cuerpo = escribir(HttpStatus.UNAUTHORIZED, "Firma JWT inválida");
 
         assertThat(cuerpo.get("code").asText()).isEqualTo("INVALID_TOKEN");
         assertThat(cuerpo.get("message").asText()).isEqualTo("El token presentado es inválido o expirado");

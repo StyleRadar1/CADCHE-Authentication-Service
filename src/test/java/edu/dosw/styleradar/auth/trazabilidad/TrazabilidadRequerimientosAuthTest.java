@@ -104,6 +104,8 @@ class TrazabilidadRequerimientosAuthTest {
     private ObjectMapper objectMapper;
     @Autowired
     private StringRedisTemplate redis;
+    @Autowired
+    private edu.dosw.styleradar.auth.infrastructure.adapter.in.amqp.UsuarioEstadoCambiadoConsumer consumidorEstado;
 
     @MockBean
     private EmailService emailService;
@@ -991,6 +993,89 @@ class TrazabilidadRequerimientosAuthTest {
             assertThat(evento.eventoId()).isEqualTo("e-1");
             assertThat(evento.usuarioId()).isEqualTo(12L);
             assertThat(evento.estadoNuevo().requiereRevocarSesiones()).isTrue();
+        }
+    }
+
+    // ---------------------------------------------------------------- SR-RF-AUTH-01 (provisional)
+
+    @Nested
+    @DisplayName("SR-RF-AUTH-01 Revocar sesiones cuando una cuenta se inactiva o bloquea")
+    class RevocarSesiones {
+
+        private edu.dosw.styleradar.auth.application.dto.event.UsuarioEstadoCambiadoEventDTO evento(String json) throws Exception {
+            return objectMapper.readValue(json, edu.dosw.styleradar.auth.application.dto.event.UsuarioEstadoCambiadoEventDTO.class);
+        }
+
+        private String token(String ip, String email) throws Exception {
+            return objectMapper.readTree(login(ip, email, CLAVE).andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8)).get("accessToken").asText();
+        }
+
+        private ResultActions logout(String ip, String token) throws Exception {
+            return mockMvc.perform(post("/api/v1/auth/logout").with(r -> {
+                r.setRemoteAddr(ip);
+                return r;
+            }).header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        }
+
+        private String cambio(String eventId, long userId, String estado) {
+            String id = eventId == null ? "" : "\"eventId\":\"" + eventId + "\",";
+            return "{" + id + "\"userId\":" + userId + ",\"previousStatus\":\"ACTIVE\",\"newStatus\":\"" + estado
+                    + "\",\"changedBy\":1,\"reason\":\"Prueba\",\"changedAt\":\"" + Instant.now().plusSeconds(1) + "\"}";
+        }
+
+        @Test
+        @DisplayName("Criterios 1 y 2, FA-05, FA-06 y RN-06: INACTIVE o BLOCKED revocan; el token anterior da 401 y no se renueva")
+        void inactivaYBloqueada() throws Exception {
+            for (String estado : List.of("INACTIVE", "BLOCKED")) {
+                String ip = nuevaIp();
+                String token = token(ip, "verificado@styleradar.com");
+                consumidorEstado.recibir(evento(cambio("evt-" + estado, 12, estado)));
+                error(llamar(ip, "/refresh", Map.of("refreshToken", token)), 401, "INVALID_TOKEN",
+                        "El token presentado es inválido, expiró o fue revocado");
+                error(logout(ip, token), 401, "INVALID_TOKEN", "El token ha sido revocado");
+                redis.delete("usuario:revocado:12");
+            }
+        }
+
+        @Test
+        @DisplayName("Criterio 3 y FA-02: ACTIVE no invalida sesiones")
+        void activaNoRevoca() throws Exception {
+            String ip = nuevaIp();
+            String token = token(ip, "verificado@styleradar.com");
+            consumidorEstado.recibir(evento(cambio("evt-activo", 12, "ACTIVE")));
+            assertThat(redis.hasKey("usuario:revocado:12")).isFalse();
+            logout(ip, token).andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("Criterio 4, FA-03 y RN-04: el mismo eventId no repite la revocación; sin eventId se procesa igual")
+        void idempotencia() throws Exception {
+            consumidorEstado.recibir(evento(cambio("evt-dup", 12, "BLOCKED")));
+            String primera = redis.opsForValue().get("usuario:revocado:12");
+            redis.delete("usuario:revocado:12");
+            consumidorEstado.recibir(evento(cambio("evt-dup", 12, "BLOCKED")));
+            assertThat(primera).isNotNull();
+            assertThat(redis.hasKey("usuario:revocado:12")).isFalse();
+            consumidorEstado.recibir(evento(cambio(null, 12, "BLOCKED")));
+            assertThat(redis.hasKey("usuario:revocado:12")).isTrue();
+        }
+
+        @Test
+        @DisplayName("FA-01: evento sin userId o sin newStatus se ignora sin fallar")
+        void eventoIncompleto() throws Exception {
+            consumidorEstado.recibir(evento("{\"eventId\":\"e-x\",\"newStatus\":\"BLOCKED\"}"));
+            consumidorEstado.recibir(evento("{\"eventId\":\"e-y\",\"userId\":12}"));
+            assertThat(redis.hasKey("usuario:revocado:12")).isFalse();
+        }
+
+        @Test
+        @DisplayName("RN-03: la revocación toma changedAt como referencia; los tokens emitidos después siguen sirviendo")
+        void referenciaChangedAt() throws Exception {
+            consumidorEstado.recibir(evento("{\"eventId\":\"e-pasado\",\"userId\":12,\"newStatus\":\"INACTIVE\","
+                    + "\"changedAt\":\"" + Instant.now().minusSeconds(3600) + "\"}"));
+            String ip = nuevaIp();
+            logout(ip, token(ip, "verificado@styleradar.com")).andExpect(status().isNoContent());
         }
     }
 }

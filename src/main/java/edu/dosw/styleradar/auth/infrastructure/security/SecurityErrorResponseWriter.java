@@ -26,6 +26,12 @@ public final class SecurityErrorResponseWriter {
             CodigoError.RATE_LIMIT_EXCEEDED, "Demasiadas solicitudes en un período corto. Intente nuevamente más tarde.",
             CodigoError.INTERNAL_ERROR, "Ocurrió un error interno. Intente nuevamente más tarde.");
 
+    /**
+     * SR-RF-AUTH-01 FA-05: un token emitido antes de que la cuenta se inactivara o bloqueara responde con este
+     * mensaje propio; es el único texto 401 que no se reemplaza por el del catálogo.
+     */
+    public static final String MENSAJE_SESION_REVOCADA = "El token ha sido revocado";
+
     private SecurityErrorResponseWriter() {
     }
 
@@ -53,7 +59,7 @@ public final class SecurityErrorResponseWriter {
             response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(esperarSegundos));
         }
 
-        String mensaje = MENSAJES_CONTRATO.getOrDefault(codigo, message);
+        String mensaje = MENSAJE_SESION_REVOCADA.equals(message) ? message : MENSAJES_CONTRATO.getOrDefault(codigo, message);
         ErrorResponseDTO body = ErrorResponseDTO.problema(status.value(), status.getReasonPhrase(), codigo, mensaje,
                         SecuritySanitizer.sanitizeForLog(path))
                 .errors(Map.of())
