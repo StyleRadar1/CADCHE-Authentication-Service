@@ -75,8 +75,8 @@ class CasosDeUsoSesionTest {
         @DisplayName("Normaliza el correo y entrega token directo si el correo está verificado")
         void correoVerificado_entregaToken() {
             when(usuarios.verificarCredenciales(CORREO, "Clave2026*"))
-                    .thenReturn(new IdentidadUsuario(5L, CORREO, Rol.COMPRADOR, EstadoCuenta.ACTIVA, true));
-            when(jwt.generarToken(5L, Set.of(Rol.COMPRADOR))).thenReturn("jwt");
+                    .thenReturn(new IdentidadUsuario(5L, CORREO, Rol.BUYER, EstadoCuenta.ACTIVA, true));
+            when(jwt.generarToken(5L, Set.of(Rol.BUYER))).thenReturn("jwt");
 
             SesionAutenticada sesion = useCase.iniciarSesion("  Comprador@StyleRadar.com ", "Clave2026*");
 
@@ -91,8 +91,8 @@ class CasosDeUsoSesionTest {
         @DisplayName("Con correo sin verificar envía el código y no entrega token")
         void correoSinVerificar_enviaCodigo() {
             when(usuarios.verificarCredenciales(CORREO, "Clave2026*"))
-                    .thenReturn(new IdentidadUsuario(5L, CORREO, Rol.COMPRADOR, EstadoCuenta.ACTIVA, false));
-            when(otp.generarOtp(CORREO, 5L, "COMPRADOR")).thenReturn("123456");
+                    .thenReturn(new IdentidadUsuario(5L, CORREO, Rol.BUYER, EstadoCuenta.ACTIVA, false));
+            when(otp.generarOtp(CORREO, 5L, "BUYER")).thenReturn("123456");
 
             SesionAutenticada sesion = useCase.iniciarSesion(CORREO, "Clave2026*");
 
@@ -107,8 +107,8 @@ class CasosDeUsoSesionTest {
         @DisplayName("Si falla el correo anula la verificación (compensación) y propaga 503")
         void falloSmtp_compensaYPropaga() {
             when(usuarios.verificarCredenciales(CORREO, "Clave2026*"))
-                    .thenReturn(new IdentidadUsuario(5L, CORREO, Rol.COMPRADOR, EstadoCuenta.ACTIVA, false));
-            when(otp.generarOtp(CORREO, 5L, "COMPRADOR")).thenReturn("123456");
+                    .thenReturn(new IdentidadUsuario(5L, CORREO, Rol.BUYER, EstadoCuenta.ACTIVA, false));
+            when(otp.generarOtp(CORREO, 5L, "BUYER")).thenReturn("123456");
             doThrow(new ServicioExternoNoDisponibleException("SMTP")).when(email).enviarOtp(CORREO, "123456");
 
             assertThatThrownBy(() -> useCase.iniciarSesion(CORREO, "Clave2026*"))
@@ -120,11 +120,11 @@ class CasosDeUsoSesionTest {
         @DisplayName("RN-03: estado distinto de ACTIVA o ausente nunca abre sesión")
         void cuentaNoActiva_rechaza() {
             when(usuarios.verificarCredenciales(CORREO, "Clave2026*"))
-                    .thenReturn(new IdentidadUsuario(5L, CORREO, Rol.COMPRADOR, null, true));
+                    .thenReturn(new IdentidadUsuario(5L, CORREO, Rol.BUYER, null, true));
 
             assertThatThrownBy(() -> useCase.iniciarSesion(CORREO, "Clave2026*"))
                     .isInstanceOf(CuentaNoActivaException.class)
-                    .extracting("codigo").isEqualTo(CodigoError.CUENTA_NO_ACTIVA);
+                    .extracting("codigo").isEqualTo(CodigoError.ACCOUNT_NOT_ACTIVE);
         }
     }
 
@@ -133,14 +133,14 @@ class CasosDeUsoSesionTest {
     class Otp {
 
         @Test
-        @DisplayName("Contrato 4.1: sin verificación en curso (código ya usado o vencido) responde OTP_VENCIDO sin consumir intentos")
+        @DisplayName("Contrato 4.1: sin verificación en curso (código ya usado o vencido) responde OTP_EXPIRED sin consumir intentos")
         void sinSesion_noConsumeIntentos() {
             VerificarOtpUseCaseImpl useCase = new VerificarOtpUseCaseImpl(otp, jwt, usuarios);
 
             assertThatThrownBy(() -> useCase.verificar(CORREO, "123456"))
                     .isInstanceOf(OtpExpiradoException.class)
                     .hasMessage("El código OTP expiró o no existe. Debe solicitar uno nuevo.")
-                    .extracting("codigo").isEqualTo(CodigoError.OTP_VENCIDO);
+                    .extracting("codigo").isEqualTo(CodigoError.OTP_EXPIRED);
             verify(otp, never()).verificarOtp(anyString(), anyString());
         }
 
@@ -148,8 +148,8 @@ class CasosDeUsoSesionTest {
         @DisplayName("Código correcto: emite token, anula la verificación y marca el correo en ms-usuarios")
         void codigoCorrecto_emiteTokenYMarcaCorreo() {
             when(otp.obtenerUsuarioId(CORREO)).thenReturn(9L);
-            when(otp.obtenerRol(CORREO)).thenReturn("REPRESENTANTE_FUNDACION");
-            when(jwt.generarToken(9L, Set.of(Rol.REPRESENTANTE_FUNDACION))).thenReturn("jwt-9");
+            when(otp.obtenerRol(CORREO)).thenReturn("FOUNDATION_REPRESENTATIVE");
+            when(jwt.generarToken(9L, Set.of(Rol.FOUNDATION_REPRESENTATIVE))).thenReturn("jwt-9");
 
             SesionAutenticada sesion = new VerificarOtpUseCaseImpl(otp, jwt, usuarios).verificar(CORREO, "123456");
 
@@ -182,10 +182,10 @@ class CasosDeUsoSesionTest {
             when(otp.esTokenInvalido("t1")).thenReturn(false);
             when(jwt.validarToken("t1")).thenReturn(Jwts.claims().subject("4").issuedAt(new Date(5000L)).build());
             when(jwt.obtenerUsuarioId("t1")).thenReturn(4L);
-            when(jwt.obtenerRoles("t1")).thenReturn(Set.of(Rol.ADMIN_STYLERADAR));
+            when(jwt.obtenerRoles("t1")).thenReturn(Set.of(Rol.STYLERADAR_ADMIN));
             when(otp.estaUsuarioRevocado(4L, 5000L)).thenReturn(false);
             when(jwt.obtenerTiempoRestanteSegundos("t1")).thenReturn(120L);
-            when(jwt.generarToken(4L, Set.of(Rol.ADMIN_STYLERADAR))).thenReturn("t2");
+            when(jwt.generarToken(4L, Set.of(Rol.STYLERADAR_ADMIN))).thenReturn("t2");
 
             SesionAutenticada sesion = new RenovarTokenUseCaseImpl(jwt, otp).renovar(" t1 ");
 
@@ -194,20 +194,20 @@ class CasosDeUsoSesionTest {
         }
 
         @Test
-        @DisplayName("Renovar con token mal formado o nulo responde TOKEN_INVALIDO")
+        @DisplayName("Renovar con token mal formado o nulo responde INVALID_TOKEN")
         void renovar_tokenInvalido() {
             RenovarTokenUseCaseImpl useCase = new RenovarTokenUseCaseImpl(jwt, otp);
             when(jwt.validarToken("roto")).thenThrow(new MalformedJwtException("roto"));
 
             assertThatThrownBy(() -> useCase.renovar(null))
-                    .extracting("codigo").isEqualTo(CodigoError.TOKEN_INVALIDO);
+                    .extracting("codigo").isEqualTo(CodigoError.INVALID_TOKEN);
             assertThatThrownBy(() -> useCase.renovar("roto"))
                     .isInstanceOf(CredencialesIncorrectasException.class)
-                    .extracting("codigo").isEqualTo(CodigoError.TOKEN_INVALIDO);
+                    .extracting("codigo").isEqualTo(CodigoError.INVALID_TOKEN);
         }
 
         @Test
-        @DisplayName("Cerrar sesión revoca el token; vacío o inválido responde TOKEN_INVALIDO")
+        @DisplayName("Cerrar sesión revoca el token; vacío o inválido responde INVALID_TOKEN")
         void cerrarSesion() {
             CerrarSesionUseCaseImpl useCase = new CerrarSesionUseCaseImpl(jwt, otp);
             when(jwt.obtenerTiempoRestanteSegundos("ok")).thenReturn(60L);
@@ -235,6 +235,6 @@ class CasosDeUsoSesionTest {
         assertThat(usuario.nombre()).isEqualTo("Ana");
         assertThat(usuario.email()).isEqualTo("ana@styleradar.com");
         assertThat(usuario.fechaRegistro()).isEqualTo(ahora);
-        assertThat(usuario.rol()).isEqualTo(Rol.COMPRADOR);
+        assertThat(usuario.rol()).isEqualTo(Rol.BUYER);
     }
 }

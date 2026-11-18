@@ -48,165 +48,164 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 /**
- * Contrato OpenAPI de ms-auth (contrato de integración con el Frontend v1.2). Todos los errores siguen
- * {@link ErrorResponseDTO}: el front elige el texto por {@code codigo} (decisión D3) y todos los 429
- * traen {@code esperarSegundos} y la cabecera {@code Retry-After}.
+ * OpenAPI contract of ms-auth (requirements analysis v2). Every error follows {@link ErrorResponseDTO}: the front end
+ * picks the text by {@code code} and every 429 carries {@code retryAfterSeconds} and the {@code Retry-After} header.
  */
-@Tag(name = "Autenticación", description = "Inicio de sesión (SR-RF-02), verificación del correo con código OTP una sola vez (SR-RF-92), renovación y cierre de sesión con revocación en Redis 7")
+@Tag(name = "Authentication", description = "Login (SR-RF-02), one-time email verification with an OTP code (SR-RF-92), token refresh and logout with revocation in Redis 7")
 public interface AuthApi {
 
     String JSON = "application/json";
     String PROBLEMA = ErrorResponseDTO.MEDIA_TYPE;
 
     @Operation(
-            summary = "Iniciar sesión con correo y contraseña (SR-RF-02)",
-            description = "Valida las credenciales contra ms-usuarios (8120) y exige cuenta ACTIVA (RN-03). "
-                    + "Si el correo ya está verificado entrega el JWT de una vez (RN-05, requiereOtp=false). "
-                    + "Si no, envía un código OTP de 6 dígitos (300 s, 3 intentos) y responde requiereOtp=true sin token (FA-13). "
-                    + "Durante la espera de 60 s tras 3 fallos responde 429 OTP_REENVIO_BLOQUEADO (FA-15). "
-                    + "Límite de 15 solicitudes por minuto por IP. expiresIn sale de JWT_DURATION.",
+            summary = "Log in with email and password (SR-RF-02)",
+            description = "Validates the credentials against ms-usuarios (8120) and requires an ACTIVE account (RN-03). "
+                    + "If the email is already verified it returns the JWT right away (RN-05, otpRequired=false). "
+                    + "Otherwise it emails a 6-digit OTP code (300 s, 3 attempts) and answers otpRequired=true without token (FA-13). "
+                    + "During the 60 s wait after 3 failures it answers 429 OTP_RESEND_BLOCKED (FA-15). "
+                    + "Limit: 15 requests per minute per IP. expiresIn comes from JWT_DURATION.",
             security = {},
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true, content = @Content(
                     mediaType = JSON,
                     schema = @Schema(implementation = LoginRequestDTO.class),
                     examples = {
-                            @ExampleObject(name = "Comprador", value = LOGIN_COMPRADOR),
-                            @ExampleObject(name = "Tienda (ADMIN_ALMACEN)", value = LOGIN_TIENDA),
-                            @ExampleObject(name = "Fundación (REPRESENTANTE_FUNDACION)", value = LOGIN_FUNDACION),
-                            @ExampleObject(name = "Admin (ADMIN_STYLERADAR)", value = LOGIN_ADMIN)
+                            @ExampleObject(name = "Buyer (BUYER)", value = LOGIN_COMPRADOR),
+                            @ExampleObject(name = "Store (STORE_ADMIN)", value = LOGIN_TIENDA),
+                            @ExampleObject(name = "Foundation (FOUNDATION_REPRESENTATIVE)", value = LOGIN_FUNDACION),
+                            @ExampleObject(name = "Admin (STYLERADAR_ADMIN)", value = LOGIN_ADMIN)
                     })))
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Sesión iniciada o código OTP enviado", content = @Content(
+            @ApiResponse(responseCode = "200", description = "Session started or OTP code sent", content = @Content(
                     mediaType = JSON, schema = @Schema(implementation = LoginResponseDTO.class), examples = {
-                            @ExampleObject(name = "CorreoVerificado", summary = "Entra sin código", value = SESION_CON_TOKEN),
-                            @ExampleObject(name = "CorreoSinVerificar", summary = "Se envió el código OTP", value = SESION_PENDIENTE_OTP)
+                            @ExampleObject(name = "EmailVerified", summary = "Logs in without code", value = SESION_CON_TOKEN),
+                            @ExampleObject(name = "EmailNotVerified", summary = "OTP code sent", value = SESION_PENDIENTE_OTP)
                     })),
-            @ApiResponse(responseCode = "400", description = "DATOS_INVALIDOS (FA-01 a FA-05)", content = @Content(
+            @ApiResponse(responseCode = "400", description = "INVALID_DATA (FA-01 to FA-05)", content = @Content(
                     mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
-                    examples = @ExampleObject(name = "DATOS_INVALIDOS", value = ERROR_DATOS_INVALIDOS))),
-            @ApiResponse(responseCode = "401", description = "CREDENCIALES_INCORRECTAS (FA-06, RN-04)", content = @Content(
+                    examples = @ExampleObject(name = "INVALID_DATA", value = ERROR_DATOS_INVALIDOS))),
+            @ApiResponse(responseCode = "401", description = "INVALID_CREDENTIALS (FA-06, RN-04)", content = @Content(
                     mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
-                    examples = @ExampleObject(name = "CREDENCIALES_INCORRECTAS", value = ERROR_CREDENCIALES))),
-            @ApiResponse(responseCode = "403", description = "CUENTA_NO_ACTIVA (FA-07)", content = @Content(
+                    examples = @ExampleObject(name = "INVALID_CREDENTIALS", value = ERROR_CREDENCIALES))),
+            @ApiResponse(responseCode = "403", description = "ACCOUNT_NOT_ACTIVE (FA-07)", content = @Content(
                     mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
-                    examples = @ExampleObject(name = "CUENTA_NO_ACTIVA", value = ERROR_CUENTA_NO_ACTIVA))),
-            @ApiResponse(responseCode = "429", description = "OTP_REENVIO_BLOQUEADO (FA-15) o LIMITE_SOLICITUDES (FA-08)",
-                    headers = @Header(name = "Retry-After", description = "Segundos de espera", schema = @Schema(type = "integer")),
+                    examples = @ExampleObject(name = "ACCOUNT_NOT_ACTIVE", value = ERROR_CUENTA_NO_ACTIVA))),
+            @ApiResponse(responseCode = "429", description = "OTP_RESEND_BLOCKED (FA-15) or RATE_LIMIT_EXCEEDED (FA-08)",
+                    headers = @Header(name = "Retry-After", description = "Seconds to wait", schema = @Schema(type = "integer")),
                     content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class), examples = {
-                            @ExampleObject(name = "OTP_REENVIO_BLOQUEADO", value = ERROR_REENVIO_BLOQUEADO),
-                            @ExampleObject(name = "LIMITE_SOLICITUDES", value = ERROR_LIMITE)
+                            @ExampleObject(name = "OTP_RESEND_BLOCKED", value = ERROR_REENVIO_BLOQUEADO),
+                            @ExampleObject(name = "RATE_LIMIT_EXCEEDED", value = ERROR_LIMITE)
                     })),
-            @ApiResponse(responseCode = "503", description = "SERVICIO_NO_DISPONIBLE: ms-usuarios, SMTP o Redis no responden (FA-09)",
+            @ApiResponse(responseCode = "503", description = "SERVICE_UNAVAILABLE: ms-usuarios, SMTP or Redis not responding (FA-09)",
                     content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
-                            examples = @ExampleObject(name = "SERVICIO_NO_DISPONIBLE", value = ERROR_NO_DISPONIBLE)))
+                            examples = @ExampleObject(name = "SERVICE_UNAVAILABLE", value = ERROR_NO_DISPONIBLE)))
     })
     ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request);
 
     @Operation(
-            summary = "Verificar el correo con el código OTP (SR-RF-92)",
-            description = "Valida el código (6 dígitos, vigente 300 s, máximo 3 intentos). Si es correcto anula la verificación, "
-                    + "marca el correo como verificado en ms-usuarios (no se vuelve a pedir en el login, D2) y entrega el JWT. "
-                    + "Al tercer fallo anula solo el código y activa una espera de 60 s para pedir otro (D1).",
+            summary = "Verify the email with the OTP code (SR-RF-92)",
+            description = "Validates the code (6 digits, valid for 300 s, at most 3 attempts). When correct it closes the verification, "
+                    + "marks the email as verified in ms-usuarios (it is never asked again at login) and returns the JWT. "
+                    + "On the third failure it voids only the code and starts a 60 s wait before a new one can be requested.",
             security = {},
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true, content = @Content(
                     mediaType = JSON, schema = @Schema(implementation = VerificarOtpRequestDTO.class),
-                    examples = @ExampleObject(name = "Codigo", value = "{\"email\":\"comprador@styleradar.com\",\"codigoOtp\":\"482915\"}"))))
+                    examples = @ExampleObject(name = "Code", value = "{\"email\":\"buyer@styleradar.com\",\"otpCode\":\"482915\"}"))))
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Correo verificado y sesión emitida", content = @Content(
+            @ApiResponse(responseCode = "200", description = "Email verified and session issued", content = @Content(
                     mediaType = JSON, schema = @Schema(implementation = LoginResponseDTO.class),
-                    examples = @ExampleObject(name = "CorreoVerificado", value = SESION_CON_TOKEN))),
-            @ApiResponse(responseCode = "400", description = "DATOS_INVALIDOS: código vacío o sin 6 dígitos", content = @Content(
+                    examples = @ExampleObject(name = "EmailVerified", value = SESION_CON_TOKEN))),
+            @ApiResponse(responseCode = "400", description = "INVALID_DATA: empty code or not exactly 6 digits", content = @Content(
                     mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class))),
-            @ApiResponse(responseCode = "401", description = "OTP_INCORRECTO (con intentosRestantes), OTP_VENCIDO o SESION_OTP_INEXISTENTE",
+            @ApiResponse(responseCode = "401", description = "OTP_INCORRECT (with attemptsRemaining), OTP_EXPIRED or OTP_SESSION_NOT_FOUND",
                     content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class), examples = {
-                            @ExampleObject(name = "OTP_INCORRECTO", value = ERROR_OTP_INCORRECTO),
-                            @ExampleObject(name = "OTP_VENCIDO", value = ERROR_OTP_VENCIDO),
-                            @ExampleObject(name = "SESION_OTP_INEXISTENTE", value = ERROR_SESION_INEXISTENTE)
+                            @ExampleObject(name = "OTP_INCORRECT", value = ERROR_OTP_INCORRECTO),
+                            @ExampleObject(name = "OTP_EXPIRED", value = ERROR_OTP_VENCIDO),
+                            @ExampleObject(name = "OTP_SESSION_NOT_FOUND", value = ERROR_SESION_INEXISTENTE)
                     })),
-            @ApiResponse(responseCode = "429", description = "OTP_INTENTOS_AGOTADOS (esperarSegundos=60) o LIMITE_SOLICITUDES",
-                    headers = @Header(name = "Retry-After", description = "Segundos de espera", schema = @Schema(type = "integer")),
+            @ApiResponse(responseCode = "429", description = "OTP_ATTEMPTS_EXHAUSTED (retryAfterSeconds=60) or RATE_LIMIT_EXCEEDED",
+                    headers = @Header(name = "Retry-After", description = "Seconds to wait", schema = @Schema(type = "integer")),
                     content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
-                            examples = @ExampleObject(name = "OTP_INTENTOS_AGOTADOS", value = ERROR_OTP_AGOTADO))),
-            @ApiResponse(responseCode = "503", description = "SERVICIO_NO_DISPONIBLE: Redis no responde", content = @Content(
+                            examples = @ExampleObject(name = "OTP_ATTEMPTS_EXHAUSTED", value = ERROR_OTP_AGOTADO))),
+            @ApiResponse(responseCode = "503", description = "SERVICE_UNAVAILABLE: Redis not responding", content = @Content(
                     mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<LoginResponseDTO> verificarOtp(@Valid @RequestBody VerificarOtpRequestDTO request);
 
     @Operation(
-            summary = "Pedir otro código OTP (SR-RF-92)",
-            description = "Genera un código nuevo dentro de la verificación en curso (15 min) y anula el anterior. "
-                    + "Máximo 3 reenvíos por verificación; cada reenvío reinicia los 300 s y los 3 intentos. "
-                    + "Bloqueado durante la espera de 60 s tras 3 fallos (D1).",
+            summary = "Request a new OTP code (SR-RF-92)",
+            description = "Creates a new code within the ongoing verification (15 min) and voids the previous one. "
+                    + "At most 3 resends per verification; each resend restarts the 300 s and the 3 attempts. "
+                    + "Blocked during the 60 s wait after 3 failures.",
             security = {},
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true, content = @Content(
                     mediaType = JSON, schema = @Schema(implementation = ReenviarOtpRequestDTO.class),
-                    examples = @ExampleObject(name = "Reenvio", value = "{\"email\":\"comprador@styleradar.com\"}"))))
+                    examples = @ExampleObject(name = "Resend", value = "{\"email\":\"buyer@styleradar.com\"}"))))
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Código nuevo enviado", content = @Content(
+            @ApiResponse(responseCode = "200", description = "New code sent", content = @Content(
                     mediaType = JSON, schema = @Schema(implementation = OtpMensajeResponseDTO.class),
-                    examples = @ExampleObject(name = "CodigoReenviado", value = OTP_REENVIADO))),
-            @ApiResponse(responseCode = "401", description = "SESION_OTP_INEXISTENTE: no hay verificación en curso o venció",
+                    examples = @ExampleObject(name = "CodeResent", value = OTP_REENVIADO))),
+            @ApiResponse(responseCode = "401", description = "OTP_SESSION_NOT_FOUND: no ongoing verification or it expired",
                     content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
-                            examples = @ExampleObject(name = "SESION_OTP_INEXISTENTE", value = ERROR_SESION_INEXISTENTE))),
-            @ApiResponse(responseCode = "429", description = "OTP_REENVIO_BLOQUEADO, REENVIOS_AGOTADOS o LIMITE_SOLICITUDES",
-                    headers = @Header(name = "Retry-After", description = "Segundos de espera", schema = @Schema(type = "integer")),
+                            examples = @ExampleObject(name = "OTP_SESSION_NOT_FOUND", value = ERROR_SESION_INEXISTENTE))),
+            @ApiResponse(responseCode = "429", description = "OTP_RESEND_BLOCKED, RESENDS_EXHAUSTED or RATE_LIMIT_EXCEEDED",
+                    headers = @Header(name = "Retry-After", description = "Seconds to wait", schema = @Schema(type = "integer")),
                     content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class), examples = {
-                            @ExampleObject(name = "OTP_REENVIO_BLOQUEADO", value = ERROR_REENVIO_BLOQUEADO),
-                            @ExampleObject(name = "REENVIOS_AGOTADOS", value = ERROR_REENVIOS_AGOTADOS)
+                            @ExampleObject(name = "OTP_RESEND_BLOCKED", value = ERROR_REENVIO_BLOQUEADO),
+                            @ExampleObject(name = "RESENDS_EXHAUSTED", value = ERROR_REENVIOS_AGOTADOS)
                     })),
-            @ApiResponse(responseCode = "503", description = "SERVICIO_NO_DISPONIBLE: correo o Redis no responden", content = @Content(
+            @ApiResponse(responseCode = "503", description = "SERVICE_UNAVAILABLE: mail server or Redis not responding", content = @Content(
                     mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<OtpMensajeResponseDTO> reenviarOtp(@Valid @RequestBody ReenviarOtpRequestDTO request);
 
     @Operation(
-            summary = "Renovar el token de acceso con rotación",
-            description = "Recibe un JWT vigente, lo revoca en la lista negra de Redis por su tiempo restante y entrega uno nuevo. "
-                    + "Rechaza tokens revocados por logout o por bloqueo global de la cuenta (evento de ms-usuarios). "
-                    + "Solo funciona antes de que el token venza (contrato v1.2, sección 5.3).",
+            summary = "Refresh the access token (rotation)",
+            description = "Receives a valid JWT, revokes it in the Redis blacklist for its remaining lifetime and returns a new one. "
+                    + "Rejects tokens revoked by logout or by an account block (ms-usuarios event). "
+                    + "Only works before the token expires.",
             security = {},
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true, content = @Content(
                     mediaType = JSON, schema = @Schema(implementation = RefreshTokenRequestDTO.class),
-                    examples = @ExampleObject(name = "Refresh", value = "{\"refreshToken\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMiJ9.firma\"}"))))
+                    examples = @ExampleObject(name = "Refresh", value = "{\"refreshToken\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMiJ9.signature\"}"))))
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Token rotado", content = @Content(
+            @ApiResponse(responseCode = "200", description = "Token rotated", content = @Content(
                     mediaType = JSON, schema = @Schema(implementation = LoginResponseDTO.class))),
-            @ApiResponse(responseCode = "401", description = "TOKEN_INVALIDO", content = @Content(
+            @ApiResponse(responseCode = "401", description = "INVALID_TOKEN", content = @Content(
                     mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class),
-                    examples = @ExampleObject(name = "TOKEN_INVALIDO", value = ERROR_TOKEN_INVALIDO)))
+                    examples = @ExampleObject(name = "INVALID_TOKEN", value = ERROR_TOKEN_INVALIDO)))
     })
     ResponseEntity<LoginResponseDTO> refresh(@Valid @RequestBody RefreshTokenRequestDTO request);
 
     @Operation(
-            summary = "Cerrar sesión y revocar el token",
-            description = "Registra el JWT en la lista negra de Redis hasta su vencimiento. El front cierra la sesión local "
-                    + "aunque esta llamada falle (contrato v1.2, sección 5).",
+            summary = "Log out and revoke the token",
+            description = "Adds the JWT to the Redis blacklist until it expires. The front end closes the local session "
+                    + "even if this call fails.",
             security = {@SecurityRequirement(name = "bearerAuth")})
     @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "Sesión cerrada y token revocado"),
-            @ApiResponse(responseCode = "401", description = "TOKEN_INVALIDO: Authorization ausente, vencido o revocado",
+            @ApiResponse(responseCode = "204", description = "Session closed and token revoked"),
+            @ApiResponse(responseCode = "401", description = "INVALID_TOKEN: Authorization missing, expired or revoked",
                     content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class))),
-            @ApiResponse(responseCode = "503", description = "SERVICIO_NO_DISPONIBLE: Redis no responde",
+            @ApiResponse(responseCode = "503", description = "SERVICE_UNAVAILABLE: Redis not responding",
                     content = @Content(mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<Void> logout(
             @Parameter(hidden = true) @RequestHeader(value = "Authorization", required = false) String authorizationHeader);
 
     @Operation(
-            summary = "Registro de soporte (solo dev/test)",
-            description = "Endpoint de apoyo para pruebas locales: devuelve un usuario COMPRADOR simulado. El registro real lo hace "
-                    + "ms-usuarios (Database-per-Service). En QA y PROD responde siempre 503 SERVICIO_NO_DISPONIBLE (fail-closed).",
+            summary = "Support registration (disabled by default)",
+            description = "Support endpoint: returns a simulated BUYER account and stores nothing. The real buyer registration is "
+                    + "POST /api/v1/users in ms-usuarios. In QA and PROD it always answers 503 SERVICE_UNAVAILABLE (fail-closed).",
             security = {},
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true, content = @Content(
                     mediaType = JSON, schema = @Schema(implementation = RegistroAuthRequestDTO.class),
                     examples = @ExampleObject(name = "Registro", value = REGISTRO))))
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Usuario de soporte creado (dev/test)", content = @Content(
+            @ApiResponse(responseCode = "201", description = "Support user created (dev/test only)", content = @Content(
                     mediaType = JSON, schema = @Schema(implementation = UsuarioAuthResponseDTO.class),
                     examples = @ExampleObject(name = "UsuarioRegistrado", value = USUARIO_REGISTRADO))),
-            @ApiResponse(responseCode = "400", description = "DATOS_INVALIDOS", content = @Content(
+            @ApiResponse(responseCode = "400", description = "INVALID_DATA", content = @Content(
                     mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class))),
-            @ApiResponse(responseCode = "503", description = "SERVICIO_NO_DISPONIBLE en QA y PROD", content = @Content(
+            @ApiResponse(responseCode = "503", description = "SERVICE_UNAVAILABLE in QA and PROD (fail-closed)", content = @Content(
                     mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<UsuarioAuthResponseDTO> registrar(@Valid @RequestBody RegistroAuthRequestDTO request);

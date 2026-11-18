@@ -23,21 +23,21 @@ class SecurityErrorResponseWriterTest {
     }
 
     @Test
-    @DisplayName("401 por token revocado o mal formado responde siempre el texto de TOKEN_INVALIDO")
+    @DisplayName("401 por token revocado o mal formado responde siempre el texto de INVALID_TOKEN")
     void tokenInvalidoUsaMensajeDelContrato() throws Exception {
         JsonNode cuerpo = escribir(HttpStatus.UNAUTHORIZED, "El token ha sido revocado");
 
-        assertThat(cuerpo.get("codigo").asText()).isEqualTo("TOKEN_INVALIDO");
+        assertThat(cuerpo.get("code").asText()).isEqualTo("INVALID_TOKEN");
         assertThat(cuerpo.get("message").asText()).isEqualTo("El token presentado es inválido o expirado");
         assertThat(cuerpo.get("detail").asText()).isEqualTo("El token presentado es inválido o expirado");
     }
 
     @Test
-    @DisplayName("503 de Redis responde el texto de SERVICIO_NO_DISPONIBLE sin detalles internos")
+    @DisplayName("503 de Redis responde el texto de SERVICE_UNAVAILABLE sin detalles internos")
     void servicioNoDisponibleUsaMensajeDelContrato() throws Exception {
         JsonNode cuerpo = escribir(HttpStatus.SERVICE_UNAVAILABLE, "El servicio de verificación de sesiones no está disponible");
 
-        assertThat(cuerpo.get("codigo").asText()).isEqualTo("SERVICIO_NO_DISPONIBLE");
+        assertThat(cuerpo.get("code").asText()).isEqualTo("SERVICE_UNAVAILABLE");
         assertThat(cuerpo.get("message").asText())
                 .isEqualTo("El servicio requerido no está disponible temporalmente. Intente nuevamente más tarde.");
     }

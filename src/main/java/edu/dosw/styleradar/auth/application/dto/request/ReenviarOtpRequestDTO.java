@@ -15,13 +15,13 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Solicitud de generación y reenvío de un nuevo código OTP al correo registrado (SR-RF-92)")
+@Schema(description = "Request a new OTP code for the registered email (SR-RF-92)")
 public class ReenviarOtpRequestDTO {
 
     @NotBlank(message = "El correo electrónico es obligatorio")
     @Email(message = "El formato del correo electrónico es inválido")
     @Size(max = 254, message = "El correo electrónico excede la longitud máxima permitida")
-    @Schema(description = "Correo electrónico registrado que requiere un nuevo código OTP", example = "comprador@styleradar.com", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Registered email that needs a new OTP code", example = "buyer@styleradar.com", requiredMode = Schema.RequiredMode.REQUIRED)
     @JsonDeserialize(using = RecortarEspaciosDeserializer.class)
     private String email;
 }

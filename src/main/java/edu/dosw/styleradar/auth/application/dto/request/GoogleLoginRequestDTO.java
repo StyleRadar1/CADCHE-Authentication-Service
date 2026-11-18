@@ -12,13 +12,13 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Solicitud de inicio de sesión mediante ID Token OpenID Connect emitido por Google")
+@Schema(description = "Login request with a Google OpenID Connect ID token")
 public class GoogleLoginRequestDTO {
 
     @NotBlank(message = "El ID Token de Google es obligatorio")
     @Size(max = 8192, message = "El ID Token de Google excede la longitud máxima permitida")
     @Schema(
-            description = "JWT ID Token firmado con RS256 obtenido tras autenticar con Google Identity Services",
+            description = "RS256-signed ID token obtained from Google Identity Services",
             example = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMDk4NzY1NDMyMSIsImVtYWlsIjoidXN1YXJpb0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZX0.firma",
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String idToken;

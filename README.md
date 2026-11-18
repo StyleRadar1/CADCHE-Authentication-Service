@@ -196,7 +196,7 @@ flowchart LR
 | `oauth2:state:{state}` | `redirectUri` autorizada, un solo uso | `300 s` |
 | `ratelimit:{ruta}:{ip}` | Contador de solicitudes (15 por minuto) | `60 s` |
 
-Si Redis no responde, ms-auth falla cerrado con `503 SERVICIO_NO_DISPONIBLE`. El respaldo en memoria solo existe en el perfil `dev` con la propiedad explícita.
+Si Redis no responde, ms-auth falla cerrado con `503 SERVICE_UNAVAILABLE`. El respaldo en memoria solo existe en el perfil `dev` con la propiedad explícita.
 
 ### 3.3 Diagrama de Componentes Específico
 
@@ -310,7 +310,7 @@ Login con correo **sin verificar** (se envía el OTP):
 ```json
 {
   "accessToken": null, "tokenType": "Bearer", "expiresIn": 86400, "usuarioId": 12,
-  "roles": ["COMPRADOR"], "email": "comprador@correo.com", "correoVerificado": false,
+  "roles": ["BUYER"], "email": "comprador@correo.com", "correoVerificado": false,
   "requiereOtp": true, "otpExpiraEnSegundos": 300, "intentosOtpRestantes": 3,
   "verificacionPendiente": true, "mensaje": "Código de verificación OTP enviado a su correo electrónico"
 }
@@ -322,19 +322,19 @@ Los errores salen en formato **ProblemDetail (RFC 9457)** con `Content-Type: app
 
 ```json
 {
-  "type": "https://api.styleradar.com/errores/otp-intentos-agotados",
+  "type": "https://api.styleradar.com/errores/otp-attempts-exhausted",
   "title": "Too Many Requests", "status": 429,
   "detail": "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.",
   "instance": "/api/v1/auth/otp/verify",
   "timestamp": "2026-11-16T10:15:30", "error": "Too Many Requests",
-  "codigo": "OTP_INTENTOS_AGOTADOS",
+  "codigo": "OTP_ATTEMPTS_EXHAUSTED",
   "message": "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.",
   "path": "/api/v1/auth/otp/verify", "validationErrors": {},
   "intentosRestantes": 0, "esperarSegundos": 60
 }
 ```
 
-Catálogo de `codigo`: `DATOS_INVALIDOS`, `CREDENCIALES_INCORRECTAS`, `CUENTA_NO_ACTIVA`, `OTP_INCORRECTO`, `OTP_VENCIDO`, `OTP_INTENTOS_AGOTADOS`, `OTP_REENVIO_BLOQUEADO`, `REENVIOS_AGOTADOS`, `SESION_OTP_INEXISTENTE`, `LIMITE_SOLICITUDES`, `SERVICIO_NO_DISPONIBLE`, `TOKEN_INVALIDO`, `ACCESO_DENEGADO`, `METODO_NO_PERMITIDO` y `ERROR_INTERNO`. Todos los `429` incluyen la cabecera `Retry-After`.
+Catálogo de `codigo`: `INVALID_DATA`, `INVALID_CREDENTIALS`, `ACCOUNT_NOT_ACTIVE`, `OTP_INCORRECT`, `OTP_EXPIRED`, `OTP_ATTEMPTS_EXHAUSTED`, `OTP_RESEND_BLOCKED`, `RESENDS_EXHAUSTED`, `OTP_SESSION_NOT_FOUND`, `RATE_LIMIT_EXCEEDED`, `SERVICE_UNAVAILABLE`, `INVALID_TOKEN`, `ACCESS_DENIED`, `METHOD_NOT_ALLOWED` y `INTERNAL_ERROR`. Todos los `429` incluyen la cabecera `Retry-After`.
 
 ---
 
@@ -544,7 +544,7 @@ El seguimiento de requerimientos, historias de usuario, evidencias y artefactos 
 
 > **HU · `CADCHE · ms-auth | Autenticación dual con OTP clásico y Google OAuth2 / OpenID Connect funcional en Swagger`**
 >
-> * **Como** usuario de StyleRadar (`COMPRADOR`, `ADMIN_ALMACEN`, `REPRESENTANTE_FUNDACION` o `ADMIN_STYLERADAR`)
+> * **Como** usuario de StyleRadar (`BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE` o `STYLERADAR_ADMIN`)
 > * **Quiero** poder iniciar sesión tanto con mi correo + contraseña + código OTP de 6 dígitos como con mi cuenta de Google (`Sign-In` ID Token o flujo `Authorization Code` ejecutable desde Swagger UI y Frontend)
 > * **Para** obtener un token JWT Bearer oficial de StyleRadar de forma segura, auditable y compatible con los controles OWASP Top 10:2025.
 
@@ -559,10 +559,10 @@ El seguimiento de requerimientos, historias de usuario, evidencias y artefactos 
 
 | Código RF | Nombre del Requerimiento | Actor Principal | Criterio de Aceptación Clave Verificado |
 | :---: | :--- | :--- | :--- |
-| `SR-RF-01` | Contrato de registro inicial de comprador | `COMPRADOR` | Valida Bean Validation (`nombre`, `email`, password fuerte, `aceptaHabeasData`); opera como stub (`id=12L`, `201`) en `dev`/`test` y bloquea *fail-closed* (`503`) en `qa`/`prod` mientras la entidad reside en `ms-usuarios`. |
-| `SR-RF-02` | Inicio de sesión multi-rol con 2FA OTP y renovación JWT | `COMPRADOR`, `ADMIN_ALMACEN`, `REPRESENTANTE_FUNDACION`, `ADMIN_STYLERADAR` | Valida credenciales contra `ms-usuarios`, exige segundo factor OTP (`300 s`) y emite `LoginResponseDTO` con JWT `HS256` (`PT24H`/`12H`/`8H`), soportando rotación en `/refresh`. |
-| `SR-RF-03` | Autenticación federada con Google OAuth2 / OpenID Connect | `COMPRADOR`, `ADMIN_ALMACEN`, `REPRESENTANTE_FUNDACION`, `ADMIN_STYLERADAR` | Soporta ID Token `RS256`/JWKS (`POST /oauth2/google`) y Authorization Code con `state` anti-CSRF (`GET /url`, `GET /callback`, `POST /code`), exigiendo `email_verified=true` y cuenta `ACTIVA` en `ms-usuarios`. |
-| `SR-RF-92` | Verificación y reenvío seguro de código OTP de 6 dígitos | `COMPRADOR`, `ADMIN_ALMACEN`, `REPRESENTANTE_FUNDACION`, `ADMIN_STYLERADAR` | Almacena hash SHA-256 salteado con `TTL 300 s`, bloquea tras `3` intentos fallidos o `3` reenvíos (`429 Too Many Requests`) y limpia OTP si falla SMTP. |
+| `SR-RF-01` | Contrato de registro inicial de comprador | `BUYER` | Valida Bean Validation (`nombre`, `email`, password fuerte, `aceptaHabeasData`); opera como stub (`id=12L`, `201`) en `dev`/`test` y bloquea *fail-closed* (`503`) en `qa`/`prod` mientras la entidad reside en `ms-usuarios`. |
+| `SR-RF-02` | Inicio de sesión multi-rol con 2FA OTP y renovación JWT | `BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE`, `STYLERADAR_ADMIN` | Valida credenciales contra `ms-usuarios`, exige segundo factor OTP (`300 s`) y emite `LoginResponseDTO` con JWT `HS256` (`PT24H`/`12H`/`8H`), soportando rotación en `/refresh`. |
+| `SR-RF-03` | Autenticación federada con Google OAuth2 / OpenID Connect | `BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE`, `STYLERADAR_ADMIN` | Soporta ID Token `RS256`/JWKS (`POST /oauth2/google`) y Authorization Code con `state` anti-CSRF (`GET /url`, `GET /callback`, `POST /code`), exigiendo `email_verified=true` y cuenta `ACTIVA` en `ms-usuarios`. |
+| `SR-RF-92` | Verificación y reenvío seguro de código OTP de 6 dígitos | `BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE`, `STYLERADAR_ADMIN` | Almacena hash SHA-256 salteado con `TTL 300 s`, bloquea tras `3` intentos fallidos o `3` reenvíos (`429 Too Many Requests`) y limpia OTP si falla SMTP. |
 | `SR-RNF-01` | RBAC, revocación en logout, AMQP y rate limiting | Usuario Autenticado | Protege `/logout` con `Bearer JWT`, registra token en `blacklist:*`, revoca sesiones por evento RabbitMQ (`usuario:revocado:*`) y aplica `RateLimitingFilter` (`15/10` req/min). |
 | `SR-RNF-02` | Habeas Data, OpenAPI 3 y endurecimiento OWASP Top 10:2025 | Auditoría / Sistema | Valida `aceptaHabeasData`, publica contratos en Swagger (`dev`/`qa`, off en `prod`), inyecta cabeceras defensivas (`CSP`/`HSTS`/`DENY`) y garantiza modo *fail-closed* (`503`). |
 

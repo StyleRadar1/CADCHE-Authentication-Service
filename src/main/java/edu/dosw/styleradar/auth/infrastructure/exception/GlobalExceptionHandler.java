@@ -36,7 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    private static final String DATOS_INVALIDOS = "La solicitud contiene datos inválidos";
+    private static final String INVALID_DATA = "La solicitud contiene datos inválidos";
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponseDTO> handleValidation(
@@ -58,21 +58,21 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<ErrorResponseDTO> handleInvalidHttpRequest(
             Exception exception, HttpServletRequest request) {
-        return build(CodigoError.DATOS_INVALIDOS, "La solicitud contiene parámetros inválidos",
+        return build(CodigoError.INVALID_DATA, "La solicitud contiene parámetros inválidos",
                 request, Map.of(), null, null);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponseDTO> handleMethodNotSupported(
             HttpRequestMethodNotSupportedException exception, HttpServletRequest request) {
-        return build(CodigoError.METODO_NO_PERMITIDO, "El método HTTP no está permitido para esta ruta",
+        return build(CodigoError.METHOD_NOT_ALLOWED, "El método HTTP no está permitido para esta ruta",
                 request, Map.of(), null, null);
     }
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponseDTO> handleAuthentication(
             AuthenticationException exception, HttpServletRequest request) {
-        return build(CodigoError.TOKEN_INVALIDO, "El token presentado es inválido o expirado",
+        return build(CodigoError.INVALID_TOKEN, "El token presentado es inválido o expirado",
                 request, Map.of(), null, null);
     }
 
@@ -80,7 +80,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleAccessDenied(
             AccessDeniedException exception, HttpServletRequest request) {
         log.warn("Acceso denegado (403) en ruta {}", SecuritySanitizer.sanitizeForLog(request.getRequestURI()));
-        return build(CodigoError.ACCESO_DENEGADO, "Acceso denegado: no cuenta con permisos suficientes",
+        return build(CodigoError.ACCESS_DENIED, "Acceso denegado: no cuenta con permisos suficientes",
                 request, Map.of(), null, null);
     }
 
@@ -90,7 +90,7 @@ public class GlobalExceptionHandler {
         String ruta = SecuritySanitizer.sanitizeForLog(request.getRequestURI());
         String mensaje = exception.getMessage();
 
-        if (codigo == CodigoError.SERVICIO_NO_DISPONIBLE) {
+        if (codigo == CodigoError.SERVICE_UNAVAILABLE) {
             log.error("Dependencia externa no disponible en ruta {}: {}", ruta, SecuritySanitizer.sanitizeForLog(mensaje));
             mensaje = "El servicio requerido no está disponible temporalmente. Intente nuevamente más tarde.";
         } else if (codigo.estadoHttp() == HttpStatus.FORBIDDEN.value()
@@ -105,7 +105,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleUnexpected(Exception exception, HttpServletRequest request) {
         log.error("Error no controlado al procesar la ruta {}",
                 SecuritySanitizer.sanitizeForLog(request.getRequestURI()), exception);
-        return build(CodigoError.ERROR_INTERNO, "Ocurrió un error interno. Intente nuevamente más tarde.",
+        return build(CodigoError.INTERNAL_ERROR, "Ocurrió un error interno. Intente nuevamente más tarde.",
                 request, Map.of(), null, null);
     }
 
@@ -114,7 +114,7 @@ public class GlobalExceptionHandler {
         exception.getBindingResult().getFieldErrors().stream()
                 .sorted(Comparator.comparingInt(GlobalExceptionHandler::prioridadValidacion))
                 .forEach(error -> validationErrors.putIfAbsent(error.getField(), error.getDefaultMessage()));
-        return build(CodigoError.DATOS_INVALIDOS, DATOS_INVALIDOS, request, validationErrors, null, null);
+        return build(CodigoError.INVALID_DATA, INVALID_DATA, request, validationErrors, null, null);
     }
 
     /**
@@ -141,9 +141,9 @@ public class GlobalExceptionHandler {
         HttpStatus status = HttpStatus.valueOf(codigo.estadoHttp());
         ErrorResponseDTO errorResponse = ErrorResponseDTO.problema(status.value(), status.getReasonPhrase(), codigo,
                         message, SecuritySanitizer.sanitizeForLog(request.getRequestURI()))
-                .validationErrors(validationErrors)
-                .intentosRestantes(intentosRestantes)
-                .esperarSegundos(esperarSegundos)
+                .errors(validationErrors)
+                .attemptsRemaining(intentosRestantes)
+                .retryAfterSeconds(esperarSegundos)
                 .build();
 
         ResponseEntity.BodyBuilder respuesta = ResponseEntity.status(status)

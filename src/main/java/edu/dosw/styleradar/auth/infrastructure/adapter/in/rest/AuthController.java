@@ -78,7 +78,7 @@ public class AuthController implements AuthApi {
     @PostMapping("/otp/verify")
     public ResponseEntity<LoginResponseDTO> verificarOtp(@Valid @RequestBody VerificarOtpRequestDTO request) {
         return ResponseEntity.ok(mapper.toLoginResponse(
-                verificarOtpUseCase.verificar(request.getEmail(), request.getCodigoOtp())));
+                verificarOtpUseCase.verificar(request.getEmail(), request.getOtpCode())));
     }
 
     @Override
@@ -112,6 +112,6 @@ public class AuthController implements AuthApi {
     @PostMapping("/register")
     public ResponseEntity<UsuarioAuthResponseDTO> registrar(@Valid @RequestBody RegistroAuthRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toUsuarioAuthResponse(
-                registrarUsuarioUseCase.registrar(request.getNombre(), request.getEmail(), request.getTelefono())));
+                registrarUsuarioUseCase.registrar(request.getName(), request.getEmail(), request.getPhone())));
     }
 }

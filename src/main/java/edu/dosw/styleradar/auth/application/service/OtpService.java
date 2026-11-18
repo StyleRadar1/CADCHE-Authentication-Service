@@ -10,7 +10,7 @@ public interface OtpService {
 
     /**
      * Inicia una verificación y genera un código nuevo. Rechaza la solicitud durante la espera
-     * obligatoria tras 3 intentos fallidos ({@code OTP_REENVIO_BLOQUEADO}).
+     * obligatoria tras 3 intentos fallidos ({@code OTP_RESEND_BLOCKED}).
      */
     String generarOtp(String email, Long usuarioId, String rol);
 
