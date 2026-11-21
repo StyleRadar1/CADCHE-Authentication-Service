@@ -344,4 +344,83 @@ class UsuarioClientTest {
         usuarioClient.marcarCorreoVerificado(10L);
         server.verify();
     }
+
+    @Test
+    @DisplayName("Debe detectar todas las variantes de 403 de cuenta no activa y respaldar 403 JSON ajeno o 404 en respaldo")
+    void rutasEnIngles_variantes403YRespaldoInexistente() {
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "credencialesLegacyPath",
+                "/internal/api/v1/usuarios/verificar-credenciales");
+
+        String rutaIngles = BASE_URL + "/internal/api/v1/users/verify-credentials";
+        String rutaLegacy = BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales";
+
+        // Variantes de cuerpo 403 que indican cuenta inactiva/bloqueada -> NO respaldan
+        for (String body : new String[]{
+                "{\"code\":\"ACCOUNT_NOT_ACTIVE\"}",
+                "{\"detail\":\"Cuenta bloqueada por administrador\"}",
+                "{\"detail\":\"User account is inactive\"}",
+                "{\"detail\":\"User account is blocked\"}"
+        }) {
+            server.expect(requestTo(rutaIngles))
+                    .andExpect(method(HttpMethod.POST))
+                    .andRespond(withStatus(HttpStatus.FORBIDDEN)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(body));
+        }
+
+        // 403 con JSON genérico (sin palabras de cuenta inactiva) -> SÍ respalda en ruta legacy
+        server.expect(requestTo(rutaIngles))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"error\":\"Forbidden\",\"message\":\"Access Denied\"}"));
+        server.expect(requestTo(rutaLegacy))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        "{\"id\":3,\"email\":\"ok@styleradar.com\",\"rol\":\"COMPRADOR\",\"estado\":\"ACTIVA\",\"correoVerificado\":true}",
+                        MediaType.APPLICATION_JSON));
+
+        // 403 en ruta inglés y 404 en ruta legacy -> relanza falloRuta (403 -> CuentaNoActivaException)
+        server.expect(requestTo(rutaIngles))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN));
+        server.expect(requestTo(rutaLegacy))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        for (int i = 0; i < 4; i++) {
+            assertThrows(CuentaNoActivaException.class,
+                    () -> usuarioClient.verificarCredenciales("bloqueada@styleradar.com", "StyleRadar2026*"));
+        }
+
+        var ok = usuarioClient.verificarCredenciales("ok@styleradar.com", "StyleRadar2026*");
+        assertEquals(3L, ok.id());
+
+        assertThrows(CuentaNoActivaException.class,
+                () -> usuarioClient.verificarCredenciales("sinrespaldo@styleradar.com", "StyleRadar2026*"));
+
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("Si la ruta legacy es vacía o igual a la principal, no reintenta y tolera 404/403 en marcarCorreoVerificado")
+    void marcarCorreoVerificado_sinRespaldoConfigurado_tolera404Y403() {
+        String rutaIngles = BASE_URL + "/internal/api/v1/users/10/verify-email";
+
+        server.expect(requestTo(rutaIngles)).andExpect(method(HttpMethod.PATCH)).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        server.expect(requestTo(rutaIngles)).andExpect(method(HttpMethod.PATCH)).andRespond(withStatus(HttpStatus.FORBIDDEN));
+        server.expect(requestTo(rutaIngles)).andExpect(method(HttpMethod.PATCH)).andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath", null);
+        usuarioClient.marcarCorreoVerificado(10L);
+
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath", "   ");
+        usuarioClient.marcarCorreoVerificado(10L);
+
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath",
+                UsuarioClient.DEFAULT_CORREO_VERIFICADO_PATH);
+        usuarioClient.marcarCorreoVerificado(10L);
+
+        server.verify();
+    }
 }
