@@ -300,4 +300,48 @@ class UsuarioClientTest {
         org.assertj.core.api.Assertions.assertThat(r.estado()).isEqualTo("ACTIVE");
         org.assertj.core.api.Assertions.assertThat(r.correoVerificado()).isFalse();
     }
+
+    @Test
+    @DisplayName("Si ms-usuarios responde 403 denyAll() en ruta en inglés, usa la ruta anterior y respeta 403 real de cuenta inactiva")
+    void rutasEnIngles_con403DeDenyAllEnMsUsuarios_usaRutaAnteriorYConservaCuentaInactiva() {
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "credencialesLegacyPath",
+                "/internal/api/v1/usuarios/verificar-credenciales");
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath",
+                "/api/v1/internal/usuarios/{id}/correo-verificado");
+
+        // 1) 403 vacío de Spring Security denyAll() -> respalda en ruta legacy -> 200 OK
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/verify-credentials"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN));
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        "{\"id\":2,\"email\":\"thedrup321@gmail.com\",\"rol\":\"COMPRADOR\",\"estado\":\"ACTIVA\",\"correoVerificado\":false}",
+                        MediaType.APPLICATION_JSON));
+
+        // 2) 403 real con cuerpo JSON de cuenta inactiva -> NO respalda y lanza CuentaNoActivaException directo
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/verify-credentials"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"message\":\"La cuenta se encuentra inactiva o bloqueada\"}"));
+
+        // 3) PATCH correo-verificado con 403 denyAll() -> respalda en ruta legacy -> 204 No Content
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/10/verify-email"))
+                .andExpect(method(HttpMethod.PATCH))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN));
+        server.expect(requestTo(BASE_URL + "/api/v1/internal/usuarios/10/correo-verificado"))
+                .andExpect(method(HttpMethod.PATCH))
+                .andRespond(withStatus(HttpStatus.NO_CONTENT));
+
+        var ok = usuarioClient.verificarCredenciales("thedrup321@gmail.com", "StyleRadar2026*");
+        assertEquals(2L, ok.id());
+        assertEquals("COMPRADOR", ok.rol());
+
+        assertThrows(CuentaNoActivaException.class,
+                () -> usuarioClient.verificarCredenciales("inactiva@styleradar.com", "StyleRadar2026*"));
+
+        usuarioClient.marcarCorreoVerificado(10L);
+        server.verify();
+    }
 }

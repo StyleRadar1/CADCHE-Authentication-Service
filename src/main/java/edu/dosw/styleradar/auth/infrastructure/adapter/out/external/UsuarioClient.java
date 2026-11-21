@@ -122,12 +122,19 @@ public final class UsuarioClient {
         try {
             try {
                 return postCredenciales(credencialesPath, request);
-            } catch (HttpClientErrorException.NotFound noExiste) {
-                if (!hayRespaldo(credencialesLegacyPath, credencialesPath)) {
-                    throw noExiste;
+            } catch (HttpClientErrorException.NotFound | HttpClientErrorException.Forbidden falloRuta) {
+                if (!hayRespaldo(credencialesLegacyPath, credencialesPath)
+                        || (falloRuta instanceof HttpClientErrorException.Forbidden prohibido
+                                && esErrorDeCuentaNoActiva(prohibido))) {
+                    throw falloRuta;
                 }
-                log.warn("ms-usuarios no expone {}; se usa la ruta anterior {}", credencialesPath, credencialesLegacyPath);
-                return postCredenciales(credencialesLegacyPath, request);
+                log.warn("ms-usuarios respondió {} en {}; se usa la ruta anterior {}",
+                        falloRuta.getStatusCode().value(), credencialesPath, credencialesLegacyPath);
+                try {
+                    return postCredenciales(credencialesLegacyPath, request);
+                } catch (HttpClientErrorException.NotFound respaldoNoExiste) {
+                    throw falloRuta;
+                }
             }
         } catch (HttpClientErrorException.Unauthorized exception) {
             log.warn("Credenciales incorrectas para: {}", SecuritySanitizer.maskEmail(normalizedEmail));
@@ -210,10 +217,12 @@ public final class UsuarioClient {
         try {
             try {
                 patchCorreoVerificado(correoVerificadoPath, usuarioId);
-            } catch (HttpClientErrorException.NotFound noExiste) {
+            } catch (HttpClientErrorException.NotFound | HttpClientErrorException.Forbidden noDisponible) {
                 if (!hayRespaldo(correoVerificadoLegacyPath, correoVerificadoPath)) {
-                    throw noExiste;
+                    throw noDisponible;
                 }
+                log.warn("ms-usuarios respondió {} en {}; se usa la ruta anterior {}",
+                        noDisponible.getStatusCode().value(), correoVerificadoPath, correoVerificadoLegacyPath);
                 patchCorreoVerificado(correoVerificadoLegacyPath, usuarioId);
             }
             log.info("Notificación enviada a ms-usuarios: correo verificado para usuario ID {}", usuarioId);
@@ -240,6 +249,19 @@ public final class UsuarioClient {
 
     private static boolean hayRespaldo(String respaldo, String principal) {
         return respaldo != null && !respaldo.isBlank() && !respaldo.trim().equals(principal);
+    }
+
+    private static boolean esErrorDeCuentaNoActiva(HttpClientErrorException.Forbidden ex) {
+        String body = ex.getResponseBodyAsString();
+        if (body.isBlank()) {
+            return false;
+        }
+        String lower = body.toLowerCase(Locale.ROOT);
+        return lower.contains("account_not_active")
+                || lower.contains("inactiva")
+                || lower.contains("bloqueada")
+                || lower.contains("inactive")
+                || lower.contains("blocked");
     }
 
     private boolean isDevFallbackActive() {
