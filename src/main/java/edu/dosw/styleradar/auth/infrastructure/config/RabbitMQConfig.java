@@ -19,8 +19,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    /** Exchange de eventos de cuenta de ms-usuarios (análisis v2 de ms-usuarios, SR-RF-66). */
-    public static final String EXCHANGE = "styleradar.users";
+    /** Exchange único del curso para eventos de dominio (TopicExchange, durable). */
+    public static final String EXCHANGE = "styleradar.exchange";
     public static final String DLX_EXCHANGE = "styleradar.dlx";
     public static final String QUEUE = "styleradar.auth.user-status-changed.q";
     public static final String DLQ = "styleradar.auth.dlq";

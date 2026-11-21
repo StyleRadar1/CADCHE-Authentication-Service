@@ -10,7 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import edu.dosw.styleradar.auth.domain.model.EstadoCuenta;
 
 /**
- * Event {@code user.status.changed} published by ms-usuarios on the {@code styleradar.users} exchange
+ * Event {@code user.status.changed} published by ms-usuarios on the {@code styleradar.exchange} exchange
  * (ms-usuarios requirements analysis v2, SR-RF-66): userId, previousStatus, newStatus, changedBy, reason, changedAt
  * and eventId. The Spanish names of the previous version are still accepted while ms-usuarios migrates.
  */

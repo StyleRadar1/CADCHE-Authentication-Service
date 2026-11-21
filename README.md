@@ -124,7 +124,7 @@ Arquitectura de **Puertos y Adaptadores** según la guía oficial del curso. Las
 flowchart LR
     FRONT["Frontend React"] --> GW["API Gateway :8080"]
     GW --> IN
-    MQ["RabbitMQ<br>styleradar.users"] --> IN
+    MQ["RabbitMQ<br>styleradar.exchange"] --> IN
     subgraph IN["adapter.in"]
         REST["AuthController<br>GoogleOAuth2Controller"]
         AMQP["UsuarioEstadoCambiadoConsumer"]
@@ -346,7 +346,7 @@ Catálogo de `code`: `INVALID_DATA`, `INVALID_CREDENTIALS`, `ACCOUNT_NOT_ACTIVE`
 
 | Dirección | Exchange / routing key | Cola | Origen → destino | Acción en ms-auth |
 | :--- | :--- | :--- | :--- | :--- |
-| **CONSUME** | `styleradar.users` / `user.status.changed` | `styleradar.auth.user-status-changed.q` (DLQ `styleradar.auth.dlq`) | `ms-usuarios` → `ms-auth` | `RevocarSesionesUsuarioUseCase`: si `newStatus` es `INACTIVE` o `BLOCKED`, guarda `usuario:revocado:{id}` y todos los tokens emitidos antes quedan inválidos. |
+| **CONSUME** | `styleradar.exchange` / `user.status.changed` | `styleradar.auth.user-status-changed.q` (DLQ `styleradar.auth.dlq`) | `ms-usuarios` → `ms-auth` | `RevocarSesionesUsuarioUseCase`: si `newStatus` es `INACTIVE` o `BLOCKED`, guarda `usuario:revocado:{id}` y todos los tokens emitidos antes quedan inválidos. |
 | **PUBLICA** | — | — | — | ms-auth no publica eventos. |
 
 * **Idempotencia:** un `eventId` repetido se descarta (`evento:procesado:{eventId}`, 24 h).
@@ -724,7 +724,7 @@ $$\text{Puntaje Total} = \sum_{i=1}^{5} (\text{Calificación}_{i} \times \text{P
 | C5: Costo & TCO (20 %) | 5 | 2 | 3 | 5 |
 | **Total Ponderado** | **4.95 / 5.00 (Seleccionado)** | **3.40 / 5.00** | **4.15 / 5.00** | **3.95 / 5.00** |
 
-* **Decisión ADR-005:** Se adopta RabbitMQ 3.12+ (AMQP 0-9-1) para la arquitectura orientada a eventos; en `ms-auth`, `RabbitMQConfig` implementa `TopicExchange("styleradar.users")` con la cola durable `styleradar.auth.user-status-changed.q` (routing key `user.status.changed`) y DLQ.
+* **Decisión ADR-005:** Se adopta RabbitMQ 3.12+ (AMQP 0-9-1) para la arquitectura orientada a eventos; en `ms-auth`, `RabbitMQConfig` implementa `TopicExchange("styleradar.exchange")` con la cola durable `styleradar.auth.user-status-changed.q` (routing key `user.status.changed`) y DLQ.
 * **Por qué RabbitMQ:** Bajo consumo de memoria (<150 MB por instancia), enrutamiento flexible por patrones de clave (`routing key`), soporte nativo del estándar AMQP 0-9-1, confirmaciones de entrega y facilidad de despliegue tanto en Docker local como en la nube mediante CloudAMQP.
 * **Por qué no los otros:** Apache Kafka está sobredimensionado para el volumen de 13 microservicios y requiere clústeres pesados de RAM (mínimo 4 GB por broker); AWS SQS no permite ejecución 100% offline sin emuladores propietarios.
 
@@ -845,7 +845,7 @@ Cada equipo tiene un bloque exclusivo por centena con saltos de 20 entre microse
    **Java 21 LTS, Spring Boot 3.2.12, Spring Security 6, JJWT `0.12.6` (`HS256`), Spring Security OAuth2 JOSE (`NimbusJwtDecoder RS256/JWKS`), SpringDoc OpenAPI `2.3.0`, JaCoCo `0.8.12`, SpotBugs `4.8.6.6` y CycloneDX.** `Java 21` aporta `Records` inmutables; `JJWT` firma tokens internos con clave Base64 >= 256 bits, `NimbusJwtDecoder` valida tokens OIDC de Google contra sus claves JWKS públicas y la arquitectura hexagonal minimalista desacopla el puerto `GoogleOAuthPort` de los adaptadores externos (`GoogleOAuthAdapter`, `UsuarioClient`).
 
 4. **Broker de Mensajería:**
-   **RabbitMQ 3.12+ con protocolo AMQP 0-9-1 (`TopicExchange("styleradar.users")`).** En el corte actual, `ms-auth` actúa exclusivamente como **consumidor** sobre la cola durable `styleradar.auth.user-status-changed.q` (`routing key`: `user.status.changed`) mediante `UsuarioEstadoCambiadoConsumer`, registrando `usuario:revocado:{id}` en Redis cuando `ms-usuarios` bloquea o inactiva una cuenta (y propagando `DataAccessException` para no perder eventos). El envío OTP se realiza síncronamente vía SMTP (`EmailServiceImpl`) sin productores AMQP activos.
+   **RabbitMQ 3.12+ con protocolo AMQP 0-9-1 (`TopicExchange("styleradar.exchange")`).** En el corte actual, `ms-auth` actúa exclusivamente como **consumidor** sobre la cola durable `styleradar.auth.user-status-changed.q` (`routing key`: `user.status.changed`) mediante `UsuarioEstadoCambiadoConsumer`, registrando `usuario:revocado:{id}` en Redis cuando `ms-usuarios` bloquea o inactiva una cuenta (y propagando `DataAccessException` para no perder eventos). El envío OTP se realiza síncronamente vía SMTP (`EmailServiceImpl`) sin productores AMQP activos.
 
 ---
 
