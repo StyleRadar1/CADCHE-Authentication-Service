@@ -30,4 +30,15 @@ class RabbitMQConfigTest {
         assertThat(enlace.getRoutingKey()).isEqualTo("user.status.changed");
         assertThat(enlace.getDestination()).isEqualTo("styleradar.auth.user-status-changed.q");
     }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("Sin RABBITMQ_PASSWORD el consumidor queda desactivado y se avisa en el log")
+    void estadoDelConsumidor() {
+        RabbitMQConfig config = new RabbitMQConfig();
+        org.assertj.core.api.Assertions.assertThat(config.consumidorActivo()).isFalse();
+        org.assertj.core.api.Assertions.assertThatCode(config::registrarEstadoConsumidor).doesNotThrowAnyException();
+        org.springframework.test.util.ReflectionTestUtils.setField(config, "rabbitPassword", "clave");
+        org.assertj.core.api.Assertions.assertThat(config.consumidorActivo()).isTrue();
+        org.assertj.core.api.Assertions.assertThatCode(config::registrarEstadoConsumidor).doesNotThrowAnyException();
+    }
 }
