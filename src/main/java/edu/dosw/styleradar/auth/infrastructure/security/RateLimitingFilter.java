@@ -134,7 +134,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             log.warn("Rate limit excedido ({}/{}) en ruta {} para cliente {}",
                     count, maxRequests, SecuritySanitizer.sanitizeForLog(path), clientIp);
             SecurityErrorResponseWriter.write(
-                    response, objectMapper, HttpStatus.TOO_MANY_REQUESTS, CodigoError.LIMITE_SOLICITUDES, path,
+                    response, objectMapper, HttpStatus.TOO_MANY_REQUESTS, CodigoError.RATE_LIMIT_EXCEEDED, path,
                     "Demasiadas solicitudes en un período corto. Intente nuevamente más tarde.", windowSeconds);
             return;
         }

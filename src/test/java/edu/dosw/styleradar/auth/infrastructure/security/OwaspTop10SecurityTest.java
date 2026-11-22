@@ -195,8 +195,8 @@ class OwaspTop10SecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(unsafeDto)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.validationErrors.nombre").exists())
-                .andExpect(jsonPath("$.validationErrors.password").exists());
+                .andExpect(jsonPath("$.errors.name").exists())
+                .andExpect(jsonPath("$.errors.password").exists());
 
         assertThatThrownBy(() -> SecuritySanitizer.normalizeEmail("attacker@evil.com\r\nBcc:victim@evil.com"))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -246,7 +246,7 @@ class OwaspTop10SecurityTest {
         when(otpService.esTokenInvalido("jwt.bloqueado")).thenReturn(false);
         when(jwtService.validarToken("jwt.bloqueado")).thenReturn(claims);
         when(jwtService.obtenerUsuarioId("jwt.bloqueado")).thenReturn(7L);
-        when(jwtService.obtenerRoles("jwt.bloqueado")).thenReturn(Set.of(Rol.COMPRADOR));
+        when(jwtService.obtenerRoles("jwt.bloqueado")).thenReturn(Set.of(Rol.BUYER));
         when(otpService.estaUsuarioRevocado(7L, 1000L)).thenReturn(true);
 
         mockMvc.perform(post("/api/v1/auth/refresh")
@@ -264,7 +264,7 @@ class OwaspTop10SecurityTest {
 
         JwtServiceImpl realJwt = new JwtServiceImpl(
                 "VGhpc0lzQVN1ZmZpY2llbnRseUxvbmdTZWNyZXRLZXlGb3JUZXN0czEyMzQ1Ng==", "PT1H");
-        String signed = realJwt.generarToken(55L, Set.of(Rol.COMPRADOR));
+        String signed = realJwt.generarToken(55L, Set.of(Rol.BUYER));
         String forged = signed.substring(0, signed.length() - 2) + "xx";
         assertThatThrownBy(() -> realJwt.validarToken(forged)).isInstanceOf(RuntimeException.class);
     }

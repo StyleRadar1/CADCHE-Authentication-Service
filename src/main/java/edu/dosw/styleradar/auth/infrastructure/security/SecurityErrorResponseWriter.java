@@ -20,11 +20,17 @@ public final class SecurityErrorResponseWriter {
 
     /** Mensajes exactos del catálogo 1.5 del contrato ms-auth ↔ Frontend; el detalle técnico va solo al log. */
     static final Map<CodigoError, String> MENSAJES_CONTRATO = Map.of(
-            CodigoError.TOKEN_INVALIDO, "El token presentado es inválido o expirado",
-            CodigoError.SERVICIO_NO_DISPONIBLE,
+            CodigoError.INVALID_TOKEN, "El token presentado es inválido o expirado",
+            CodigoError.SERVICE_UNAVAILABLE,
             "El servicio requerido no está disponible temporalmente. Intente nuevamente más tarde.",
-            CodigoError.LIMITE_SOLICITUDES, "Demasiadas solicitudes en un período corto. Intente nuevamente más tarde.",
-            CodigoError.ERROR_INTERNO, "Ocurrió un error interno. Intente nuevamente más tarde.");
+            CodigoError.RATE_LIMIT_EXCEEDED, "Demasiadas solicitudes en un período corto. Intente nuevamente más tarde.",
+            CodigoError.INTERNAL_ERROR, "Ocurrió un error interno. Intente nuevamente más tarde.");
+
+    /**
+     * SR-RF-AUTH-01 FA-05: un token emitido antes de que la cuenta se inactivara o bloqueara responde con este
+     * mensaje propio; es el único texto 401 que no se reemplaza por el del catálogo.
+     */
+    public static final String MENSAJE_SESION_REVOCADA = "El token ha sido revocado";
 
     private SecurityErrorResponseWriter() {
     }
@@ -53,11 +59,11 @@ public final class SecurityErrorResponseWriter {
             response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(esperarSegundos));
         }
 
-        String mensaje = MENSAJES_CONTRATO.getOrDefault(codigo, message);
+        String mensaje = MENSAJE_SESION_REVOCADA.equals(message) ? message : MENSAJES_CONTRATO.getOrDefault(codigo, message);
         ErrorResponseDTO body = ErrorResponseDTO.problema(status.value(), status.getReasonPhrase(), codigo, mensaje,
                         SecuritySanitizer.sanitizeForLog(path))
-                .validationErrors(Map.of())
-                .esperarSegundos(esperarSegundos)
+                .errors(Map.of())
+                .retryAfterSeconds(esperarSegundos)
                 .build();
 
         ObjectMapper mapper = objectMapper != null ? objectMapper : new ObjectMapper().findAndRegisterModules();
@@ -66,12 +72,12 @@ public final class SecurityErrorResponseWriter {
 
     static CodigoError codigoPorEstado(HttpStatus status) {
         return switch (status) {
-            case UNAUTHORIZED -> CodigoError.TOKEN_INVALIDO;
-            case FORBIDDEN -> CodigoError.ACCESO_DENEGADO;
-            case TOO_MANY_REQUESTS -> CodigoError.LIMITE_SOLICITUDES;
-            case SERVICE_UNAVAILABLE -> CodigoError.SERVICIO_NO_DISPONIBLE;
-            case BAD_REQUEST -> CodigoError.DATOS_INVALIDOS;
-            default -> CodigoError.ERROR_INTERNO;
+            case UNAUTHORIZED -> CodigoError.INVALID_TOKEN;
+            case FORBIDDEN -> CodigoError.ACCESS_DENIED;
+            case TOO_MANY_REQUESTS -> CodigoError.RATE_LIMIT_EXCEEDED;
+            case SERVICE_UNAVAILABLE -> CodigoError.SERVICE_UNAVAILABLE;
+            case BAD_REQUEST -> CodigoError.INVALID_DATA;
+            default -> CodigoError.INTERNAL_ERROR;
         };
     }
 }

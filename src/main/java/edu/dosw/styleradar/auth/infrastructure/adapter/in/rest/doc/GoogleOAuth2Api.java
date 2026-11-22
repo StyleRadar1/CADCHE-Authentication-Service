@@ -22,17 +22,17 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @Tag(
-        name = "Autenticación con Google (OAuth2 / OIDC)",
-        description = "Autenticación federada stateless con Google Identity Services mediante ID Token (RS256/JWKS) "
-                + "o flujo Authorization Code con protección anti-CSRF state en Redis y emisión de JWT de StyleRadar")
+        name = "Google sign-in (OAuth2 / OIDC)",
+        description = "Stateless federated sign-in with Google Identity Services through an ID token (RS256/JWKS) "
+                + "or the Authorization Code flow with an anti-CSRF state in Redis; issues the StyleRadar JWT")
 public interface GoogleOAuth2Api {
 
     @PostMapping
     @Operation(
-            summary = "Iniciar sesión con ID Token de Google (Sign-In / One Tap)",
-            description = "Verifica criptográficamente un ID Token RS256 emitido por Google Identity contra Google JWKS, "
-                    + "valida emisor (accounts.google.com), audiencia (GOOGLE_CLIENT_ID), vigencia temporal y correo verificado. "
-                    + "Resuelve o aprovisiona al usuario en ms-usuarios y emite directamente el JWT Bearer de StyleRadar sin desafío OTP adicional.",
+            summary = "Log in with a Google ID token (Sign-In / One Tap)",
+            description = "Cryptographically verifies a Google RS256 ID token against Google JWKS and validates issuer (accounts.google.com), "
+                    + "audience (GOOGLE_CLIENT_ID), lifetime and verified email. "
+                    + "Resolves or provisions the user in ms-usuarios and returns the StyleRadar JWT without OTP (RN-06).",
             security = {},
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     required = true,
@@ -41,113 +41,113 @@ public interface GoogleOAuth2Api {
                             schema = @Schema(implementation = GoogleLoginRequestDTO.class),
                             examples = @ExampleObject(
                                     name = "GoogleIdToken",
-                                    summary = "ID Token OIDC emitido por Google Sign-In en frontend/móvil",
+                                    summary = "OIDC ID token issued by Google Sign-In on web or mobile",
                                     value = "{\"idToken\":\"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMDk4NzY1NDMyMSIsImVtYWlsIjoidXN1YXJpb0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZX0.firma\"}"))))
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "ID Token válido y cuenta activa; retorna JWT Bearer de StyleRadar sin OTP (D2). Si la cuenta no tenía el correo verificado, ms-auth lo marca como verificado en ms-usuarios",
+                    description = "Valid ID token and active account; returns the StyleRadar JWT without OTP. ms-auth marks the email as verified in ms-usuarios (FA-10)",
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(implementation = LoginResponseDTO.class),
                             examples = @ExampleObject(
-                                    name = "LoginGoogleExitoso",
+                                    name = "GoogleLoginOk",
                                     value = AuthApiEjemplos.SESION_CON_TOKEN))),
             @ApiResponse(
                     responseCode = "400",
-                    description = "Solicitud inválida por ID Token faltante o formato incorrecto",
+                    description = "INVALID_DATA: missing ID token",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "401",
-                    description = "ID Token de Google inválido, expirado, con firma/audiencia inválida o correo sin verificar",
+                    description = "INVALID_CREDENTIALS: Google ID token invalid, expired, wrong signature/audience or unverified email (FA-11)",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "403",
-                    description = "Cuenta en StyleRadar inactiva o bloqueada",
+                    description = "ACCOUNT_NOT_ACTIVE: StyleRadar account inactive or blocked (FA-12)",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "429",
-                    description = "Límite de tasa excedido por ventana de tiempo",
+                    description = "RATE_LIMIT_EXCEEDED",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "503",
-                    description = "GOOGLE_CLIENT_ID no configurado o dependencia crítica externa (Google JWKS / ms-usuarios) no disponible",
+                    description = "SERVICE_UNAVAILABLE: GOOGLE_CLIENT_ID not configured, or Google JWKS / ms-usuarios not responding (FA-14)",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<LoginResponseDTO> autenticarConGoogle(@Valid @RequestBody GoogleLoginRequestDTO request);
 
     @GetMapping("/url")
     @Operation(
-            summary = "Generar URL de autorización de Google OAuth2 (con state anti-CSRF)",
-            description = "Genera una URL de redirección a Google Accounts con alcance openid email profile y un token state "
-                    + "criptográfico de un solo uso almacenado en Redis (TTL 300s). Permite probar el flujo OAuth2 completo desde Swagger o frontend.",
+            summary = "Build the Google OAuth2 authorization URL (anti-CSRF state)",
+            description = "Builds a Google Accounts redirect URL with scope openid email profile and a single-use cryptographic state "
+                    + "stored in Redis (TTL 300 s). Returns authorizationUrl, state and redirectUri.",
             security = {})
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "URL de autorización y state anti-CSRF generados correctamente",
+                    description = "Authorization URL and anti-CSRF state generated",
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(implementation = GoogleAuthUrlResponseDTO.class))),
             @ApiResponse(
                     responseCode = "400",
-                    description = "La redirectUri solicitada no está incluida en GOOGLE_ALLOWED_REDIRECT_URIS (prevención Open Redirect)",
+                    description = "INVALID_DATA: redirectUri is not in GOOGLE_ALLOWED_REDIRECT_URIS (open-redirect protection)",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "503",
-                    description = "GOOGLE_CLIENT_ID no configurado o Redis no disponible (fail-closed)",
+                    description = "SERVICE_UNAVAILABLE: GOOGLE_CLIENT_ID not configured or Redis not responding (fail-closed)",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<GoogleAuthUrlResponseDTO> obtenerUrlAutorizacion(
             @Parameter(
-                    description = "URI de redirección permitida tras el consentimiento de Google (opcional; usa la configurada por defecto si se omite)",
+                    description = "Allowed redirect URI after Google consent (optional; the configured default is used when omitted)",
                     example = "http://localhost:8100/api/v1/auth/oauth2/google/callback")
             @RequestParam(value = "redirectUri", required = false) String redirectUri);
 
     @GetMapping("/callback")
     @Operation(
-            summary = "Callback OAuth2 de Google (GET redirect_uri)",
-            description = "Endpoint receptor del redirect de Google tras autorizar el inicio de sesión. "
-                    + "Valida de un solo uso el state anti-CSRF en Redis, intercambia el authorization code por un ID Token en Google Token Endpoint, "
-                    + "verifica el ID Token criptográficamente y retorna el JWT Bearer de StyleRadar.",
+            summary = "Google OAuth2 callback (GET redirect_uri)",
+            description = "Receives the Google redirect after consent. "
+                    + "Consumes the single-use anti-CSRF state in Redis, exchanges the authorization code for an ID token at the Google token endpoint, "
+                    + "verifies the ID token and returns the StyleRadar JWT.",
             security = {})
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "Autenticación con Google completada; retorna JWT Bearer de StyleRadar",
+                    description = "Google sign-in completed; returns the StyleRadar JWT",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginResponseDTO.class))),
             @ApiResponse(
                     responseCode = "400",
-                    description = "Parámetros code/state faltantes o redirectUri no autorizada",
+                    description = "INVALID_DATA: missing code/state or redirectUri not allowed",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "401",
-                    description = "Parámetro state inválido/expirado/reutilizado, acceso denegado en Google o authorization code inválido",
+                    description = "INVALID_CREDENTIALS: invalid, expired or reused state, access denied at Google or invalid authorization code",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "403",
-                    description = "Cuenta de StyleRadar inactiva o bloqueada",
+                    description = "ACCOUNT_NOT_ACTIVE: StyleRadar account inactive or blocked",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "503",
-                    description = "Credenciales Google OAuth2 no configuradas o falla de conectividad con Google/Redis/ms-usuarios",
+                    description = "SERVICE_UNAVAILABLE: Google OAuth2 not configured or Google/Redis/ms-usuarios not responding",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<LoginResponseDTO> callbackGoogle(
-            @Parameter(description = "Authorization code emitido por Google")
+            @Parameter(description = "Authorization code issued by Google")
             @RequestParam(value = "code", required = false) String code,
-            @Parameter(description = "Token state anti-CSRF emitido previamente por /url")
+            @Parameter(description = "Anti-CSRF state previously issued by /url")
             @RequestParam(value = "state", required = false) String state,
-            @Parameter(description = "URI de redirección opcional cuando difiere del valor guardado")
+            @Parameter(description = "Optional redirect URI when it differs from the stored one")
             @RequestParam(value = "redirectUri", required = false) String redirectUri,
-            @Parameter(description = "Código de error devuelto por Google si el usuario canceló la autorización")
+            @Parameter(description = "Error code returned by Google when the user cancels")
             @RequestParam(value = "error", required = false) String error);
 
     @PostMapping("/code")
     @Operation(
-            summary = "Intercambiar Authorization Code de Google vía JSON POST",
-            description = "Alternativa JSON SPA/Mobile al callback GET para enviar el authorization code y state obtenidos tras Google Consent "
-                    + "e intercambiarlos en el backend por un JWT Bearer de StyleRadar.",
+            summary = "Exchange a Google authorization code (JSON POST)",
+            description = "JSON alternative to the GET callback for SPA/mobile clients: sends the authorization code and state obtained "
+                    + "after Google consent and exchanges them for a StyleRadar JWT.",
             security = {},
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     required = true,
@@ -157,23 +157,23 @@ public interface GoogleOAuth2Api {
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "Authorization code intercambiado y validado; retorna JWT Bearer de StyleRadar",
+                    description = "Authorization code exchanged; returns the StyleRadar JWT",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginResponseDTO.class))),
             @ApiResponse(
                     responseCode = "400",
-                    description = "Datos faltantes o redirectUri no autorizada",
+                    description = "INVALID_DATA: missing data or redirectUri not allowed",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "401",
-                    description = "State anti-CSRF inválido/expirado/reutilizado o código rechazado por Google",
+                    description = "INVALID_CREDENTIALS: invalid, expired or reused state, or code rejected by Google",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "403",
-                    description = "Cuenta de StyleRadar inactiva o bloqueada",
+                    description = "ACCOUNT_NOT_ACTIVE: StyleRadar account inactive or blocked",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(
                     responseCode = "503",
-                    description = "Credenciales Google OAuth2 no configuradas o dependencia externa no disponible",
+                    description = "SERVICE_UNAVAILABLE: Google OAuth2 not configured or an external dependency is down",
                     content = @Content(mediaType = ErrorResponseDTO.MEDIA_TYPE, schema = @Schema(implementation = ErrorResponseDTO.class)))
     })
     ResponseEntity<LoginResponseDTO> autenticarConCodigo(@Valid @RequestBody GoogleCodeLoginRequestDTO request);

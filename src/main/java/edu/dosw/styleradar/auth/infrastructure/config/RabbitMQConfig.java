@@ -19,18 +19,19 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
+    /** Exchange único del curso para eventos de dominio (TopicExchange, durable). */
     public static final String EXCHANGE = "styleradar.exchange";
     public static final String DLX_EXCHANGE = "styleradar.dlx";
-    public static final String QUEUE = "styleradar.auth.estado-cambiado.q";
+    public static final String QUEUE = "styleradar.auth.user-status-changed.q";
     public static final String DLQ = "styleradar.auth.dlq";
-    public static final String ROUTING_KEY = "styleradar.usuarios.estado.cambiado";
+    public static final String ROUTING_KEY = "user.status.changed";
 
     @org.springframework.beans.factory.annotation.Value("${spring.rabbitmq.password:}")
     private String rabbitPassword = "";
 
     /**
-     * Exchanges del broker del curso (topic y direct, durables). Se declaran de forma idempotente para que los
-     * enlaces de la cola no fallen en un broker nuevo; con el broker de QA coinciden con los ya creados.
+     * Exchanges (topic for user events, direct for dead letters), durable and declared idempotently so the queue
+     * bindings never fail on a fresh broker.
      */
     @Bean
     TopicExchange eventosExchange() {

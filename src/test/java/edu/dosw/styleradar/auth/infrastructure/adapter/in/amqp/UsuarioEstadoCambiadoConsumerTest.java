@@ -153,4 +153,23 @@ class UsuarioEstadoCambiadoConsumerTest {
         verify(valueOperations, times(2)).set("usuario:revocado:30", "1700000000000");
         verify(valueOperations).setIfAbsent(eq("evento:procesado:evt-retry"), eq("1"), anyLong(), eq(TimeUnit.SECONDS));
     }
+
+    @Test
+    @DisplayName("Debe deserializar el JSON de ms-usuarios con eventoId, email e ignorar el campo email extra")
+    void debeDeserializarJsonDeMsUsuariosConEventoIdYEmail() throws Exception {
+        String json = "{\"eventoId\":\"evt-usr-77\",\"usuarioId\":45,\"email\":\"usuario@styleradar.com\","
+                + "\"estadoAnterior\":\"ACTIVA\",\"estadoNuevo\":\"BLOQUEADA\",\"administradorId\":1,"
+                + "\"motivo\":\"Incumplimiento\",\"fechaCambio\":\"2026-11-21T22:45:00Z\"}";
+
+        UsuarioEstadoCambiadoEventDTO dto = new ObjectMapper().findAndRegisterModules()
+                .readValue(json, UsuarioEstadoCambiadoEventDTO.class);
+
+        assertThat(dto.eventoId()).isEqualTo("evt-usr-77");
+        assertThat(dto.usuarioId()).isEqualTo(45L);
+        assertThat(dto.estadoAnterior()).isEqualTo(EstadoCuenta.ACTIVA);
+        assertThat(dto.estadoNuevo()).isEqualTo(EstadoCuenta.BLOQUEADA);
+        assertThat(dto.administradorId()).isEqualTo(1L);
+        assertThat(dto.motivo()).isEqualTo("Incumplimiento");
+        assertThat(dto.fechaCambio()).isEqualTo(Instant.parse("2026-11-21T22:45:00Z"));
+    }
 }

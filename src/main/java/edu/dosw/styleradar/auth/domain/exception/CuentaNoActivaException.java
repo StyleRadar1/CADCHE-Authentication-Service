@@ -8,6 +8,6 @@ import edu.dosw.styleradar.auth.domain.model.CodigoError;
 public class CuentaNoActivaException extends AuthDomainException {
 
     public CuentaNoActivaException(String message) {
-        super(message, CodigoError.CUENTA_NO_ACTIVA);
+        super(message, CodigoError.ACCOUNT_NOT_ACTIVE);
     }
 }

@@ -67,24 +67,24 @@ class GlobalExceptionHandlerTest {
                 OtpIntentosAgotadosException.intentosAgotados(60L), request);
         assertThat(r429.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(r429.getHeaders().getFirst("Retry-After")).isEqualTo("60");
-        assertThat(r429.getBody().getCodigo()).isEqualTo(CodigoError.OTP_INTENTOS_AGOTADOS);
-        assertThat(r429.getBody().getEsperarSegundos()).isEqualTo(60L);
-        assertThat(rOtpInv.getBody().getCodigo()).isEqualTo(CodigoError.OTP_INCORRECTO);
-        assertThat(rOtpInv.getBody().getIntentosRestantes()).isEqualTo(1);
-        assertThat(r401Spring.getBody().getCodigo()).isEqualTo(CodigoError.TOKEN_INVALIDO);
-        assertThat(r403Access.getBody().getCodigo()).isEqualTo(CodigoError.ACCESO_DENEGADO);
-        assertThat(r405.getBody().getCodigo()).isEqualTo(CodigoError.METODO_NO_PERMITIDO);
+        assertThat(r429.getBody().getCode()).isEqualTo(CodigoError.OTP_ATTEMPTS_EXHAUSTED);
+        assertThat(r429.getBody().getRetryAfterSeconds()).isEqualTo(60L);
+        assertThat(rOtpInv.getBody().getCode()).isEqualTo(CodigoError.OTP_INCORRECT);
+        assertThat(rOtpInv.getBody().getAttemptsRemaining()).isEqualTo(1);
+        assertThat(r401Spring.getBody().getCode()).isEqualTo(CodigoError.INVALID_TOKEN);
+        assertThat(r403Access.getBody().getCode()).isEqualTo(CodigoError.ACCESS_DENIED);
+        assertThat(r405.getBody().getCode()).isEqualTo(CodigoError.METHOD_NOT_ALLOWED);
 
         ResponseEntity<ErrorResponseDTO> r503 = handler.handleDomain(
                 new ServicioExternoNoDisponibleException("Redis caído"), request);
         assertThat(r503.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(r503.getBody().getMessage()).doesNotContain("Redis caído");
-        assertThat(r503.getBody().getCodigo()).isEqualTo(CodigoError.SERVICIO_NO_DISPONIBLE);
+        assertThat(r503.getBody().getCode()).isEqualTo(CodigoError.SERVICE_UNAVAILABLE);
 
         ResponseEntity<ErrorResponseDTO> r500 = handler.handleUnexpected(
                 new RuntimeException("Detalle interno SQL/JWT sensible"), request);
         assertThat(r500.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(r500.getBody().getCodigo()).isEqualTo(CodigoError.ERROR_INTERNO);
+        assertThat(r500.getBody().getCode()).isEqualTo(CodigoError.INTERNAL_ERROR);
         assertThat(r500.getBody().getMessage())
                 .doesNotContain("SQL")
                 .doesNotContain("JWT")

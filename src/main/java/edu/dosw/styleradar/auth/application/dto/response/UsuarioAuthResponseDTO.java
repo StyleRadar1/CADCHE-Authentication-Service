@@ -14,25 +14,24 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Datos de la cuenta creada durante el registro de comprador en ms-auth")
+@Schema(description = "Support account returned by the ms-auth registration endpoint (annex, disabled by default)")
 public class UsuarioAuthResponseDTO {
 
-    @Schema(description = "Identificador único del usuario registrado", example = "12")
+    @Schema(description = "Account identifier", example = "12")
     private Long id;
 
-    @Schema(description = "Nombre completo del usuario", example = "Laura Gómez")
-    private String nombre;
+    @Schema(description = "Full name", example = "Laura Gómez")
+    private String name;
 
-    @Schema(description = "Correo electrónico registrado", example = "laura.gomez@styleradar.com")
+    @Schema(description = "Registered email", example = "laura.gomez@styleradar.com")
     private String email;
 
-    @Schema(description = "Teléfono de contacto registrado", example = "+57 300 123 4567")
-    private String telefono;
+    @Schema(description = "Contact phone", example = "+57 300 123 4567")
+    private String phone;
 
-    @Schema(description = "Fecha y hora UTC de creación de la cuenta", example = "2026-11-03T01:30:00Z")
-    private Instant fechaRegistro;
+    @Schema(description = "UTC date and time the account was created", example = "2026-11-03T01:30:00Z")
+    private Instant registeredAt;
 
-    @Schema(description = "Roles asignados inicialmente al usuario", example = "[\"COMPRADOR\"]")
+    @Schema(description = "Initial roles of the account", example = "[\"BUYER\"]")
     private Set<Rol> roles;
 }
-

@@ -63,7 +63,7 @@ class OtpRedisIntegrationTest {
     @Test
     @DisplayName("3 fallos → espera obligatoria; login y reenvío bloqueados; tras la espera se reenvía sin nuevo login")
     void flujoCompletoDeBloqueoYReenvio() throws Exception {
-        String codigo = otpService.generarOtp(CORREO, 77L, "COMPRADOR");
+        String codigo = otpService.generarOtp(CORREO, 77L, "BUYER");
         String incorrecto = codigo.equals("000000") ? "111111" : "000000";
 
         assertThatThrownBy(() -> otpService.verificarOtp(CORREO, incorrecto))
@@ -74,7 +74,7 @@ class OtpRedisIntegrationTest {
                 .isInstanceOf(OtpIntentosAgotadosException.class).extracting("esperarSegundos").isEqualTo(2L);
 
         assertThatThrownBy(() -> otpService.reenviarOtp(CORREO)).isInstanceOf(OtpBloqueadoTemporalmenteException.class);
-        assertThatThrownBy(() -> otpService.generarOtp(CORREO, 77L, "COMPRADOR"))
+        assertThatThrownBy(() -> otpService.generarOtp(CORREO, 77L, "BUYER"))
                 .isInstanceOf(OtpBloqueadoTemporalmenteException.class);
         assertThat(redisTemplate.getExpire("otp:usuario:" + CORREO)).isBetween(890L, 900L);
 

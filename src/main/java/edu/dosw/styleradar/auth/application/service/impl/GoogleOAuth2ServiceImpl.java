@@ -173,7 +173,7 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
             log.warn("Autenticación con Google rechazada por correo no verificado: {}",
                     SecuritySanitizer.maskEmail(claims.email()));
             throw new CredencialesIncorrectasException(
-                    "Tu cuenta de Google debe tener el correo electrónico verificado");
+                    "La cuenta de Google no tiene el correo electrónico verificado");
         }
 
         String normalizedEmail = SecuritySanitizer.normalizeEmail(claims.email());

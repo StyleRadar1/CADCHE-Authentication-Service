@@ -23,21 +23,25 @@ class SecurityErrorResponseWriterTest {
     }
 
     @Test
-    @DisplayName("401 por token revocado o mal formado responde siempre el texto de TOKEN_INVALIDO")
+    @DisplayName("401: sesión revocada con su mensaje (SR-RF-AUTH-01); token mal formado con el texto de INVALID_TOKEN")
     void tokenInvalidoUsaMensajeDelContrato() throws Exception {
-        JsonNode cuerpo = escribir(HttpStatus.UNAUTHORIZED, "El token ha sido revocado");
+        JsonNode revocado = escribir(HttpStatus.UNAUTHORIZED, "El token ha sido revocado");
+        // SR-RF-AUTH-01 FA-05: la sesión revocada por cambio de estado conserva su mensaje propio.
+        assertThat(revocado.get("code").asText()).isEqualTo("INVALID_TOKEN");
+        assertThat(revocado.get("detail").asText()).isEqualTo("El token ha sido revocado");
+        JsonNode cuerpo = escribir(HttpStatus.UNAUTHORIZED, "Firma JWT inválida");
 
-        assertThat(cuerpo.get("codigo").asText()).isEqualTo("TOKEN_INVALIDO");
+        assertThat(cuerpo.get("code").asText()).isEqualTo("INVALID_TOKEN");
         assertThat(cuerpo.get("message").asText()).isEqualTo("El token presentado es inválido o expirado");
         assertThat(cuerpo.get("detail").asText()).isEqualTo("El token presentado es inválido o expirado");
     }
 
     @Test
-    @DisplayName("503 de Redis responde el texto de SERVICIO_NO_DISPONIBLE sin detalles internos")
+    @DisplayName("503 de Redis responde el texto de SERVICE_UNAVAILABLE sin detalles internos")
     void servicioNoDisponibleUsaMensajeDelContrato() throws Exception {
         JsonNode cuerpo = escribir(HttpStatus.SERVICE_UNAVAILABLE, "El servicio de verificación de sesiones no está disponible");
 
-        assertThat(cuerpo.get("codigo").asText()).isEqualTo("SERVICIO_NO_DISPONIBLE");
+        assertThat(cuerpo.get("code").asText()).isEqualTo("SERVICE_UNAVAILABLE");
         assertThat(cuerpo.get("message").asText())
                 .isEqualTo("El servicio requerido no está disponible temporalmente. Intente nuevamente más tarde.");
     }

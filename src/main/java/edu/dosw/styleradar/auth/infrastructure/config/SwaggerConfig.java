@@ -26,19 +26,20 @@ public class SwaggerConfig {
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
                         .bearerFormat("JWT")
-                        .description("Token JWT emitido por ms-auth (HS256)")))
+                        .description("JWT issued by ms-auth (HS256)")))
                 .servers(List.of(
-                        new Server().url("/").description("Ruta relativa al host actual (recomendado)"),
-                        new Server().url("http://localhost:8100").description("Servidor local ms-auth (:8100)"),
-                        new Server().url("http://localhost:8080").description("API Gateway StyleRadar (:8080)")))
+                        new Server().url("/").description("Path relative to the current host (recommended)"),
+                        new Server().url("http://localhost:8100").description("Local ms-auth server (:8100)"),
+                        new Server().url("http://localhost:8080").description("StyleRadar API Gateway (:8080)")))
                 .info(new Info()
                         .title("StyleRadar - Authentication Service API (ms-auth)")
-                        .description("Especificación OpenAPI 3.0 del microservicio de autenticación de StyleRadar. "
-                                + "Gobierna el inicio de sesión con JWT (SR-RF-02), la verificación de segundo factor mediante código OTP de 6 dígitos en Redis (SR-RF-92), "
-                                + "la autenticación federada con Google OAuth2 / OpenID Connect, el registro atómico de credenciales y la revocación de sesiones en lista negra (SR-RNF-01).")
+                        .description("OpenAPI 3.0 specification of the StyleRadar authentication microservice. "
+                                + "Covers JWT login, one-time email verification with a 6-digit OTP code stored in Redis, "
+                                + "Google OAuth2 / OpenID Connect sign-in, token refresh and logout with blacklist revocation. "
+                                + "Routes, fields, values and error codes are in English; only the user messages inside the JSON are in Spanish.")
                         .version("v1")
                         .contact(new Contact()
-                                .name("Equipo CADche - StyleRadar DOSW")
+                                .name("CADche team - StyleRadar DOSW")
                                 .email("cadche@styleradar.com")));
     }
 

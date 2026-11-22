@@ -10,7 +10,7 @@ public class OtpBloqueadoTemporalmenteException extends AuthDomainException {
 
     public OtpBloqueadoTemporalmenteException(long segundosRestantes) {
         super("Debe esperar " + segundosRestantes + " segundos para solicitar un nuevo código.",
-                CodigoError.OTP_REENVIO_BLOQUEADO, null, segundosRestantes, null);
+                CodigoError.OTP_RESEND_BLOCKED, null, segundosRestantes, null);
     }
 
     public long getSegundosRestantes() {

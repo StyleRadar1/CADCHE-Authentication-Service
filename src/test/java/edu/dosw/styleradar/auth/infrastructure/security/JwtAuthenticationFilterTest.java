@@ -99,7 +99,7 @@ class JwtAuthenticationFilterTest {
         Claims claims = Jwts.claims()
                 .subject("42")
                 .issuedAt(new Date(5000L))
-                .add("roles", List.of("COMPRADOR", "ROL_DESCONOCIDO"))
+                .add("roles", List.of("BUYER", "ROL_DESCONOCIDO"))
                 .build();
 
         when(jwtService.validarToken("jwt.valido")).thenReturn(claims);
@@ -113,7 +113,7 @@ class JwtAuthenticationFilterTest {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         assertThat(auth).isNotNull();
         assertThat(auth.getName()).isEqualTo("42");
-        assertThat(auth.getAuthorities()).extracting("authority").containsExactly("ROLE_COMPRADOR");
+        assertThat(auth.getAuthorities()).extracting("authority").containsExactly("ROLE_BUYER");
     }
 
     @Test

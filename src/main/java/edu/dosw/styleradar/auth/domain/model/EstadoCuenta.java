@@ -19,9 +19,9 @@ public enum EstadoCuenta {
         }
         String normalized = value.trim().toUpperCase(Locale.ROOT);
         return switch (normalized) {
-            case "ACTIVA", "ACTIVO" -> ACTIVA;
-            case "INACTIVA", "INACTIVO" -> INACTIVA;
-            case "BLOQUEADA", "BLOQUEADO" -> BLOQUEADA;
+            case "ACTIVA", "ACTIVO", "ACTIVE" -> ACTIVA;
+            case "INACTIVA", "INACTIVO", "INACTIVE" -> INACTIVA;
+            case "BLOQUEADA", "BLOQUEADO", "BLOCKED" -> BLOQUEADA;
             default -> EstadoCuenta.valueOf(normalized);
         };
     }

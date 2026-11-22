@@ -36,6 +36,6 @@ public class RegistrarUsuarioUseCaseImpl implements RegistrarUsuarioUseCase {
                     "El registro directo no está disponible en este entorno hasta completar la sincronización con ms-usuarios");
         }
         log.info("Registro de usuario de soporte solicitado para: {}", SecuritySanitizer.maskEmail(correo));
-        return new UsuarioRegistrado(ID_USUARIO_STUB, nombre.trim(), correo, telefono, Instant.now(clock), Rol.COMPRADOR);
+        return new UsuarioRegistrado(ID_USUARIO_STUB, nombre.trim(), correo, telefono, Instant.now(clock), Rol.BUYER);
     }
 }

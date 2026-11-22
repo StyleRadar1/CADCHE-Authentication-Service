@@ -9,10 +9,10 @@ import edu.dosw.styleradar.auth.domain.model.CodigoError;
 public class ServicioExternoNoDisponibleException extends AuthDomainException {
 
     public ServicioExternoNoDisponibleException(String message) {
-        super(message, CodigoError.SERVICIO_NO_DISPONIBLE);
+        super(message, CodigoError.SERVICE_UNAVAILABLE);
     }
 
     public ServicioExternoNoDisponibleException(String message, Throwable cause) {
-        super(message, CodigoError.SERVICIO_NO_DISPONIBLE, cause);
+        super(message, CodigoError.SERVICE_UNAVAILABLE, cause);
     }
 }

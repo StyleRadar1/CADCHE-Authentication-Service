@@ -22,12 +22,12 @@ class RabbitMQConfigTest {
     }
 
     @Test
-    @DisplayName("La cola de auth se enlaza a styleradar.exchange con la routing key de ms-usuarios")
+    @DisplayName("La cola de auth se enlaza a styleradar.exchange con la routing key user.status.changed")
     void enlazaLaCola() {
         var enlace = config.usuarioEstadoBinding();
 
         assertThat(enlace.getExchange()).isEqualTo("styleradar.exchange");
-        assertThat(enlace.getRoutingKey()).isEqualTo("styleradar.usuarios.estado.cambiado");
-        assertThat(enlace.getDestination()).isEqualTo("styleradar.auth.estado-cambiado.q");
+        assertThat(enlace.getRoutingKey()).isEqualTo("user.status.changed");
+        assertThat(enlace.getDestination()).isEqualTo("styleradar.auth.user-status-changed.q");
     }
 }

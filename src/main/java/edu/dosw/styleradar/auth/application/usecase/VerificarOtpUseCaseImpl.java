@@ -38,7 +38,7 @@ public class VerificarOtpUseCaseImpl implements VerificarOtpUseCase {
         String nombreRol = otpService.obtenerRol(correo);
         if (usuarioId == null || nombreRol == null) {
             // Contrato 4.1: en /otp/verify un código sin verificación en curso (ya usado, anulado o vencido)
-            // responde OTP_VENCIDO; SESION_OTP_INEXISTENTE es solo para /otp/resend.
+            // responde OTP_EXPIRED; OTP_SESSION_NOT_FOUND es solo para /otp/resend.
             throw new OtpExpiradoException("El código OTP expiró o no existe. Debe solicitar uno nuevo.");
         }
 
