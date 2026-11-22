@@ -34,8 +34,8 @@ public class SwaggerConfig {
                 .info(new Info()
                         .title("StyleRadar - Authentication Service API (ms-auth)")
                         .description("OpenAPI 3.0 specification of the StyleRadar authentication microservice. "
-                                + "Covers JWT login (SR-RF-02), one-time email verification with a 6-digit OTP code stored in Redis (SR-RF-92), "
-                                + "Google OAuth2 / OpenID Connect sign-in, token refresh and logout with blacklist revocation (SR-RNF-01). "
+                                + "Covers JWT login, one-time email verification with a 6-digit OTP code stored in Redis, "
+                                + "Google OAuth2 / OpenID Connect sign-in, token refresh and logout with blacklist revocation. "
                                 + "Routes, fields, values and error codes are in English; only the user messages inside the JSON are in Spanish.")
                         .version("v1")
                         .contact(new Contact()

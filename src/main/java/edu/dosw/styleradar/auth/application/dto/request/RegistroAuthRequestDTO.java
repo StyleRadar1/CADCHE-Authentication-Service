@@ -48,6 +48,6 @@ public class RegistroAuthRequestDTO {
 
     @Builder.Default
     @AssertTrue(message = "Debe aceptar el tratamiento de datos personales (Habeas Data)")
-    @Schema(description = "Explicit consent to personal data processing (Law 1581, SR-RNF-02). Must be true", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Explicit consent to personal data processing (Law 1581). Must be true", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
     private boolean dataPolicyAccepted = true;
 }

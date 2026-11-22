@@ -51,14 +51,14 @@ import jakarta.validation.Valid;
  * OpenAPI contract of ms-auth (requirements analysis v2). Every error follows {@link ErrorResponseDTO}: the front end
  * picks the text by {@code code} and every 429 carries {@code retryAfterSeconds} and the {@code Retry-After} header.
  */
-@Tag(name = "Authentication", description = "Login (SR-RF-02), one-time email verification with an OTP code (SR-RF-92), token refresh and logout with revocation in Redis 7")
+@Tag(name = "Authentication", description = "Login, one-time email verification with an OTP code, token refresh and logout with revocation in Redis 7")
 public interface AuthApi {
 
     String JSON = "application/json";
     String PROBLEMA = ErrorResponseDTO.MEDIA_TYPE;
 
     @Operation(
-            summary = "Log in with email and password (SR-RF-02)",
+            summary = "Log in with email and password",
             description = "Validates the credentials against ms-usuarios (8120) and requires an ACTIVE account (RN-03). "
                     + "If the email is already verified it returns the JWT right away (RN-05, otpRequired=false). "
                     + "Otherwise it emails a 6-digit OTP code (300 s, 3 attempts) and answers otpRequired=true without token (FA-13). "
@@ -102,7 +102,7 @@ public interface AuthApi {
     ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request);
 
     @Operation(
-            summary = "Verify the email with the OTP code (SR-RF-92)",
+            summary = "Verify the email with the OTP code",
             description = "Validates the code (6 digits, valid for 300 s, at most 3 attempts). When correct it closes the verification, "
                     + "marks the email as verified in ms-usuarios (it is never asked again at login) and returns the JWT. "
                     + "On the third failure it voids only the code and starts a 60 s wait before a new one can be requested.",
@@ -132,7 +132,7 @@ public interface AuthApi {
     ResponseEntity<LoginResponseDTO> verificarOtp(@Valid @RequestBody VerificarOtpRequestDTO request);
 
     @Operation(
-            summary = "Request a new OTP code (SR-RF-92)",
+            summary = "Request a new OTP code",
             description = "Creates a new code within the ongoing verification (15 min) and voids the previous one. "
                     + "At most 3 resends per verification; each resend restarts the 300 s and the 3 attempts. "
                     + "Blocked during the 60 s wait after 3 failures.",

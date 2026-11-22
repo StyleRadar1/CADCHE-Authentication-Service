@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 /**
  * Session response of SR-RF-02 and SR-RF-92 (requirements analysis v2, 17/11/2026).
  */
-@Schema(description = "Authentication result: JWT Bearer token, or OTP challenge when the email is not verified yet (SR-RF-02 / SR-RF-92)")
+@Schema(description = "Authentication result: JWT Bearer token, or OTP challenge when the email is not verified yet")
 public record LoginResponseDTO(
         @Schema(description = "Signed JWT (HS256). Null while the email still has to be verified with the OTP code", example = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMiIsInJvbGVzIjpbIkJVWUVSIl19.signature", nullable = true)
         String accessToken,
@@ -31,7 +31,7 @@ public record LoginResponseDTO(
         @Schema(description = "true when the email is already verified (login without code, RN-05)", example = "true")
         boolean emailVerified,
 
-        @Schema(description = "true when the 6-digit OTP code is still required (SR-RF-92)", example = "false")
+        @Schema(description = "true when the 6-digit OTP code is still required", example = "false")
         boolean otpRequired,
 
         @Schema(description = "OTP code lifetime in seconds (300). Null when no code was sent", example = "300", nullable = true)

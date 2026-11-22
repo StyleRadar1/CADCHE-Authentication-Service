@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Request a new OTP code for the registered email (SR-RF-92)")
+@Schema(description = "Request a new OTP code for the registered email")
 public class ReenviarOtpRequestDTO {
 
     @NotBlank(message = "El correo electrónico es obligatorio")

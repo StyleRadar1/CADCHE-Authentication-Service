@@ -2,7 +2,7 @@ package edu.dosw.styleradar.auth.application.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(description = "Confirmation of the new OTP code sent by email (SR-RF-92, FA-07)")
+@Schema(description = "Confirmation of the new OTP code sent by email (FA-07)")
 public record OtpMensajeResponseDTO(
         @Schema(description = "Email the OTP code was sent to", example = "buyer@styleradar.com")
         String email,

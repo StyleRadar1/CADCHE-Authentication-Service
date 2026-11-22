@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Login credentials (SR-RF-02)")
+@Schema(description = "Login credentials")
 public class LoginRequestDTO {
 
     @NotBlank(message = "El correo electrónico es obligatorio")
