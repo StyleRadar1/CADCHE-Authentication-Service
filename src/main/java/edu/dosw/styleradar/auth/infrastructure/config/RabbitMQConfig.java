@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@lombok.extern.slf4j.Slf4j
 public class RabbitMQConfig {
 
     /** Exchange único del curso para eventos de dominio (TopicExchange, durable). */
@@ -28,6 +29,24 @@ public class RabbitMQConfig {
 
     @org.springframework.beans.factory.annotation.Value("${spring.rabbitmq.password:}")
     private String rabbitPassword = "";
+
+    /**
+     * Deja en el log si el consumidor de user.status.changed quedó activo. Sin RABBITMQ_PASSWORD el listener no
+     * arranca y la cola no se declara en el broker, así que ms-auth no recibe los cambios de estado de cuenta.
+     */
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void registrarEstadoConsumidor() {
+        if (consumidorActivo()) {
+            log.info("RabbitMQ: consumidor activo en la cola {} (exchange {}, routing key {})", QUEUE, EXCHANGE, ROUTING_KEY);
+        } else {
+            log.warn("RabbitMQ: consumidor DESACTIVADO porque falta RABBITMQ_PASSWORD; la cola {} no se declara y "
+                    + "ms-auth no recibe {} de {}", QUEUE, ROUTING_KEY, EXCHANGE);
+        }
+    }
+
+    boolean consumidorActivo() {
+        return org.springframework.util.StringUtils.hasText(rabbitPassword);
+    }
 
     /**
      * Exchanges (topic for user events, direct for dead letters), durable and declared idempotently so the queue
@@ -109,7 +128,7 @@ public class RabbitMQConfig {
         factory.setMessageConverter(converter);
         factory.setDefaultRequeueRejected(false);
         factory.setMissingQueuesFatal(false);
-        factory.setAutoStartup(org.springframework.util.StringUtils.hasText(rabbitPassword));
+        factory.setAutoStartup(consumidorActivo());
         factory.setAdviceChain(RetryInterceptorBuilder.stateless()
                 .maxAttempts(3)
                 .backOffOptions(1000L, 2.0, 10000L)

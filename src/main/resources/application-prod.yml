@@ -16,7 +16,7 @@ spring:
         enabled: ${REDIS_SSL_ENABLED:true}
 
   rabbitmq:
-    host: ${RABBITMQ_HOST:styleradar-rabbitmq-qa.northcentralus.cloudapp.azure.com}
+    host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5671}
     username: ${RABBITMQ_USER:${RABBITMQ_USERNAME:}}
     password: ${RABBITMQ_PASSWORD:}
