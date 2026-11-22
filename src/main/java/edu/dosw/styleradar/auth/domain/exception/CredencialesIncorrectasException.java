@@ -8,7 +8,7 @@ import edu.dosw.styleradar.auth.domain.model.CodigoError;
 public class CredencialesIncorrectasException extends AuthDomainException {
 
     public CredencialesIncorrectasException(String message) {
-        super(message, CodigoError.CREDENCIALES_INCORRECTAS);
+        super(message, CodigoError.INVALID_CREDENTIALS);
     }
 
     public CredencialesIncorrectasException(String message, CodigoError codigo) {
@@ -16,6 +16,6 @@ public class CredencialesIncorrectasException extends AuthDomainException {
     }
 
     public static CredencialesIncorrectasException tokenInvalido(String message) {
-        return new CredencialesIncorrectasException(message, CodigoError.TOKEN_INVALIDO);
+        return new CredencialesIncorrectasException(message, CodigoError.INVALID_TOKEN);
     }
 }

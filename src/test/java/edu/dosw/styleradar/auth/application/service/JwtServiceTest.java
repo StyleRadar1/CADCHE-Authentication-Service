@@ -31,7 +31,7 @@ class JwtServiceTest {
     @Test
     @DisplayName("Debe generar token JWT firmado con claims de roles y subject usuarioId")
     void debeGenerarTokenConSubjectYRoles() {
-        Set<Rol> roles = Set.of(Rol.COMPRADOR, Rol.ADMIN_ALMACEN);
+        Set<Rol> roles = Set.of(Rol.BUYER, Rol.STORE_ADMIN);
         String token = jwtService.generarToken(123L, roles);
 
         assertThat(token).isNotBlank();
@@ -41,7 +41,7 @@ class JwtServiceTest {
     @Test
     @DisplayName("Debe validar exitosamente un token JWT recién generado")
     void debeValidarTokenExitosamente() {
-        String token = jwtService.generarToken(99L, Set.of(Rol.COMPRADOR));
+        String token = jwtService.generarToken(99L, Set.of(Rol.BUYER));
 
         assertThat(jwtService.validarToken(token)).isNotNull();
         assertThat(jwtService.validarToken(token).getSubject()).isEqualTo("99");
@@ -51,10 +51,10 @@ class JwtServiceTest {
     @Test
     @DisplayName("Debe rechazar tokens corruptos, nulos o con firma alterada (OWASP A08:2025)")
     void debeRechazarTokensInvalidosOAlterados() {
-        String validToken = jwtService.generarToken(99L, Set.of(Rol.COMPRADOR));
+        String validToken = jwtService.generarToken(99L, Set.of(Rol.BUYER));
         String[] parts = validToken.split("\\.");
         String tamperedPayload = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString("{\"sub\":\"1\",\"roles\":[\"ADMIN_STYLERADAR\"]}".getBytes(StandardCharsets.UTF_8));
+                .encodeToString("{\"sub\":\"1\",\"roles\":[\"STYLERADAR_ADMIN\"]}".getBytes(StandardCharsets.UTF_8));
         String tamperedToken = parts[0] + "." + tamperedPayload + "." + parts[2];
 
         assertThatThrownBy(() -> jwtService.validarToken(tamperedToken))
@@ -104,19 +104,28 @@ class JwtServiceTest {
     @Test
     @DisplayName("Debe extraer correctamente el usuarioId y los roles desde el JWT")
     void debeExtraerUsuarioIdYRoles() {
-        String token = jwtService.generarToken(456L, Set.of(Rol.REPRESENTANTE_FUNDACION));
+        String token = jwtService.generarToken(456L, Set.of(Rol.FOUNDATION_REPRESENTATIVE));
 
         assertThat(jwtService.obtenerUsuarioId(token)).isEqualTo(456L);
-        assertThat(jwtService.obtenerRoles(token)).containsExactly(Rol.REPRESENTANTE_FUNDACION);
+        assertThat(jwtService.obtenerRoles(token)).containsExactly(Rol.FOUNDATION_REPRESENTATIVE);
     }
 
     @Test
     @DisplayName("Debe calcular el tiempo restante en segundos de un token válido")
     void debeCalcularTiempoRestanteSegundos() {
-        String token = jwtService.generarToken(100L, Set.of(Rol.COMPRADOR));
+        String token = jwtService.generarToken(100L, Set.of(Rol.BUYER));
 
         long tiempoRestante = jwtService.obtenerTiempoRestanteSegundos(token);
 
         assertThat(tiempoRestante).isGreaterThan(86300L).isLessThanOrEqualTo(86400L);
+    }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("La huella de la llave JWT es el SHA-256 de los bytes decodificados (12 hex)")
+    void huellaCortaDeLaLlave() {
+        byte[] llave = java.util.Base64.getDecoder().decode("MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=");
+        org.assertj.core.api.Assertions.assertThat(JwtServiceImpl.huellaCorta(llave))
+                .hasSize(12).matches("[0-9A-F]{12}")
+                .isEqualTo(JwtServiceImpl.huellaCorta(llave.clone()));
     }
 }

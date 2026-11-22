@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Datos para registrar de forma atómica un nuevo comprador con credenciales (SR-RF-01 / SR-RF-02)")
+@Schema(description = "Support registration in ms-auth (annex). Disabled by default; the real buyer registration is POST /api/v1/users in ms-usuarios")
 public class RegistroAuthRequestDTO {
 
     @NotBlank(message = "El nombre es obligatorio")
@@ -24,30 +24,30 @@ public class RegistroAuthRequestDTO {
             regexp = "^[\\p{L}0-9 .,'\\-]+$",
             message = "El nombre contiene caracteres no permitidos"
     )
-    @Schema(description = "Nombre completo del usuario comprador", example = "Laura Gómez", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String nombre;
+    @Schema(description = "Buyer full name (2 to 100 characters)", example = "Laura Gómez", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String name;
 
     @NotBlank(message = "El correo electrónico es obligatorio")
     @Email(message = "El formato del correo electrónico es inválido")
     @Size(max = 254, message = "El correo electrónico excede la longitud máxima permitida")
-    @Schema(description = "Correo electrónico único para autenticación", example = "laura.gomez@styleradar.com", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Unique login email", example = "laura.gomez@styleradar.com", requiredMode = Schema.RequiredMode.REQUIRED)
     private String email;
 
     @Pattern(regexp = "^[+0-9\\-\\s()]{7,20}$", message = "El formato del teléfono es inválido")
-    @Schema(description = "Número telefónico de contacto opcional", example = "+57 300 123 4567")
-    private String telefono;
+    @Schema(description = "Optional contact phone (7 to 20 characters)", example = "+57 300 123 4567")
+    private String phone;
 
     @NotBlank(message = "La contraseña es obligatoria")
-    @Size(min = 8, max = 72, message = "La contraseña debe tener entre 8 y 72 caracteres")
+    @Size(min = 8, max = 30, message = "La contraseña debe tener entre 8 y 30 caracteres")
     @Pattern(
-            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,72}$",
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,30}$",
             message = "La contraseña debe incluir al menos una mayúscula, una minúscula, un número y un carácter especial"
     )
-    @Schema(description = "Contraseña que cumple la política de seguridad de la plataforma", example = "StyleRadar2026*", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Password of 8 to 30 characters with upper case, lower case, digit and symbol. Validated, never stored", example = "StyleRadar2026*", requiredMode = Schema.RequiredMode.REQUIRED)
     private String password;
 
     @Builder.Default
-    @AssertTrue(message = "Debe aceptar la política de tratamiento de datos personales (Habeas Data)")
-    @Schema(description = "Consentimiento expreso de tratamiento de datos personales conforme a la Ley 1581 (SR-RNF-02)", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean aceptaHabeasData = true;
+    @AssertTrue(message = "Debe aceptar el tratamiento de datos personales (Habeas Data)")
+    @Schema(description = "Explicit consent to personal data processing (Law 1581). Must be true", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
+    private boolean dataPolicyAccepted = true;
 }

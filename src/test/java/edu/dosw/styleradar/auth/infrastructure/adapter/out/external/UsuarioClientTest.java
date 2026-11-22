@@ -48,14 +48,14 @@ class UsuarioClientTest {
     @Test
     @DisplayName("Debe verificar credenciales cuando ms-usuarios responde correctamente")
     void verificarCredenciales_conRespuestaExitosa_debeRetornarUsuario() {
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales"))
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/verify-credentials"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(
                         """
                         {
                             "id": 10,
                             "email": "comprador@styleradar.com",
-                            "rol": "COMPRADOR",
+                            "rol": "BUYER",
                             "estado": "ACTIVA"
                         }
                         """,
@@ -67,7 +67,7 @@ class UsuarioClientTest {
 
         assertEquals(10L, response.id());
         assertEquals("comprador@styleradar.com", response.email());
-        assertEquals("COMPRADOR", response.rol());
+        assertEquals("BUYER", response.rol());
         assertEquals("ACTIVA", response.estado());
         server.verify();
     }
@@ -75,7 +75,7 @@ class UsuarioClientTest {
     @Test
     @DisplayName("Debe traducir 401/403/5xx de ms-usuarios a excepciones del dominio (RN-04, RN-03, fail-closed)")
     void verificarCredenciales_conErroresHttp_debeTraducirAExcepcionesDeDominio() {
-        String ruta = BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales";
+        String ruta = BASE_URL + "/internal/api/v1/users/verify-credentials";
         server.expect(requestTo(ruta)).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.UNAUTHORIZED));
         server.expect(requestTo(ruta)).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.FORBIDDEN));
         server.expect(requestTo(ruta)).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.BAD_GATEWAY));
@@ -92,7 +92,7 @@ class UsuarioClientTest {
     @Test
     @DisplayName("Debe marcar el correo como verificado con PATCH y tolerar la caída de ms-usuarios")
     void marcarCorreoVerificado_debeInvocarPatchYSerTolerante() {
-        String ruta = BASE_URL + "/internal/api/v1/usuarios/10/verificar-correo";
+        String ruta = BASE_URL + "/internal/api/v1/users/10/verify-email";
         server.expect(requestTo(ruta)).andExpect(method(HttpMethod.PATCH)).andRespond(withStatus(HttpStatus.NO_CONTENT));
         server.expect(requestTo(ruta)).andExpect(method(HttpMethod.PATCH))
                 .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
@@ -106,7 +106,7 @@ class UsuarioClientTest {
     @Test
     @DisplayName("Debe fallar cerrado con 503 fuera de perfil dev cuando ms-usuarios no responde (OWASP A10:2025)")
     void verificarCredenciales_sinConexionPorDefecto_debeFallarCerrado() {
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales"))
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/verify-credentials"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(request -> {
                     throw new ResourceAccessException("Servicio no disponible");
@@ -147,18 +147,18 @@ class UsuarioClientTest {
         UsuarioClient devClient = new UsuarioClient(devBuilder, BASE_URL, "u", "p", true);
 
         devServer.expect(ExpectedCount.manyTimes(),
-                        requestTo(BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales"))
+                        requestTo(BASE_URL + "/internal/api/v1/users/verify-credentials"))
                 .andRespond(request -> {
                     throw new ResourceAccessException("Sin conexión");
                 });
 
-        assertEquals("COMPRADOR",
+        assertEquals("BUYER",
                 devClient.verificarCredenciales("comprador@styleradar.com", "Password123*").rol());
-        assertEquals("ADMIN_STYLERADAR",
+        assertEquals("STYLERADAR_ADMIN",
                 devClient.verificarCredenciales("admin@styleradar.com", "Password123*").rol());
-        assertEquals("ADMIN_ALMACEN",
+        assertEquals("STORE_ADMIN",
                 devClient.verificarCredenciales("almacen@styleradar.com", "Password123*").rol());
-        assertEquals("REPRESENTANTE_FUNDACION",
+        assertEquals("FOUNDATION_REPRESENTATIVE",
                 devClient.verificarCredenciales("fundacion@styleradar.com", "Password123*").rol());
 
         for (String badPassword : new String[]{"", "wrong", "incorrecta"}) {
@@ -170,14 +170,14 @@ class UsuarioClientTest {
     @Test
     @DisplayName("Debe resolver usuario OAuth2 cuando ms-usuarios responde 200 OK")
     void resolverUsuarioOAuth_conRespuestaExitosa_debeRetornarUsuario() {
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/oauth2"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(
                         """
                         {
                             "id": 25,
                             "email": "usuario@gmail.com",
-                            "rol": "COMPRADOR",
+                            "rol": "BUYER",
                             "estado": "ACTIVA"
                         }
                         """,
@@ -189,7 +189,7 @@ class UsuarioClientTest {
 
         assertEquals(25L, response.id());
         assertEquals("usuario@gmail.com", response.email());
-        assertEquals("COMPRADOR", response.rol());
+        assertEquals("BUYER", response.rol());
         assertEquals("ACTIVA", response.estado());
         server.verify();
     }
@@ -197,7 +197,7 @@ class UsuarioClientTest {
     @Test
     @DisplayName("Debe mapear 401/403/5xx/timeout de ms-usuarios correctamente en resolverUsuarioOAuth")
     void resolverUsuarioOAuth_conErrores_debeMapearExcepcionesDeDominio() {
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/oauth2"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withStatus(HttpStatus.UNAUTHORIZED));
 
@@ -205,7 +205,7 @@ class UsuarioClientTest {
                 () -> usuarioClient.resolverUsuarioOAuth("u@gmail.com", "Ana", "GOOGLE", "1"));
 
         server.reset();
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/oauth2"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withStatus(HttpStatus.FORBIDDEN));
 
@@ -213,7 +213,7 @@ class UsuarioClientTest {
                 () -> usuarioClient.resolverUsuarioOAuth("u@gmail.com", "Ana", "GOOGLE", "1"));
 
         server.reset();
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/oauth2"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
 
@@ -221,7 +221,7 @@ class UsuarioClientTest {
                 () -> usuarioClient.resolverUsuarioOAuth("u@gmail.com", "Ana", "GOOGLE", "1"));
 
         server.reset();
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/oauth2"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(request -> {
                     throw new ResourceAccessException("Timeout");
@@ -239,10 +239,10 @@ class UsuarioClientTest {
         MockEnvironment devEnv = new MockEnvironment();
         devEnv.setActiveProfiles("dev");
         UsuarioClient devClient = new UsuarioClient(
-                devBuilder, BASE_URL, "u", "p", true, devEnv, "/internal/api/v1/usuarios/oauth2",
-                "/internal/api/v1/usuarios/{id}/verificar-correo", "/internal/api/v1/usuarios/verificar-credenciales");
+                devBuilder, BASE_URL, "u", "p", true, devEnv, "/internal/api/v1/users/oauth2",
+                "/internal/api/v1/users/{id}/verify-email", "/internal/api/v1/users/verify-credentials");
 
-        devServer.expect(ExpectedCount.once(), requestTo(BASE_URL + "/internal/api/v1/usuarios/oauth2"))
+        devServer.expect(ExpectedCount.once(), requestTo(BASE_URL + "/internal/api/v1/users/oauth2"))
                 .andRespond(request -> {
                     throw new ResourceAccessException("Offline dev");
                 });
@@ -251,7 +251,176 @@ class UsuarioClientTest {
                 devClient.resolverUsuarioOAuth("cliente.google@gmail.com", "Cliente", "GOOGLE", "sub-dev");
 
         assertEquals("ACTIVA", response.estado());
-        assertEquals("COMPRADOR", response.rol());
+        assertEquals("BUYER", response.rol());
         devServer.verify();
+    }
+
+    @Test
+    @DisplayName("Si ms-usuarios aún no expone las rutas en inglés (404), usa la ruta anterior y conserva los errores 401/403")
+    void rutasEnIngles_conRespaldoALaRutaAnterior() {
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "credencialesLegacyPath",
+                "/internal/api/v1/usuarios/verificar-credenciales");
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath",
+                "/api/v1/internal/usuarios/{id}/correo-verificado");
+
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/verify-credentials"))
+                .andRespond(withStatus(org.springframework.http.HttpStatus.NOT_FOUND));
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales"))
+                .andRespond(withSuccess("{\"id\":10,\"email\":\"a@b.co\",\"rol\":\"COMPRADOR\",\"estado\":\"ACTIVO\",\"correoVerificado\":true}",
+                        org.springframework.http.MediaType.APPLICATION_JSON));
+
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/verify-credentials"))
+                .andRespond(withStatus(org.springframework.http.HttpStatus.NOT_FOUND));
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales"))
+                .andRespond(withStatus(org.springframework.http.HttpStatus.FORBIDDEN));
+
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/10/verify-email"))
+                .andRespond(withStatus(org.springframework.http.HttpStatus.NOT_FOUND));
+        server.expect(requestTo(BASE_URL + "/api/v1/internal/usuarios/10/correo-verificado"))
+                .andExpect(method(HttpMethod.PATCH))
+                .andRespond(withStatus(org.springframework.http.HttpStatus.NO_CONTENT));
+
+        var r = usuarioClient.verificarCredenciales("a@b.co", "StyleRadar2026*");
+        org.assertj.core.api.Assertions.assertThat(r.rol()).isEqualTo("COMPRADOR");
+        org.assertj.core.api.Assertions.assertThat(r.correoVerificado()).isTrue();
+        assertThrows(edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException.class,
+                () -> usuarioClient.verificarCredenciales("a@b.co", "StyleRadar2026*"));
+        usuarioClient.marcarCorreoVerificado(10L);
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("Acepta la respuesta de ms-usuarios con los nombres del análisis v2 (role, status, emailVerified)")
+    void respuestaV2DeMsUsuarios() {
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/verify-credentials"))
+                .andRespond(withSuccess("{\"id\":7,\"email\":\"s@b.co\",\"roles\":[\"STORE_ADMIN\"],\"accountStatus\":\"ACTIVE\",\"emailVerified\":false}",
+                        org.springframework.http.MediaType.APPLICATION_JSON));
+        var r = usuarioClient.verificarCredenciales("s@b.co", "StyleRadar2026*");
+        org.assertj.core.api.Assertions.assertThat(r.rol()).isEqualTo("STORE_ADMIN");
+        org.assertj.core.api.Assertions.assertThat(r.estado()).isEqualTo("ACTIVE");
+        org.assertj.core.api.Assertions.assertThat(r.correoVerificado()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Si ms-usuarios responde 403 denyAll() en ruta en inglés, usa la ruta anterior y respeta 403 real de cuenta inactiva")
+    void rutasEnIngles_con403DeDenyAllEnMsUsuarios_usaRutaAnteriorYConservaCuentaInactiva() {
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "credencialesLegacyPath",
+                "/internal/api/v1/usuarios/verificar-credenciales");
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath",
+                "/api/v1/internal/usuarios/{id}/correo-verificado");
+
+        // 1) 403 vacío de Spring Security denyAll() -> respalda en ruta legacy -> 200 OK
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/verify-credentials"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN));
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        "{\"id\":2,\"email\":\"thedrup321@gmail.com\",\"rol\":\"COMPRADOR\",\"estado\":\"ACTIVA\",\"correoVerificado\":false}",
+                        MediaType.APPLICATION_JSON));
+
+        // 2) 403 real con cuerpo JSON de cuenta inactiva -> NO respalda y lanza CuentaNoActivaException directo
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/verify-credentials"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"message\":\"La cuenta se encuentra inactiva o bloqueada\"}"));
+
+        // 3) PATCH correo-verificado con 403 denyAll() -> respalda en ruta legacy -> 204 No Content
+        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/10/verify-email"))
+                .andExpect(method(HttpMethod.PATCH))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN));
+        server.expect(requestTo(BASE_URL + "/api/v1/internal/usuarios/10/correo-verificado"))
+                .andExpect(method(HttpMethod.PATCH))
+                .andRespond(withStatus(HttpStatus.NO_CONTENT));
+
+        var ok = usuarioClient.verificarCredenciales("thedrup321@gmail.com", "StyleRadar2026*");
+        assertEquals(2L, ok.id());
+        assertEquals("COMPRADOR", ok.rol());
+
+        assertThrows(CuentaNoActivaException.class,
+                () -> usuarioClient.verificarCredenciales("inactiva@styleradar.com", "StyleRadar2026*"));
+
+        usuarioClient.marcarCorreoVerificado(10L);
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("Debe detectar todas las variantes de 403 de cuenta no activa y respaldar 403 JSON ajeno o 404 en respaldo")
+    void rutasEnIngles_variantes403YRespaldoInexistente() {
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "credencialesLegacyPath",
+                "/internal/api/v1/usuarios/verificar-credenciales");
+
+        String rutaIngles = BASE_URL + "/internal/api/v1/users/verify-credentials";
+        String rutaLegacy = BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales";
+
+        // Variantes de cuerpo 403 que indican cuenta inactiva/bloqueada -> NO respaldan
+        for (String body : new String[]{
+                "{\"code\":\"ACCOUNT_NOT_ACTIVE\"}",
+                "{\"detail\":\"Cuenta bloqueada por administrador\"}",
+                "{\"detail\":\"User account is inactive\"}",
+                "{\"detail\":\"User account is blocked\"}"
+        }) {
+            server.expect(requestTo(rutaIngles))
+                    .andExpect(method(HttpMethod.POST))
+                    .andRespond(withStatus(HttpStatus.FORBIDDEN)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(body));
+        }
+
+        // 403 con JSON genérico (sin palabras de cuenta inactiva) -> SÍ respalda en ruta legacy
+        server.expect(requestTo(rutaIngles))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"error\":\"Forbidden\",\"message\":\"Access Denied\"}"));
+        server.expect(requestTo(rutaLegacy))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        "{\"id\":3,\"email\":\"ok@styleradar.com\",\"rol\":\"COMPRADOR\",\"estado\":\"ACTIVA\",\"correoVerificado\":true}",
+                        MediaType.APPLICATION_JSON));
+
+        // 403 en ruta inglés y 404 en ruta legacy -> relanza falloRuta (403 -> CuentaNoActivaException)
+        server.expect(requestTo(rutaIngles))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN));
+        server.expect(requestTo(rutaLegacy))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        for (int i = 0; i < 4; i++) {
+            assertThrows(CuentaNoActivaException.class,
+                    () -> usuarioClient.verificarCredenciales("bloqueada@styleradar.com", "StyleRadar2026*"));
+        }
+
+        var ok = usuarioClient.verificarCredenciales("ok@styleradar.com", "StyleRadar2026*");
+        assertEquals(3L, ok.id());
+
+        assertThrows(CuentaNoActivaException.class,
+                () -> usuarioClient.verificarCredenciales("sinrespaldo@styleradar.com", "StyleRadar2026*"));
+
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("Si la ruta legacy es vacía o igual a la principal, no reintenta y tolera 404/403 en marcarCorreoVerificado")
+    void marcarCorreoVerificado_sinRespaldoConfigurado_tolera404Y403() {
+        String rutaIngles = BASE_URL + "/internal/api/v1/users/10/verify-email";
+
+        server.expect(requestTo(rutaIngles)).andExpect(method(HttpMethod.PATCH)).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        server.expect(requestTo(rutaIngles)).andExpect(method(HttpMethod.PATCH)).andRespond(withStatus(HttpStatus.FORBIDDEN));
+        server.expect(requestTo(rutaIngles)).andExpect(method(HttpMethod.PATCH)).andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath", null);
+        usuarioClient.marcarCorreoVerificado(10L);
+
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath", "   ");
+        usuarioClient.marcarCorreoVerificado(10L);
+
+        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath",
+                UsuarioClient.DEFAULT_CORREO_VERIFICADO_PATH);
+        usuarioClient.marcarCorreoVerificado(10L);
+
+        server.verify();
     }
 }

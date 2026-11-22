@@ -14,7 +14,7 @@ import edu.dosw.styleradar.auth.domain.model.SesionAutenticada;
 import edu.dosw.styleradar.auth.domain.model.UsuarioRegistrado;
 
 /**
- * Mapper de salida (MapStruct): modelos del dominio → DTOs del contrato REST.
+ * Output mapper (MapStruct): domain models to REST DTOs (English field names, Spanish user messages).
  */
 @Mapper(componentModel = "spring")
 public interface AuthResponseMapper {
@@ -27,14 +27,24 @@ public interface AuthResponseMapper {
     @Mapping(target = "tokenType", constant = TOKEN_TYPE)
     @Mapping(target = "expiresIn", source = "expiraEnSegundos")
     @Mapping(target = "roles", source = "rol")
-    @Mapping(target = "verificacionPendiente", source = "requiereOtp")
-    @Mapping(target = "mensaje", expression = "java(sesion.requiereOtp() ? MENSAJE_OTP_ENVIADO : MENSAJE_SESION)")
+    @Mapping(target = "userId", source = "usuarioId")
+    @Mapping(target = "emailVerified", source = "correoVerificado")
+    @Mapping(target = "otpRequired", source = "requiereOtp")
+    @Mapping(target = "otpExpiresInSeconds", source = "otpExpiraEnSegundos")
+    @Mapping(target = "otpAttemptsRemaining", source = "intentosOtpRestantes")
+    @Mapping(target = "message", expression = "java(sesion.requiereOtp() ? MENSAJE_OTP_ENVIADO : MENSAJE_SESION)")
     LoginResponseDTO toLoginResponse(SesionAutenticada sesion);
 
-    @Mapping(target = "mensaje", constant = MENSAJE_REENVIO)
+    @Mapping(target = "message", constant = MENSAJE_REENVIO)
+    @Mapping(target = "expiresInSeconds", source = "expiraEnSegundos")
+    @Mapping(target = "attemptsRemaining", source = "intentosRestantes")
+    @Mapping(target = "resendsRemaining", source = "reenviosRestantes")
     OtpMensajeResponseDTO toOtpMensajeResponse(DesafioOtp desafio);
 
     @Mapping(target = "roles", source = "rol")
+    @Mapping(target = "name", source = "nombre")
+    @Mapping(target = "phone", source = "telefono")
+    @Mapping(target = "registeredAt", source = "fechaRegistro")
     UsuarioAuthResponseDTO toUsuarioAuthResponse(UsuarioRegistrado usuario);
 
     default Set<Rol> rolComoConjunto(Rol rol) {

@@ -34,7 +34,7 @@
       <img src="https://sonarcloud.io/api/project_badges/measure?project=StyleRadar1_CADCHE-Authentication-Service&metric=alert_status" alt="Quality Gate" />
     </a>
     <a href="https://sonarcloud.io/component_measures?id=StyleRadar1_CADCHE-Authentication-Service&metric=coverage">
-      <img src="https://img.shields.io/badge/JaCoCo_Coverage-95.1%25-16A34A?style=for-the-badge&logo=codecov&logoColor=white" alt="Coverage" />
+      <img src="https://img.shields.io/badge/JaCoCo_Coverage-94.8%25-16A34A?style=for-the-badge&logo=codecov&logoColor=white" alt="Coverage" />
     </a>
   </p>
   <p>
@@ -74,7 +74,7 @@
 * **Identificador de Servicio:** `ms-auth` (`CADCHE-Authentication-Service`)
 * **Paquete Arquitectónico:** `Paquete 1: Identidad` · Equipo `CADche`
 * **Puerto de Escucha Oficial:** `8100` (bloque `8100` del equipo: ms-auth `8100`, ms-usuarios `8120`, ms-tiendas `8140`)
-* **Almacenamiento Asignado:** `Redis 7`. **ms-auth no tiene base de datos relacional** (decisión de arquitectura, ver [§3.2](#32-diagrama-de-base-de-datos)): las cuentas, contraseñas y el estado `correoVerificado` pertenecen a `ms-usuarios` (patrón *Database-per-Service*) y todo el estado propio de ms-auth es efímero y con TTL (códigos OTP, bloqueos, lista negra de JWT, estado OAuth2 y rate limiting).
+* **Almacenamiento Asignado:** `Redis 7`. **ms-auth no tiene base de datos relacional** (decisión de arquitectura, ver [§3.2](#32-diagrama-de-base-de-datos)): las cuentas, contraseñas y el estado `emailVerified` pertenecen a `ms-usuarios` (patrón *Database-per-Service*) y todo el estado propio de ms-auth es efímero y con TTL (códigos OTP, bloqueos, lista negra de JWT, estado OAuth2 y rate limiting).
 * **Bounded Context:** `Autenticación, Identidad Federada y Control de Acceso (IAM)`
 
 ### Responsabilidades del Dominio
@@ -84,8 +84,8 @@
 | • **SR-RF-02 · Iniciar sesión:** valida correo y contraseña contra `ms-usuarios`, exige cuenta `ACTIVA` (RN-03) y, si el correo ya está verificado, entrega el JWT de una vez (RN-05). Si no, envía un código OTP de 6 dígitos (FA-13). | • NO guarda usuarios, perfiles ni hashes de contraseña (son de `ms-usuarios`). |
 | • **SR-RF-92 · Verificar el correo con OTP:** el código dura `300 s`, admite `3` intentos y se pide **una sola vez por cuenta** (decisión D2). Al tercer fallo anula solo el código y bloquea pedir otro durante `60 s` (D1); la verificación en curso dura `15 min`. Al verificar, marca el correo en `ms-usuarios`. | • NO administra almacenes ni fundaciones (`ms-tiendas`). |
 | • **Google OAuth2 / OIDC:** ID Token RS256 validado contra JWKS o *Authorization Code* con `state` anti-CSRF de un solo uso; no pide OTP y marca el correo como verificado (B8). | • NO publica eventos hacia otros servicios. |
-| • **Sesiones:** renovación con rotación (`/refresh`), cierre con lista negra (`/logout`) y **revocación global** al recibir `UsuarioEstadoCambiadoEvent` (cuenta `INACTIVA`/`BLOQUEADA`), con idempotencia por `eventoId`. | • NO gestiona catálogo, inventario ni pagos. |
-| • **Contrato de errores v1.2 (ProblemDetail RFC 9457):** cada error trae `type`/`title`/`detail`/`instance`, `codigo` del catálogo, `intentosRestantes`, `esperarSegundos` y la cabecera `Retry-After` en todos los `429`. | • NO expone el registro real (el `/register` es un stub solo para `dev`/`test`; en QA/PROD responde `503`). |
+| • **Sesiones:** renovación con rotación (`/refresh`), cierre con lista negra (`/logout`) y **revocación global** al recibir `user.status.changed` de ms-usuarios (cuenta `INACTIVE`/`BLOCKED`), con idempotencia por `eventId`. | • NO gestiona catálogo, inventario ni pagos. |
+| • **Contrato de errores v1.2 (ProblemDetail RFC 9457):** cada error trae `type`/`title`/`detail`/`instance`, `code` del catálogo, `errors`, `attemptsRemaining`, `retryAfterSeconds` y la cabecera `Retry-After` en todos los `429`. | • NO expone el registro real (el `/register` es un stub solo para `dev`/`test`; en QA/PROD responde `503`). |
 
 ---
 
@@ -164,7 +164,7 @@ flowchart LR
 
 * **Modelos (`record`, value objects):** `SesionAutenticada` (con las fábricas `conToken` y `pendienteDeVerificacion`), `IdentidadUsuario` (`estaActiva()` aplica RN-03), `DesafioOtp`, `UsuarioRegistrado` y `GoogleIdentityClaims`.
 * **Enumeraciones:** `Rol` (`desde(String)` rechaza roles desconocidos), `EstadoCuenta` (acepta `ACTIVO`/`ACTIVA` y similares) y `CodigoError` (15 códigos del contrato con su estado HTTP).
-* **Excepciones:** `AuthDomainException` transporta `codigo`, `intentosRestantes` y `esperarSegundos`; la infraestructura las traduce a HTTP sin que el dominio conozca HTTP.
+* **Excepciones:** `AuthDomainException` transporta el código de error, los intentos restantes y la espera (`code`, `attemptsRemaining` y `retryAfterSeconds` en el JSON); la infraestructura las traduce a HTTP sin que el dominio conozca HTTP.
 
 **Justificación del diagrama de clases.** Se genera desde el código fuente, así que refleja las clases que realmente existen. Documenta el modelo del dominio, que es donde viven las reglas del análisis de requerimientos: el estado de la cuenta (RN-03), los roles válidos, el desafío OTP y el catálogo de errores del contrato con el front. Al no depender de Spring, el diagrama también prueba que el dominio no tiene dependencias de infraestructura.
 
@@ -196,7 +196,7 @@ flowchart LR
 | `oauth2:state:{state}` | `redirectUri` autorizada, un solo uso | `300 s` |
 | `ratelimit:{ruta}:{ip}` | Contador de solicitudes (15 por minuto) | `60 s` |
 
-Si Redis no responde, ms-auth falla cerrado con `503 SERVICIO_NO_DISPONIBLE`. El respaldo en memoria solo existe en el perfil `dev` con la propiedad explícita.
+Si Redis no responde, ms-auth falla cerrado con `503 SERVICE_UNAVAILABLE`. El respaldo en memoria solo existe en el perfil `dev` con la propiedad explícita.
 
 ### 3.3 Diagrama de Componentes Específico
 
@@ -284,7 +284,9 @@ El front **siempre** llama al API Gateway (`:8080`), que enruta `/api/v1/auth/**
 
 ### Convención de rutas
 
-* Todas las rutas están **en inglés** y empiezan por **`/api/v1`**. Los nombres de los campos JSON se mantienen como los define el contrato con el front.
+* Todas las rutas están **en inglés** y empiezan por **`/api/v1`**.
+* **Análisis de requerimientos v2 (17/11/2026):** rutas, nombres de campos JSON, valores (roles, estados) y códigos de error van **en inglés**; Swagger también. **Solo los mensajes para el usuario dentro del JSON** (`message`, `detail` y los mensajes de `errors`) están en español.
+* Roles: `BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE` y `STYLERADAR_ADMIN` (respuesta y claim `roles` del JWT). Si ms-usuarios todavía envía los nombres anteriores (`COMPRADOR`, `ADMIN_ALMACEN`…), ms-auth los traduce.
 * El proyecto **no usa `/me`**. Cuando un recurso pertenece a un usuario, la ruta lo nombra explícitamente con `/users/{id}` y el backend comprueba que quien hace la petición tenga permiso sobre ese usuario. ms-auth no expone recursos por usuario: identifica a la persona con las credenciales o con el JWT.
 * `/actuator/health` y la documentación OpenAPI (`/v3/api-docs`, `/swagger-ui`) son rutas de operación y quedan fuera de esta convención.
 
@@ -292,49 +294,49 @@ El front **siempre** llama al API Gateway (`:8080`), que enruta `/api/v1/auth/**
 
 | Método | Ruta | Entrada | Respuesta | Acceso |
 | :---: | :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/auth/login` | `email`, `password` | `200 LoginResponseDTO` (token directo o `requiereOtp=true`) | Público · 15 req/min |
-| `POST` | `/api/v1/auth/otp/verify` | `email`, `codigoOtp` | `200 LoginResponseDTO` con token | Público |
-| `POST` | `/api/v1/auth/otp/resend` | `email` | `200 OtpMensajeResponseDTO` (`reenviosRestantes`) | Público |
+| `POST` | `/api/v1/auth/login` | `email`, `password` (8 a 30) | `200 LoginResponseDTO` (token directo o `otpRequired=true`) | Público · 15 req/min |
+| `POST` | `/api/v1/auth/otp/verify` | `email`, `otpCode` | `200 LoginResponseDTO` con token | Público |
+| `POST` | `/api/v1/auth/otp/resend` | `email` | `200` `email`, `message`, `expiresInSeconds`, `attemptsRemaining`, `resendsRemaining` | Público |
 | `POST` | `/api/v1/auth/refresh` | `refreshToken` (JWT vigente) | `200 LoginResponseDTO` (token rotado) | Público |
 | `POST` | `/api/v1/auth/logout` | `Authorization: Bearer` | `204` | JWT |
-| `POST` | `/api/v1/auth/register` | Datos de registro | `201` en `dev`/`test` · `503` en QA/PROD | Público |
+| `POST` | `/api/v1/auth/register` | `name`, `email`, `phone`, `password`, `dataPolicyAccepted` | `201` (`id`, `name`, `email`, `phone`, `registeredAt`, `roles`) en `dev`/`test` · `503` en QA/PROD | Público |
 | `POST` | `/api/v1/auth/oauth2/google` | `idToken` | `200 LoginResponseDTO` | Público |
-| `GET` | `/api/v1/auth/oauth2/google/url` | `redirectUri` (opcional) | `200` URL de autorización + `state` | Público |
+| `GET` | `/api/v1/auth/oauth2/google/url` | `redirectUri` (opcional) | `200` `authorizationUrl`, `state`, `expiresInSeconds`, `redirectUri` | Público |
 | `GET` | `/api/v1/auth/oauth2/google/callback` | `code`, `state` | `200 LoginResponseDTO` | Público |
 | `POST` | `/api/v1/auth/oauth2/google/code` | `code`, `state`, `redirectUri` | `200 LoginResponseDTO` | Público |
 
-### Ejemplos (contrato ms-auth ↔ Frontend v1.2)
+### Ejemplos (análisis de requerimientos v2)
 
 Login con correo **sin verificar** (se envía el OTP):
 
 ```json
 {
-  "accessToken": null, "tokenType": "Bearer", "expiresIn": 86400, "usuarioId": 12,
-  "roles": ["COMPRADOR"], "email": "comprador@correo.com", "correoVerificado": false,
-  "requiereOtp": true, "otpExpiraEnSegundos": 300, "intentosOtpRestantes": 3,
-  "verificacionPendiente": true, "mensaje": "Código de verificación OTP enviado a su correo electrónico"
+  "accessToken": null, "tokenType": "Bearer", "expiresIn": 28800, "userId": 12,
+  "roles": ["BUYER"], "email": "buyer@correo.com", "emailVerified": false,
+  "otpRequired": true, "otpExpiresInSeconds": 300, "otpAttemptsRemaining": 3,
+  "message": "Código de verificación OTP enviado a su correo electrónico"
 }
 ```
 
-`expiresIn` sale de `JWT_DURATION`. Con el correo verificado llega `accessToken` y `requiereOtp=false`.
+`expiresIn` sale de `JWT_DURATION`. Con el correo verificado llega `accessToken`, `otpRequired=false` y `message` «Inicio de sesión exitoso».
 
-Los errores salen en formato **ProblemDetail (RFC 9457)** con `Content-Type: application/problem+json`, el mismo formato de ms-usuarios y ms-tiendas (CADCHE-121). Además de `type`, `title`, `status`, `detail` e `instance` lleva las extensiones del contrato (`codigo`, `timestamp`, `validationErrors`, `intentosRestantes`, `esperarSegundos`). `error`, `message` y `path` se mantienen como alias de `title`, `detail` e `instance` para no romper al front. Ejemplo (tercer código incorrecto):
+Los errores salen en formato **ProblemDetail (RFC 9457)** con `Content-Type: application/problem+json`, el mismo formato de ms-usuarios y ms-tiendas (CADCHE-121). Además de `type`, `title`, `status`, `detail` e `instance` lleva las extensiones del análisis v2 (`code`, `errors`, `attemptsRemaining`, `retryAfterSeconds`). `type` es `https://api.styleradar.com/errors/{code en minúsculas con guiones}`. `error`, `message` y `path` se mantienen como alias de `title`, `detail` e `instance` para no romper al front. Ejemplo (tercer código incorrecto):
 
 ```json
 {
-  "type": "https://api.styleradar.com/errores/otp-intentos-agotados",
+  "type": "https://api.styleradar.com/errors/otp-attempts-exhausted",
   "title": "Too Many Requests", "status": 429,
   "detail": "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.",
   "instance": "/api/v1/auth/otp/verify",
   "timestamp": "2026-11-16T10:15:30", "error": "Too Many Requests",
-  "codigo": "OTP_INTENTOS_AGOTADOS",
+  "code": "OTP_ATTEMPTS_EXHAUSTED",
   "message": "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.",
-  "path": "/api/v1/auth/otp/verify", "validationErrors": {},
-  "intentosRestantes": 0, "esperarSegundos": 60
+  "path": "/api/v1/auth/otp/verify", "errors": {},
+  "attemptsRemaining": 0, "retryAfterSeconds": 60
 }
 ```
 
-Catálogo de `codigo`: `DATOS_INVALIDOS`, `CREDENCIALES_INCORRECTAS`, `CUENTA_NO_ACTIVA`, `OTP_INCORRECTO`, `OTP_VENCIDO`, `OTP_INTENTOS_AGOTADOS`, `OTP_REENVIO_BLOQUEADO`, `REENVIOS_AGOTADOS`, `SESION_OTP_INEXISTENTE`, `LIMITE_SOLICITUDES`, `SERVICIO_NO_DISPONIBLE`, `TOKEN_INVALIDO`, `ACCESO_DENEGADO`, `METODO_NO_PERMITIDO` y `ERROR_INTERNO`. Todos los `429` incluyen la cabecera `Retry-After`.
+Catálogo de `code`: `INVALID_DATA`, `INVALID_CREDENTIALS`, `ACCOUNT_NOT_ACTIVE`, `OTP_INCORRECT`, `OTP_EXPIRED`, `OTP_ATTEMPTS_EXHAUSTED`, `OTP_RESEND_BLOCKED`, `RESENDS_EXHAUSTED`, `OTP_SESSION_NOT_FOUND`, `RATE_LIMIT_EXCEEDED`, `SERVICE_UNAVAILABLE`, `INVALID_TOKEN`, `ACCESS_DENIED`, `METHOD_NOT_ALLOWED` y `INTERNAL_ERROR`. Todos los `429` incluyen la cabecera `Retry-After`.
 
 ---
 
@@ -344,16 +346,16 @@ Catálogo de `codigo`: `DATOS_INVALIDOS`, `CREDENCIALES_INCORRECTAS`, `CUENTA_NO
 
 | Dirección | Exchange / routing key | Cola | Origen → destino | Acción en ms-auth |
 | :--- | :--- | :--- | :--- | :--- |
-| **CONSUME** | `styleradar.exchange` / `styleradar.usuarios.estado.cambiado` | `styleradar.auth.estado-cambiado.q` (DLQ `styleradar.auth.dlq`) | `ms-usuarios` → `ms-auth` | `RevocarSesionesUsuarioUseCase`: si el estado nuevo es `INACTIVA` o `BLOQUEADA`, guarda `usuario:revocado:{id}` y todos los tokens emitidos antes quedan inválidos. |
+| **CONSUME** | `styleradar.exchange` / `user.status.changed` | `styleradar.auth.user-status-changed.q` (DLQ `styleradar.auth.dlq`) | `ms-usuarios` → `ms-auth` | `RevocarSesionesUsuarioUseCase`: si `newStatus` es `INACTIVE` o `BLOCKED`, guarda `usuario:revocado:{id}` y todos los tokens emitidos antes quedan inválidos. |
 | **PUBLICA** | — | — | — | ms-auth no publica eventos. |
 
-* **Idempotencia:** un `eventoId` repetido se descarta (`evento:procesado:{eventoId}`, 24 h).
+* **Idempotencia:** un `eventId` repetido se descarta (`evento:procesado:{eventId}`, 24 h).
 * **Resiliencia:** 3 reintentos con *backoff* exponencial y luego DLQ. Si Redis no responde, el consumidor falla para que el mensaje se reintente y nunca se pierda una revocación.
-* **Formato:** se aceptan `estadoNuevo` o `nuevoEstado`, y los estados en masculino o femenino (`BLOQUEADO`/`BLOQUEADA`).
+* **Formato:** el del análisis v2 de ms-usuarios (`eventId`, `userId`, `previousStatus`, `newStatus`, `changedBy`, `reason`, `changedAt`). Mientras ms-usuarios migra, también se aceptan los nombres anteriores en español (`eventoId`, `usuarioId`, `estadoNuevo`…) y los estados `ACTIVO`/`BLOQUEADO`.
 
 ```json
-{ "eventoId": "evt-123", "usuarioId": 42, "estadoAnterior": "ACTIVO", "estadoNuevo": "BLOQUEADO",
-  "administradorId": 1, "motivo": "Fraude", "fechaCambio": "2026-11-13T10:15:30Z" }
+{ "eventId": "evt-123", "userId": 42, "previousStatus": "ACTIVE", "newStatus": "BLOCKED",
+  "changedBy": 1, "reason": "Fraude", "changedAt": "2026-11-13T10:15:30Z" }
 ```
 
 ---
@@ -433,7 +435,8 @@ Plantilla completa en [`.env.example`](.env.example). Los secretos nunca van al 
 | `RABBITMQ_HOST` / `RABBITMQ_PORT` / `RABBITMQ_USER` / `RABBITMQ_PASSWORD` / `RABBITMQ_VHOST` / `RABBITMQ_SSL_ENABLED` | Broker del equipo Guatoque Jiraguas | `localhost` / `5672` |
 | `USUARIOS_SERVICE_URL` (dev) · `USUARIOS_QA_SERVICE_URL` | URL de `ms-usuarios` | `http://ms-usuarios:8120` |
 | `USUARIOS_INTERNAL_USERNAME` / `USUARIOS_INTERNAL_PASSWORD` | Credenciales Basic internas hacia ms-usuarios | `ms-auth` / — |
-| `USUARIOS_CREDENCIALES_PATH` / `USUARIOS_OAUTH2_PATH` / `USUARIOS_CORREO_VERIFICADO_PATH` | Rutas internas de ms-usuarios para validar credenciales, cuentas Google y marcar el correo verificado. Son de ms-usuarios: cuando ese servicio publique sus rutas en inglés se cambian aquí sin tocar código | `/internal/api/v1/usuarios/verificar-credenciales` · `/internal/api/v1/usuarios/oauth2` · `/internal/api/v1/usuarios/{id}/verificar-correo` |
+| `USUARIOS_CREDENCIALES_PATH` / `USUARIOS_OAUTH2_PATH` / `USUARIOS_CORREO_VERIFICADO_PATH` | Rutas internas de ms-usuarios en inglés (análisis v2) para validar credenciales, cuentas Google y marcar el correo verificado | `/internal/api/v1/users/verify-credentials` · `/internal/api/v1/users/oauth2` · `/internal/api/v1/users/{id}/verify-email` |
+| `USUARIOS_CREDENCIALES_LEGACY_PATH` / `USUARIOS_CORREO_VERIFICADO_LEGACY_PATH` | Rutas actuales de ms-usuarios (en español). Se usan solo si la ruta en inglés responde 404, mientras ms-usuarios migra | `/internal/api/v1/usuarios/verificar-credenciales` · `/api/v1/internal/usuarios/{id}/correo-verificado` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` / `GOOGLE_ALLOWED_REDIRECT_URIS` | Google OAuth2 (lista blanca anti Open Redirect) | — |
 | `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | SMTP para los códigos OTP | `smtp.gmail.com` / `587` |
 | `CORS_DEV_ALLOWED_ORIGINS` · `CORS_QA_ALLOWED_ORIGINS` · `CORS_ALLOWED_ORIGINS` | Orígenes permitidos (dev incluye `localhost:5173` y `:3000`) | Ver YAML |
@@ -452,9 +455,9 @@ mvn -B com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check -Dspotbugs.exclud
 
 | Métrica (`mvn verify`, rama `feature/arreglos`) | Resultado | Umbral |
 | :--- | :---: | :---: |
-| Pruebas | **197**, 0 fallos | 100 % en verde |
-| Cobertura de instrucciones (JaCoCo) | **95.1 %** | ≥ 85 % (rompe el build) |
-| Cobertura de ramas | **75.0 %** | — |
+| Pruebas | **205**, 0 fallos | 100 % en verde |
+| Cobertura de instrucciones (JaCoCo) | **94.8 %** | ≥ 85 % (rompe el build) |
+| Cobertura de ramas | **74.0 %** | — |
 | SpotBugs | 0 hallazgos | 0 |
 
 ### Pirámide de pruebas (espejo de `src/main`)
@@ -462,11 +465,11 @@ mvn -B com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check -Dspotbugs.exclud
 | Nivel | Qué cubre | Herramientas |
 | :--- | :--- | :--- |
 | **Unitarias de aplicación** | Casos de uso (`CasosDeUsoSesionTest`), servicios OTP/JWT/Email/Google | JUnit 5, Mockito, AssertJ |
-| **WebMvc de punta a punta** | Controladores con casos de uso reales y mocks solo en los bordes; contrato v1.2 (`codigo`, `Retry-After`) | MockMvc, Spring Security Test |
+| **WebMvc de punta a punta** | Controladores con casos de uso reales y mocks solo en los bordes; análisis v2 (`code`, `errors`, `Retry-After`) | MockMvc, Spring Security Test |
 | **Integración con Redis 7 real** | `OtpRedisIntegrationTest`: 3 fallos → espera → reenvío sin nuevo login, lista negra, revocación e idempotencia | Testcontainers (`redis:7-alpine`) |
 | **Seguridad** | `OwaspTop10SecurityTest` (A01–A10), filtros y cabeceras | MockMvc |
 | **Requerimientos** | `RequerimientosCompletosAuditoriaAuthTest` (SR-RF-02 / SR-RF-92) | MockMvc |
-| **Trazabilidad Word y contrato** | `TrazabilidadRequerimientosAuthTest`: un caso por flujo alterno y regla de negocio de SR-RF-02 y SR-RF-92, y por cada punto del contrato Front ↔ ms-auth v1.2, sobre Redis 7 real | Testcontainers, MockMvc |
+| **Trazabilidad Word y contrato** | `TrazabilidadRequerimientosAuthTest`: un caso por flujo alterno y regla de negocio de SR-RF-02 y SR-RF-92 (análisis v2), por cada punto del contrato Front ↔ ms-auth y por los nombres en inglés del v2, sobre Redis 7 real | Testcontainers, MockMvc |
 
 > Las pruebas de Testcontainers se omiten solas si la máquina no tiene Docker. Con Docker 29+ y Testcontainers 1.19 en local, exporte `DOCKER_API_VERSION=1.44`.
 
@@ -544,7 +547,7 @@ El seguimiento de requerimientos, historias de usuario, evidencias y artefactos 
 
 > **HU · `CADCHE · ms-auth | Autenticación dual con OTP clásico y Google OAuth2 / OpenID Connect funcional en Swagger`**
 >
-> * **Como** usuario de StyleRadar (`COMPRADOR`, `ADMIN_ALMACEN`, `REPRESENTANTE_FUNDACION` o `ADMIN_STYLERADAR`)
+> * **Como** usuario de StyleRadar (`BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE` o `STYLERADAR_ADMIN`)
 > * **Quiero** poder iniciar sesión tanto con mi correo + contraseña + código OTP de 6 dígitos como con mi cuenta de Google (`Sign-In` ID Token o flujo `Authorization Code` ejecutable desde Swagger UI y Frontend)
 > * **Para** obtener un token JWT Bearer oficial de StyleRadar de forma segura, auditable y compatible con los controles OWASP Top 10:2025.
 
@@ -553,16 +556,16 @@ El seguimiento de requerimientos, historias de usuario, evidencias y artefactos 
 | **CA-01** | El acceso tradicional (`POST /api/v1/auth/login`) delega la validación en `ms-usuarios`, almacena el OTP salteado en SHA-256 (`300 s`, máx `3` intentos/reenvíos), aplica rollback si falla SMTP y emite JWT `HS256` en `/otp/verify` (`401` si inválido/expirado, `429` si agotado). | `AuthControllerTest`, `OtpServiceTest`, `EmailServiceTest` |
 | **CA-02** | El acceso directo (`POST /api/v1/auth/oauth2/google`) verifica firma `RS256` contra Google JWKS (`NimbusJwtDecoder`), emisor Google, audiencia `GOOGLE_CLIENT_ID`, vigencia y `email_verified=true`; resuelve/aprovisiona en `ms-usuarios` (`/internal/api/v1/usuarios/oauth2`), valida `ACTIVA` y emite JWT sin desafío OTP adicional. | `GoogleOAuthAdapterTest`, `GoogleOAuth2ServiceTest` |
 | **CA-03** | El flujo navegable desde Swagger UI (`GET /oauth2/google/url` &rarr; Consentimiento Google &rarr; `GET /callback` o `POST /code`) protege contra CSRF con `oauth2:state:{state}` de un solo uso (`getAndDelete`, TTL `300 s`) y restringe redirecciones con `GOOGLE_ALLOWED_REDIRECT_URIS` (anti-Open Redirect). | `GoogleOAuth2ControllerTest`, `GoogleOAuth2SwaggerIntegrationTest` |
-| **CA-04** | Ambos métodos comparten un único ciclo JWT: rotación en `/refresh`, revocación en `/logout` (`blacklist:*`), revocación administrativa desde RabbitMQ (`auth.usuario.estado.cambiado` -> `usuario:revocado:*`), rate limiting (`429`) y respuestas homogéneas `ErrorResponseDTO` (`503` fail-closed en `qa`/`prod`). | `JwtAuthenticationFilterTest`, `RateLimitingFilterTest`, `OwaspTop10SecurityTest`, `UsuarioEstadoCambiadoConsumerTest` |
+| **CA-04** | Ambos métodos comparten un único ciclo JWT: rotación en `/refresh`, revocación en `/logout` (`blacklist:*`), revocación administrativa desde RabbitMQ (`user.status.changed` -> `usuario:revocado:*`), rate limiting (`429`) y respuestas homogéneas `ErrorResponseDTO` (`503` fail-closed en `qa`/`prod`). | `JwtAuthenticationFilterTest`, `RateLimitingFilterTest`, `OwaspTop10SecurityTest`, `UsuarioEstadoCambiadoConsumerTest` |
 
 ### Requerimientos Funcionales y No Funcionales Asignados
 
 | Código RF | Nombre del Requerimiento | Actor Principal | Criterio de Aceptación Clave Verificado |
 | :---: | :--- | :--- | :--- |
-| `SR-RF-01` | Contrato de registro inicial de comprador | `COMPRADOR` | Valida Bean Validation (`nombre`, `email`, password fuerte, `aceptaHabeasData`); opera como stub (`id=12L`, `201`) en `dev`/`test` y bloquea *fail-closed* (`503`) en `qa`/`prod` mientras la entidad reside en `ms-usuarios`. |
-| `SR-RF-02` | Inicio de sesión multi-rol con 2FA OTP y renovación JWT | `COMPRADOR`, `ADMIN_ALMACEN`, `REPRESENTANTE_FUNDACION`, `ADMIN_STYLERADAR` | Valida credenciales contra `ms-usuarios`, exige segundo factor OTP (`300 s`) y emite `LoginResponseDTO` con JWT `HS256` (`PT24H`/`12H`/`8H`), soportando rotación en `/refresh`. |
-| `SR-RF-03` | Autenticación federada con Google OAuth2 / OpenID Connect | `COMPRADOR`, `ADMIN_ALMACEN`, `REPRESENTANTE_FUNDACION`, `ADMIN_STYLERADAR` | Soporta ID Token `RS256`/JWKS (`POST /oauth2/google`) y Authorization Code con `state` anti-CSRF (`GET /url`, `GET /callback`, `POST /code`), exigiendo `email_verified=true` y cuenta `ACTIVA` en `ms-usuarios`. |
-| `SR-RF-92` | Verificación y reenvío seguro de código OTP de 6 dígitos | `COMPRADOR`, `ADMIN_ALMACEN`, `REPRESENTANTE_FUNDACION`, `ADMIN_STYLERADAR` | Almacena hash SHA-256 salteado con `TTL 300 s`, bloquea tras `3` intentos fallidos o `3` reenvíos (`429 Too Many Requests`) y limpia OTP si falla SMTP. |
+| `SR-RF-01` | Contrato de registro inicial de comprador | `BUYER` | Valida Bean Validation (`nombre`, `email`, password fuerte, `aceptaHabeasData`); opera como stub (`id=12L`, `201`) en `dev`/`test` y bloquea *fail-closed* (`503`) en `qa`/`prod` mientras la entidad reside en `ms-usuarios`. |
+| `SR-RF-02` | Inicio de sesión multi-rol con 2FA OTP y renovación JWT | `BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE`, `STYLERADAR_ADMIN` | Valida credenciales contra `ms-usuarios`, exige segundo factor OTP (`300 s`) y emite `LoginResponseDTO` con JWT `HS256` (`PT24H`/`12H`/`8H`), soportando rotación en `/refresh`. |
+| `SR-RF-03` | Autenticación federada con Google OAuth2 / OpenID Connect | `BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE`, `STYLERADAR_ADMIN` | Soporta ID Token `RS256`/JWKS (`POST /oauth2/google`) y Authorization Code con `state` anti-CSRF (`GET /url`, `GET /callback`, `POST /code`), exigiendo `email_verified=true` y cuenta `ACTIVA` en `ms-usuarios`. |
+| `SR-RF-92` | Verificación y reenvío seguro de código OTP de 6 dígitos | `BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE`, `STYLERADAR_ADMIN` | Almacena hash SHA-256 salteado con `TTL 300 s`, bloquea tras `3` intentos fallidos o `3` reenvíos (`429 Too Many Requests`) y limpia OTP si falla SMTP. |
 | `SR-RNF-01` | RBAC, revocación en logout, AMQP y rate limiting | Usuario Autenticado | Protege `/logout` con `Bearer JWT`, registra token en `blacklist:*`, revoca sesiones por evento RabbitMQ (`usuario:revocado:*`) y aplica `RateLimitingFilter` (`15/10` req/min). |
 | `SR-RNF-02` | Habeas Data, OpenAPI 3 y endurecimiento OWASP Top 10:2025 | Auditoría / Sistema | Valida `aceptaHabeasData`, publica contratos en Swagger (`dev`/`qa`, off en `prod`), inyecta cabeceras defensivas (`CSP`/`HSTS`/`DENY`) y garantiza modo *fail-closed* (`503`). |
 
@@ -721,7 +724,7 @@ $$\text{Puntaje Total} = \sum_{i=1}^{5} (\text{Calificación}_{i} \times \text{P
 | C5: Costo & TCO (20 %) | 5 | 2 | 3 | 5 |
 | **Total Ponderado** | **4.95 / 5.00 (Seleccionado)** | **3.40 / 5.00** | **4.15 / 5.00** | **3.95 / 5.00** |
 
-* **Decisión ADR-005:** Se adopta RabbitMQ 3.12+ (AMQP 0-9-1) para la arquitectura orientada a eventos; en `ms-auth`, `RabbitMQConfig` implementa `DirectExchange("styleradar.usuarios", true, false)` con cola durable `auth.usuario.estado.cambiado`.
+* **Decisión ADR-005:** Se adopta RabbitMQ 3.12+ (AMQP 0-9-1) para la arquitectura orientada a eventos; en `ms-auth`, `RabbitMQConfig` implementa `TopicExchange("styleradar.exchange")` con la cola durable `styleradar.auth.user-status-changed.q` (routing key `user.status.changed`) y DLQ.
 * **Por qué RabbitMQ:** Bajo consumo de memoria (<150 MB por instancia), enrutamiento flexible por patrones de clave (`routing key`), soporte nativo del estándar AMQP 0-9-1, confirmaciones de entrega y facilidad de despliegue tanto en Docker local como en la nube mediante CloudAMQP.
 * **Por qué no los otros:** Apache Kafka está sobredimensionado para el volumen de 13 microservicios y requiere clústeres pesados de RAM (mínimo 4 GB por broker); AWS SQS no permite ejecución 100% offline sin emuladores propietarios.
 
@@ -842,7 +845,7 @@ Cada equipo tiene un bloque exclusivo por centena con saltos de 20 entre microse
    **Java 21 LTS, Spring Boot 3.2.12, Spring Security 6, JJWT `0.12.6` (`HS256`), Spring Security OAuth2 JOSE (`NimbusJwtDecoder RS256/JWKS`), SpringDoc OpenAPI `2.3.0`, JaCoCo `0.8.12`, SpotBugs `4.8.6.6` y CycloneDX.** `Java 21` aporta `Records` inmutables; `JJWT` firma tokens internos con clave Base64 >= 256 bits, `NimbusJwtDecoder` valida tokens OIDC de Google contra sus claves JWKS públicas y la arquitectura hexagonal minimalista desacopla el puerto `GoogleOAuthPort` de los adaptadores externos (`GoogleOAuthAdapter`, `UsuarioClient`).
 
 4. **Broker de Mensajería:**
-   **RabbitMQ 3.12+ con protocolo AMQP 0-9-1 (`DirectExchange("styleradar.usuarios")`).** En el corte actual, `ms-auth` actúa exclusivamente como **consumidor** sobre la cola durable `auth.usuario.estado.cambiado` (`routing key`: `usuario.estado.cambiado`) mediante `UsuarioEstadoCambiadoConsumer`, registrando `usuario:revocado:{id}` en Redis cuando `ms-usuarios` bloquea o inactiva una cuenta (y propagando `DataAccessException` para no perder eventos). El envío OTP se realiza síncronamente vía SMTP (`EmailServiceImpl`) sin productores AMQP activos.
+   **RabbitMQ 3.12+ con protocolo AMQP 0-9-1 (`TopicExchange("styleradar.exchange")`).** En el corte actual, `ms-auth` actúa exclusivamente como **consumidor** sobre la cola durable `styleradar.auth.user-status-changed.q` (`routing key`: `user.status.changed`) mediante `UsuarioEstadoCambiadoConsumer`, registrando `usuario:revocado:{id}` en Redis cuando `ms-usuarios` bloquea o inactiva una cuenta (y propagando `DataAccessException` para no perder eventos). El envío OTP se realiza síncronamente vía SMTP (`EmailServiceImpl`) sin productores AMQP activos.
 
 ---
 
@@ -882,7 +885,7 @@ La adopción de Java 21 LTS y Spring Boot 3.2.x garantiza un ecosistema robusto,
 Evaluación técnica y verificación automatizada de **`CADCHE-Authentication-Service` (`ms-auth`)** frente a las **10 categorías oficiales del estándar OWASP Top 10:2025** (`A01:2025` – `A10:2025`), contrastada directamente contra el código endurecido, la configuración por perfiles (`dev`, `test`, `qa`, `prod`), el contenedor `Dockerfile` y el pipeline `.github/workflows/ci.yml`.
 
 > [!NOTE]
-> **Verificación automatizada post-remediación y Google OAuth2 / OIDC:** Suite ejecutada sobre **Java 21 LTS** y **Spring Boot 3.2.12** mediante `mvn -B clean verify com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check --no-transfer-progress`: **23 clases de prueba (`src/test/java`)**, **197 pruebas ejecutadas (0 fallos, 0 errores, 0 omitidas)** incluyendo [`OwaspTop10SecurityTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/security/OwaspTop10SecurityTest.java), [`GoogleOAuth2ServiceTest`](src/test/java/edu/dosw/styleradar/auth/application/service/GoogleOAuth2ServiceTest.java), [`GoogleOAuthAdapterTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/adapter/out/external/GoogleOAuthAdapterTest.java), [`GoogleOAuth2ControllerTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/adapter/in/rest/GoogleOAuth2ControllerTest.java) y [`GoogleOAuth2SwaggerIntegrationTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/GoogleOAuth2SwaggerIntegrationTest.java); cobertura **JaCoCo `0.8.12`** de **95.1 % en instrucciones (`6268 / 6594`, mínimo 85 %)**, **SpotBugs `0` bugs / `0` errores** y generación de **SBOM CycloneDX 1.6 (`target/bom.json` / `target/bom.xml`, 99 componentes)**. *(ms-auth no usa base SQL: el estado vive en Redis 7 y las credenciales en ms-usuarios).*
+> **Verificación automatizada post-remediación y Google OAuth2 / OIDC:** Suite ejecutada sobre **Java 21 LTS** y **Spring Boot 3.2.12** mediante `mvn -B clean verify com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check --no-transfer-progress`: **23 clases de prueba (`src/test/java`)**, **205 pruebas ejecutadas (0 fallos, 0 errores, 0 omitidas)** incluyendo [`OwaspTop10SecurityTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/security/OwaspTop10SecurityTest.java), [`GoogleOAuth2ServiceTest`](src/test/java/edu/dosw/styleradar/auth/application/service/GoogleOAuth2ServiceTest.java), [`GoogleOAuthAdapterTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/adapter/out/external/GoogleOAuthAdapterTest.java), [`GoogleOAuth2ControllerTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/adapter/in/rest/GoogleOAuth2ControllerTest.java) y [`GoogleOAuth2SwaggerIntegrationTest`](src/test/java/edu/dosw/styleradar/auth/infrastructure/GoogleOAuth2SwaggerIntegrationTest.java); cobertura **JaCoCo `0.8.12`** de **94.8 % en instrucciones (`6359 / 6706`, mínimo 85 %)**, **SpotBugs `0` bugs / `0` errores** y generación de **SBOM CycloneDX 1.6 (`target/bom.json` / `target/bom.xml`, 99 componentes)**. *(ms-auth no usa base SQL: el estado vive en Redis 7 y las credenciales en ms-usuarios).*
 
 ### 14.1 Matriz Consolidada OWASP Top 10:2025
 
@@ -928,7 +931,7 @@ Evaluación técnica y verificación automatizada de **`CADCHE-Authentication-Se
 * **Controles verificados en código:**
   1. Runtime y compilación unificados a **Java 21 LTS** en `pom.xml`, `Dockerfile` y `.github/workflows/ci.yml`, junto con dependencias fijadas (`Spring Boot 3.2.12`, `jjwt 0.12.6`, `postgresql 42.7.4`, `flyway 10.20.1`).
   2. `Dockerfile` multi-stage construye con `maven:3.9.9-eclipse-temurin-21-alpine` y ejecuta sobre `eclipse-temurin:21-jre-alpine` con usuario sin privilegios `appuser:appgroup`, etiquetas OCI, flags JVM conscientes de contenedor y `HEALTHCHECK` contra `/actuator/health`.
-  3. `cyclonedx-maven-plugin:2.9.3` genera en fase `package` el SBOM CycloneDX 1.6 (`target/bom.xml` y `target/bom.json`, `99` componentes), publicado en CI (`sbom-cyclone-dx-auth`), junto a Actions fijadas por hash SHA, `SpotBugs` (`0` bugs), `JaCoCo` (`95.1 % >= 85 %`), SonarCloud Quality Gate y `provenance: true` / `sbom: true` en Docker Buildx.
+  3. `cyclonedx-maven-plugin:2.9.3` genera en fase `package` el SBOM CycloneDX 1.6 (`target/bom.xml` y `target/bom.json`, `99` componentes), publicado en CI (`sbom-cyclone-dx-auth`), junto a Actions fijadas por hash SHA, `SpotBugs` (`0` bugs), `JaCoCo` (`94.8 % >= 85 %`), SonarCloud Quality Gate y `provenance: true` / `sbom: true` en Docker Buildx.
 
 #### A04:2025 – Cryptographic Failures
 
@@ -944,7 +947,7 @@ Evaluación técnica y verificación automatizada de **`CADCHE-Authentication-Se
 * **¿Aplica?:** **SÍ (Alto).** Procesa entradas REST, construye claves Redis, redacta correos y emite logs.
 * **Estado:** 🟢 **PASS *(Mitigado)***
 * **Controles verificados en código:**
-  1. Bean Validation (`@Valid`) estricta en los `9` DTOs de petición: `@Email` con `@Size(max=254)`, `@Size(max=2048)` en `refreshToken`, `@NotBlank` en `idToken`/`code`/`state` de Google OAuth2, regex segura en `nombre`, contraseña robusta en `RegistroAuthRequestDTO` (`^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,72}$`) y `^\d{6}$` en `codigoOtp`.
+  1. Bean Validation (`@Valid`) estricta en los `9` DTOs de petición: `@Email` con `@Size(max=254)`, `@Size(max=2048)` en `refreshToken`, `@NotBlank` en `idToken`/`code`/`state` de Google OAuth2, regex segura en `nombre`, contraseña robusta en `RegistroAuthRequestDTO` (`^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,72}$`) y `^\d{6}$` en `otpCode`.
   2. `SecuritySanitizer.normalizeEmail()` rechaza caracteres de control (`\r`, `\n`, `\t`, `Cntrl`) antes de indexar Redis o enviar SMTP; `SecuritySanitizer.sanitizeForLog()` sanea URIs y mensajes en filtros, consumidores y `GlobalExceptionHandler`.
   3. `RabbitMQConfig` configura `DefaultJackson2JavaTypeMapper` restringiendo deserialización a paquetes confiables (`edu.dosw.styleradar.auth.*`, `java.util`, `java.time`).
 
@@ -1004,4 +1007,4 @@ Evaluación técnica y verificación automatizada de **`CADCHE-Authentication-Se
 | **Fail-Closed, Auditoría y Mensajería (`A08`, `A09`, `A10`)** | Excepción `503` unificada fuera de `dev`, rollback OTP en fallo SMTP, máscara PII, filtro `BLOQUEADA`/`INACTIVA` y paquetes confiables RabbitMQ. | `ServicioExternoNoDisponibleException.java`, `EmailServiceImpl.java`, `UsuarioEstadoCambiadoConsumer.java`, `RabbitMQConfig.java`, `GlobalExceptionHandlerTest.java` |
 | **Endurecimiento de Infraestructura y Supply Chain (`A02`, `A03`)** | Cabeceras defensivas, perfiles `qa`/`prod`, Java 21 LTS, `Dockerfile` no-root con `HEALTHCHECK`, SBOM CycloneDX 1.6 y `SpotBugs` `0` bugs. | `SecurityHeadersFilter.java`, `application*.yml`, `pom.xml`, `Dockerfile`, `.github/workflows/ci.yml`, `OwaspTop10SecurityTest.java`, `GoogleOAuth2SwaggerIntegrationTest.java` |
 
-*Última actualización del análisis: Remediación integral y autenticación Google OAuth2 / OIDC sobre la rama `feature/arreglos` (`197` pruebas PASS, JaCoCo `95.1 %`, SpotBugs `0` bugs, SBOM CycloneDX `99` componentes).*
+*Última actualización del análisis: Remediación integral y autenticación Google OAuth2 / OIDC sobre la rama `feature/arreglos` (`205` pruebas PASS, JaCoCo `94.8 %`, SpotBugs `0` bugs, SBOM CycloneDX `99` componentes).*

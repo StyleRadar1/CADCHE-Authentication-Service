@@ -99,13 +99,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (otpService != null && otpService.esTokenInvalido(token)) {
                 log.warn("Rechazo 401: token JWT en blacklist para usuario ID {} en ruta {}", usuarioId, safeUri);
-                rejectRequest(response, HttpStatus.UNAUTHORIZED, safeUri, "El token ha sido revocado");
+                rejectRequest(response, HttpStatus.UNAUTHORIZED, safeUri, "El token presentado es inválido o expirado");
                 return;
             }
 
             if (isUserRevoked(usuarioId, fechaEmision, safeUri)) {
                 log.warn("Rechazo 401: sesión revocada globalmente para usuario ID {} en ruta {}", usuarioId, safeUri);
-                rejectRequest(response, HttpStatus.UNAUTHORIZED, safeUri, "El token ha sido revocado");
+                rejectRequest(response, HttpStatus.UNAUTHORIZED, safeUri, SecurityErrorResponseWriter.MENSAJE_SESION_REVOCADA);
                 return;
             }
 

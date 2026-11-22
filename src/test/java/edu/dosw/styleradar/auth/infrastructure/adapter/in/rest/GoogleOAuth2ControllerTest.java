@@ -77,7 +77,7 @@ class GoogleOAuth2ControllerTest {
     @DisplayName("POST /api/v1/auth/oauth2/google debe emitir JWT 200 OK con ID Token válido sin Header Authorization")
     void autenticarConGoogle_conIdTokenValido_debeRetornar200() throws Exception {
         GoogleLoginRequestDTO request = new GoogleLoginRequestDTO("google.id.token.valido");
-        SesionAutenticada expected = SesionAutenticada.conToken("styleradar.jwt.token", 86400L, 25L, Rol.COMPRADOR, "google@styleradar.com");
+        SesionAutenticada expected = SesionAutenticada.conToken("styleradar.jwt.token", 86400L, 25L, Rol.BUYER, "google@styleradar.com");
 
         when(googleOAuth2Service.autenticarConIdToken("google.id.token.valido")).thenReturn(expected);
 
@@ -87,9 +87,9 @@ class GoogleOAuth2ControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken", is("styleradar.jwt.token")))
                 .andExpect(jsonPath("$.tokenType", is("Bearer")))
-                .andExpect(jsonPath("$.usuarioId", is(25)))
-                .andExpect(jsonPath("$.roles[0]", is("COMPRADOR")))
-                .andExpect(jsonPath("$.requiereOtp", is(false)));
+                .andExpect(jsonPath("$.userId", is(25)))
+                .andExpect(jsonPath("$.roles[0]", is("BUYER")))
+                .andExpect(jsonPath("$.otpRequired", is(false)));
     }
 
     @Test
@@ -101,11 +101,11 @@ class GoogleOAuth2ControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status", is(400)));
 
-        when(googleOAuth2Service.autenticarConIdToken("token-invalido"))
+        when(googleOAuth2Service.autenticarConIdToken("invalid-token"))
                 .thenThrow(new CredencialesIncorrectasException("El ID Token de Google es inválido"));
         mockMvc.perform(post("/api/v1/auth/oauth2/google")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"idToken\":\"token-invalido\"}"))
+                        .content("{\"idToken\":\"invalid-token\"}"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)));
 
@@ -152,7 +152,7 @@ class GoogleOAuth2ControllerTest {
     @Test
     @DisplayName("GET /api/v1/auth/oauth2/google/callback debe completar login, rechazar access_denied (401) o falta de code/state (400)")
     void callbackGoogle_debeManejarExitoCancelacionYParametrosFaltantes() throws Exception {
-        SesionAutenticada expected = SesionAutenticada.conToken("styleradar.jwt.callback", 86400L, 30L, Rol.COMPRADOR, "google@styleradar.com");
+        SesionAutenticada expected = SesionAutenticada.conToken("styleradar.jwt.callback", 86400L, 30L, Rol.BUYER, "google@styleradar.com");
         when(googleOAuth2Service.autenticarConCodigo("code-ok", "state-ok", null)).thenReturn(expected);
 
         mockMvc.perform(get("/api/v1/auth/oauth2/google/callback")
@@ -160,7 +160,7 @@ class GoogleOAuth2ControllerTest {
                         .param("state", "state-ok"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken", is("styleradar.jwt.callback")))
-                .andExpect(jsonPath("$.requiereOtp", is(false)));
+                .andExpect(jsonPath("$.otpRequired", is(false)));
 
         mockMvc.perform(get("/api/v1/auth/oauth2/google/callback")
                         .param("error", "access_denied")
@@ -181,7 +181,7 @@ class GoogleOAuth2ControllerTest {
     void autenticarConCodigo_debeRetornar200OValidarDto() throws Exception {
         GoogleCodeLoginRequestDTO request = new GoogleCodeLoginRequestDTO(
                 "code-xyz", "state-xyz", "http://localhost:3000/auth/google/callback");
-        SesionAutenticada expected = SesionAutenticada.conToken("styleradar.jwt.code", 86400L, 90L, Rol.ADMIN_STYLERADAR, "google@styleradar.com");
+        SesionAutenticada expected = SesionAutenticada.conToken("styleradar.jwt.code", 86400L, 90L, Rol.STYLERADAR_ADMIN, "google@styleradar.com");
 
         when(googleOAuth2Service.autenticarConCodigo(
                 "code-xyz", "state-xyz", "http://localhost:3000/auth/google/callback"))
@@ -192,7 +192,7 @@ class GoogleOAuth2ControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken", is("styleradar.jwt.code")))
-                .andExpect(jsonPath("$.roles[0]", is("ADMIN_STYLERADAR")));
+                .andExpect(jsonPath("$.roles[0]", is("STYLERADAR_ADMIN")));
 
         mockMvc.perform(post("/api/v1/auth/oauth2/google/code")
                         .contentType(MediaType.APPLICATION_JSON)

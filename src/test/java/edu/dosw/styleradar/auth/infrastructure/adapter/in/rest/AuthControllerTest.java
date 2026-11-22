@@ -99,7 +99,7 @@ class AuthControllerTest {
         when(otpService.obtenerMaxIntentos()).thenReturn(3);
         when(otpService.obtenerReenviosRestantes(anyString())).thenReturn(2);
         when(otpService.obtenerUsuarioId("comprador@styleradar.com")).thenReturn(10L);
-        when(otpService.obtenerRol("comprador@styleradar.com")).thenReturn("COMPRADOR");
+        when(otpService.obtenerRol("comprador@styleradar.com")).thenReturn("BUYER");
     }
 
     @Test
@@ -109,30 +109,30 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + "a".repeat(250) + "@x.co\",\"password\":\"\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.codigo", is("DATOS_INVALIDOS")))
-                .andExpect(jsonPath("$.validationErrors.email", is("El correo electrónico excede la longitud máxima permitida")))
-                .andExpect(jsonPath("$.validationErrors.password", is("La contraseña es obligatoria")));
+                .andExpect(jsonPath("$.code", is("INVALID_DATA")))
+                .andExpect(jsonPath("$.errors.email", is("El correo electrónico excede la longitud máxima permitida")))
+                .andExpect(jsonPath("$.errors.password", is("La contraseña es obligatoria")));
 
         mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"\",\"codigoOtp\":\"\"}"))
+                        .content("{\"email\":\"\",\"otpCode\":\"\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.validationErrors.email", is("El correo electrónico es obligatorio")))
-                .andExpect(jsonPath("$.validationErrors.codigoOtp", is("El código OTP es obligatorio")));
+                .andExpect(jsonPath("$.errors.email", is("El correo electrónico es obligatorio")))
+                .andExpect(jsonPath("$.errors.otpCode", is("El código OTP es obligatorio")));
     }
 
     @Test
     @DisplayName("Contrato 3.2: el correo con espacios alrededor se acepta y se normaliza (sin espacios y en minúsculas)")
     void login_conEspaciosEnElCorreo_seNormaliza() throws Exception {
         when(usuarioClient.verificarCredenciales(anyString(), eq("Password123*")))
-                .thenReturn(new VerificarCredencialesResponseDTO(10L, "comprador@styleradar.com", "COMPRADOR", "ACTIVA", true));
+                .thenReturn(new VerificarCredencialesResponseDTO(10L, "comprador@styleradar.com", "BUYER", "ACTIVA", true));
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"  Comprador@StyleRadar.com \",\"password\":\"Password123*\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email", is("comprador@styleradar.com")))
-                .andExpect(jsonPath("$.requiereOtp", is(false)));
+                .andExpect(jsonPath("$.otpRequired", is(false)));
     }
 
     @Test
@@ -141,8 +141,8 @@ class AuthControllerTest {
         LoginRequestDTO request = new LoginRequestDTO("comprador@styleradar.com", "Password123*");
 
         when(usuarioClient.verificarCredenciales("comprador@styleradar.com", "Password123*"))
-                .thenReturn(new VerificarCredencialesResponseDTO(10L, "comprador@styleradar.com", "COMPRADOR", "ACTIVA"));
-        when(otpService.generarOtp("comprador@styleradar.com", 10L, "COMPRADOR"))
+                .thenReturn(new VerificarCredencialesResponseDTO(10L, "comprador@styleradar.com", "BUYER", "ACTIVA"));
+        when(otpService.generarOtp("comprador@styleradar.com", 10L, "BUYER"))
                 .thenReturn("123456");
         doNothing().when(emailService).enviarOtp("comprador@styleradar.com", "123456");
 
@@ -150,14 +150,14 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.requiereOtp", is(true)))
-                .andExpect(jsonPath("$.usuarioId", is(10)))
-                .andExpect(jsonPath("$.roles[0]", is("COMPRADOR")))
-                .andExpect(jsonPath("$.otpExpiraEnSegundos", is(300)))
-                .andExpect(jsonPath("$.intentosOtpRestantes", is(3)))
+                .andExpect(jsonPath("$.otpRequired", is(true)))
+                .andExpect(jsonPath("$.userId", is(10)))
+                .andExpect(jsonPath("$.roles[0]", is("BUYER")))
+                .andExpect(jsonPath("$.otpExpiresInSeconds", is(300)))
+                .andExpect(jsonPath("$.otpAttemptsRemaining", is(3)))
                 .andExpect(jsonPath("$.accessToken").doesNotExist())
                 .andExpect(jsonPath("$.email", is("comprador@styleradar.com")))
-                .andExpect(jsonPath("$.correoVerificado", is(false)))
+                .andExpect(jsonPath("$.emailVerified", is(false)))
                 .andExpect(jsonPath("$.expiresIn", is(43200)));
 
         verify(emailService).enviarOtp("comprador@styleradar.com", "123456");
@@ -176,7 +176,7 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
-                .andExpect(jsonPath("$.codigo", is("CREDENCIALES_INCORRECTAS")))
+                .andExpect(jsonPath("$.code", is("INVALID_CREDENTIALS")))
                 .andExpect(jsonPath("$.message", containsString("incorrectos")));
     }
 
@@ -193,7 +193,7 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status", is(403)))
-                .andExpect(jsonPath("$.codigo", is("CUENTA_NO_ACTIVA")))
+                .andExpect(jsonPath("$.code", is("ACCOUNT_NOT_ACTIVE")))
                 .andExpect(jsonPath("$.message", containsString("inactiva o bloqueada")));
     }
 
@@ -207,8 +207,8 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status", is(400)))
-                .andExpect(jsonPath("$.codigo", is("DATOS_INVALIDOS")))
-                .andExpect(jsonPath("$.validationErrors.email").exists());
+                .andExpect(jsonPath("$.code", is("INVALID_DATA")))
+                .andExpect(jsonPath("$.errors.email").exists());
     }
 
     @Test
@@ -217,7 +217,7 @@ class AuthControllerTest {
         VerificarOtpRequestDTO request = new VerificarOtpRequestDTO("comprador@styleradar.com", "482915");
 
         when(otpService.obtenerUsuarioId("comprador@styleradar.com")).thenReturn(10L);
-        when(otpService.obtenerRol("comprador@styleradar.com")).thenReturn("COMPRADOR");
+        when(otpService.obtenerRol("comprador@styleradar.com")).thenReturn("BUYER");
         doNothing().when(otpService).verificarOtp("comprador@styleradar.com", "482915");
         when(jwtService.generarToken(eq(10L), anySet())).thenReturn("jwt.token.firmado");
 
@@ -227,11 +227,11 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken", is("jwt.token.firmado")))
                 .andExpect(jsonPath("$.tokenType", is("Bearer")))
-                .andExpect(jsonPath("$.requiereOtp", is(false)))
-                .andExpect(jsonPath("$.usuarioId", is(10)))
+                .andExpect(jsonPath("$.otpRequired", is(false)))
+                .andExpect(jsonPath("$.userId", is(10)))
                 .andExpect(jsonPath("$.email", is("comprador@styleradar.com")))
-                .andExpect(jsonPath("$.correoVerificado", is(true)))
-                .andExpect(jsonPath("$.intentosOtpRestantes", is(0)));
+                .andExpect(jsonPath("$.emailVerified", is(true)))
+                .andExpect(jsonPath("$.otpAttemptsRemaining", is(0)));
 
         verify(otpService).eliminarOtp("comprador@styleradar.com");
         verify(usuarioClient).marcarCorreoVerificado(10L);
@@ -250,8 +250,8 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
-                .andExpect(jsonPath("$.codigo", is("OTP_INCORRECTO")))
-                .andExpect(jsonPath("$.intentosRestantes", is(2)))
+                .andExpect(jsonPath("$.code", is("OTP_INCORRECT")))
+                .andExpect(jsonPath("$.attemptsRemaining", is(2)))
                 .andExpect(jsonPath("$.message", containsString("incorrecto")));
     }
 
@@ -268,7 +268,7 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
-                .andExpect(jsonPath("$.codigo", is("OTP_VENCIDO")))
+                .andExpect(jsonPath("$.code", is("OTP_EXPIRED")))
                 .andExpect(jsonPath("$.message", containsString("expiró")));
     }
 
@@ -285,9 +285,9 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.status", is(429)))
-                .andExpect(jsonPath("$.codigo", is("OTP_INTENTOS_AGOTADOS")))
-                .andExpect(jsonPath("$.intentosRestantes", is(0)))
-                .andExpect(jsonPath("$.esperarSegundos", is(60)))
+                .andExpect(jsonPath("$.code", is("OTP_ATTEMPTS_EXHAUSTED")))
+                .andExpect(jsonPath("$.attemptsRemaining", is(0)))
+                .andExpect(jsonPath("$.retryAfterSeconds", is(60)))
                 .andExpect(header().string(HttpHeaders.RETRY_AFTER, "60"))
                 .andExpect(jsonPath("$.message", is("Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.")));
     }
@@ -317,9 +317,9 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email", is("comprador@styleradar.com")))
-                .andExpect(jsonPath("$.expiraEnSegundos", is(300)))
-                .andExpect(jsonPath("$.intentosRestantes", is(3)))
-                .andExpect(jsonPath("$.reenviosRestantes", is(2)));
+                .andExpect(jsonPath("$.expiresInSeconds", is(300)))
+                .andExpect(jsonPath("$.attemptsRemaining", is(3)))
+                .andExpect(jsonPath("$.resendsRemaining", is(2)));
 
         verify(emailService).enviarOtp("comprador@styleradar.com", "654321");
     }
@@ -337,7 +337,7 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
-                .andExpect(jsonPath("$.codigo", is("SESION_OTP_INEXISTENTE")));
+                .andExpect(jsonPath("$.code", is("OTP_SESSION_NOT_FOUND")));
     }
 
     @Test
@@ -352,7 +352,7 @@ class AuthControllerTest {
         when(jwtService.validarToken("token.valido.jwt")).thenReturn(claims);
         when(otpService.esTokenInvalido("token.valido.jwt")).thenReturn(false);
         when(jwtService.obtenerUsuarioId("token.valido.jwt")).thenReturn(10L);
-        when(jwtService.obtenerRoles("token.valido.jwt")).thenReturn(Set.of(Rol.COMPRADOR));
+        when(jwtService.obtenerRoles("token.valido.jwt")).thenReturn(Set.of(Rol.BUYER));
         when(jwtService.generarToken(eq(10L), anySet())).thenReturn("nuevo.token.jwt");
 
         mockMvc.perform(post("/api/v1/auth/refresh")
@@ -360,7 +360,7 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken", is("nuevo.token.jwt")))
-                .andExpect(jsonPath("$.usuarioId", is(10)));
+                .andExpect(jsonPath("$.userId", is(10)));
     }
 
     @Test
@@ -380,7 +380,7 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
-                .andExpect(jsonPath("$.codigo", is("TOKEN_INVALIDO")))
+                .andExpect(jsonPath("$.code", is("INVALID_TOKEN")))
                 .andExpect(jsonPath("$.message", containsString("revocado")));
     }
 
@@ -415,9 +415,9 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.nombre", is("Carlos Pérez")))
+                .andExpect(jsonPath("$.name", is("Carlos Pérez")))
                 .andExpect(jsonPath("$.email", is("carlos@styleradar.com")))
-                .andExpect(jsonPath("$.roles[0]", is("COMPRADOR")));
+                .andExpect(jsonPath("$.roles[0]", is("BUYER")));
     }
 
     @Test
@@ -441,8 +441,8 @@ class AuthControllerTest {
         LoginRequestDTO request = new LoginRequestDTO("comprador@styleradar.com", "Password123*");
 
         when(usuarioClient.verificarCredenciales("comprador@styleradar.com", "Password123*"))
-                .thenReturn(new VerificarCredencialesResponseDTO(10L, "comprador@styleradar.com", "COMPRADOR", "ACTIVA"));
-        when(otpService.generarOtp("comprador@styleradar.com", 10L, "COMPRADOR"))
+                .thenReturn(new VerificarCredencialesResponseDTO(10L, "comprador@styleradar.com", "BUYER", "ACTIVA"));
+        when(otpService.generarOtp("comprador@styleradar.com", 10L, "BUYER"))
                 .thenReturn("123456");
         doThrow(new ServicioExternoNoDisponibleException("SMTP caído"))
                 .when(emailService).enviarOtp("comprador@styleradar.com", "123456");
@@ -468,7 +468,7 @@ class AuthControllerTest {
         when(otpService.esTokenInvalido("token.antiguo.jwt")).thenReturn(false);
         when(jwtService.validarToken("token.antiguo.jwt")).thenReturn(claims);
         when(jwtService.obtenerUsuarioId("token.antiguo.jwt")).thenReturn(10L);
-        when(jwtService.obtenerRoles("token.antiguo.jwt")).thenReturn(Set.of(Rol.COMPRADOR));
+        when(jwtService.obtenerRoles("token.antiguo.jwt")).thenReturn(Set.of(Rol.BUYER));
         when(otpService.estaUsuarioRevocado(eq(10L), org.mockito.ArgumentMatchers.anyLong())).thenReturn(false);
         when(jwtService.obtenerTiempoRestanteSegundos("token.antiguo.jwt")).thenReturn(1800L);
         when(jwtService.generarToken(eq(10L), anySet())).thenReturn("token.rotado.jwt");
@@ -494,7 +494,7 @@ class AuthControllerTest {
         when(otpService.esTokenInvalido("token.usuario.revocado")).thenReturn(false);
         when(jwtService.validarToken("token.usuario.revocado")).thenReturn(claims);
         when(jwtService.obtenerUsuarioId("token.usuario.revocado")).thenReturn(10L);
-        when(jwtService.obtenerRoles("token.usuario.revocado")).thenReturn(Set.of(Rol.COMPRADOR));
+        when(jwtService.obtenerRoles("token.usuario.revocado")).thenReturn(Set.of(Rol.BUYER));
         when(otpService.estaUsuarioRevocado(10L, 1000L)).thenReturn(true);
 
         mockMvc.perform(post("/api/v1/auth/refresh")
@@ -517,7 +517,7 @@ class AuthControllerTest {
     void debeCubrirRamasDefensivasDelControlador() throws Exception {
         LoginRequestDTO loginReq = new LoginRequestDTO("comprador@styleradar.com", "Password123*");
         when(usuarioClient.verificarCredenciales("comprador@styleradar.com", "Password123*"))
-                .thenReturn(new VerificarCredencialesResponseDTO(null, "comprador@styleradar.com", "COMPRADOR", "ACTIVA"));
+                .thenReturn(new VerificarCredencialesResponseDTO(null, "comprador@styleradar.com", "BUYER", "ACTIVA"));
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -557,7 +557,7 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Bearer    "))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.codigo", is("TOKEN_INVALIDO")));
+                .andExpect(jsonPath("$.code", is("INVALID_TOKEN")));
 
         RegistrarUsuarioUseCaseImpl registroCerrado =
                 new RegistrarUsuarioUseCaseImpl(false, java.time.Clock.systemUTC());
@@ -571,7 +571,7 @@ class AuthControllerTest {
     void login_conCorreoVerificado_debeEntregarTokenSinOtp() throws Exception {
         when(usuarioClient.verificarCredenciales("verificado@styleradar.com", "Password123*"))
                 .thenReturn(new VerificarCredencialesResponseDTO(
-                        11L, "verificado@styleradar.com", "ADMIN_ALMACEN", "ACTIVA", true));
+                        11L, "verificado@styleradar.com", "STORE_ADMIN", "ACTIVA", true));
         when(jwtService.generarToken(eq(11L), anySet())).thenReturn("jwt.directo");
 
         mockMvc.perform(post("/api/v1/auth/login")
@@ -580,23 +580,23 @@ class AuthControllerTest {
                                 new LoginRequestDTO("Verificado@StyleRadar.com", "Password123*"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken", is("jwt.directo")))
-                .andExpect(jsonPath("$.requiereOtp", is(false)))
-                .andExpect(jsonPath("$.correoVerificado", is(true)))
-                .andExpect(jsonPath("$.otpExpiraEnSegundos").doesNotExist())
-                .andExpect(jsonPath("$.intentosOtpRestantes", is(0)))
+                .andExpect(jsonPath("$.otpRequired", is(false)))
+                .andExpect(jsonPath("$.emailVerified", is(true)))
+                .andExpect(jsonPath("$.otpExpiresInSeconds").doesNotExist())
+                .andExpect(jsonPath("$.otpAttemptsRemaining", is(0)))
                 .andExpect(jsonPath("$.expiresIn", is(43200)))
-                .andExpect(jsonPath("$.roles[0]", is("ADMIN_ALMACEN")));
+                .andExpect(jsonPath("$.roles[0]", is("STORE_ADMIN")));
 
         org.mockito.Mockito.verifyNoInteractions(emailService);
         verify(otpService, org.mockito.Mockito.never()).generarOtp(anyString(), any(), anyString());
     }
 
     @Test
-    @DisplayName("SR-RF-02 FA-15: login con correo sin verificar durante la espera de 60 s responde 429 OTP_REENVIO_BLOQUEADO")
+    @DisplayName("SR-RF-02 FA-15: login con correo sin verificar durante la espera de 60 s responde 429 OTP_RESEND_BLOCKED")
     void login_durantePenalizacion_debeResponder429ConRetryAfter() throws Exception {
         when(usuarioClient.verificarCredenciales("comprador@styleradar.com", "Password123*"))
-                .thenReturn(new VerificarCredencialesResponseDTO(10L, "comprador@styleradar.com", "COMPRADOR", "ACTIVA"));
-        when(otpService.generarOtp("comprador@styleradar.com", 10L, "COMPRADOR"))
+                .thenReturn(new VerificarCredencialesResponseDTO(10L, "comprador@styleradar.com", "BUYER", "ACTIVA"));
+        when(otpService.generarOtp("comprador@styleradar.com", 10L, "BUYER"))
                 .thenThrow(new OtpBloqueadoTemporalmenteException(42L));
 
         mockMvc.perform(post("/api/v1/auth/login")
@@ -605,26 +605,26 @@ class AuthControllerTest {
                                 new LoginRequestDTO("comprador@styleradar.com", "Password123*"))))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().string(HttpHeaders.RETRY_AFTER, "42"))
-                .andExpect(jsonPath("$.codigo", is("OTP_REENVIO_BLOQUEADO")))
-                .andExpect(jsonPath("$.esperarSegundos", is(42)))
+                .andExpect(jsonPath("$.code", is("OTP_RESEND_BLOCKED")))
+                .andExpect(jsonPath("$.retryAfterSeconds", is(42)))
                 .andExpect(jsonPath("$.message", is("Debe esperar 42 segundos para solicitar un nuevo código.")));
 
         org.mockito.Mockito.verifyNoInteractions(emailService);
     }
 
     @Test
-    @DisplayName("RN-03: una cuenta que ms-usuarios reporta INACTIVA nunca obtiene sesión (403 CUENTA_NO_ACTIVA)")
+    @DisplayName("RN-03: una cuenta que ms-usuarios reporta INACTIVA nunca obtiene sesión (403 ACCOUNT_NOT_ACTIVE)")
     void login_conEstadoInactivoEnRespuesta_debeResponder403() throws Exception {
         when(usuarioClient.verificarCredenciales("inactivo@styleradar.com", "Password123*"))
                 .thenReturn(new VerificarCredencialesResponseDTO(
-                        12L, "inactivo@styleradar.com", "COMPRADOR", "INACTIVA", true));
+                        12L, "inactivo@styleradar.com", "BUYER", "INACTIVA", true));
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 new LoginRequestDTO("inactivo@styleradar.com", "Password123*"))))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.codigo", is("CUENTA_NO_ACTIVA")));
+                .andExpect(jsonPath("$.code", is("ACCOUNT_NOT_ACTIVE")));
 
         org.mockito.Mockito.verifyNoInteractions(jwtService);
     }

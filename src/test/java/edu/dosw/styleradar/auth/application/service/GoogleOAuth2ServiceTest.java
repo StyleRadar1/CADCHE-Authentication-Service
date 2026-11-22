@@ -124,15 +124,15 @@ class GoogleOAuth2ServiceTest {
         when(googleOAuthPort.verificarIdToken("id-token-valido")).thenReturn(claims);
         when(usuarioClient.resolverUsuarioOAuth(
                 "antonia@styleradar.com", "Antonia Sastre", "GOOGLE", "google-sub-109"))
-                .thenReturn(new VerificarCredencialesResponseDTO(42L, "antonia@styleradar.com", "COMPRADOR", "ACTIVA"));
-        when(jwtService.generarToken(42L, Set.of(Rol.COMPRADOR))).thenReturn("jwt-styleradar-42");
+                .thenReturn(new VerificarCredencialesResponseDTO(42L, "antonia@styleradar.com", "BUYER", "ACTIVA"));
+        when(jwtService.generarToken(42L, Set.of(Rol.BUYER))).thenReturn("jwt-styleradar-42");
 
         SesionAutenticada response = service.autenticarConIdToken("id-token-valido");
 
         assertEquals("jwt-styleradar-42", response.accessToken());
         assertEquals(86400L, response.expiraEnSegundos());
         assertEquals(42L, response.usuarioId());
-        assertEquals(Set.of(Rol.COMPRADOR), Set.of(response.rol()));
+        assertEquals(Set.of(Rol.BUYER), Set.of(response.rol()));
         assertFalse(response.requiereOtp());
         assertTrue(response.correoVerificado());
         assertEquals("antonia@styleradar.com", response.email());
@@ -158,7 +158,7 @@ class GoogleOAuth2ServiceTest {
         when(googleOAuthPort.verificarIdToken("id-token-valido"))
                 .thenReturn(new GoogleIdentityClaims("sub-2", "bloqueado@gmail.com", true, "Usuario Bloqueado"));
         when(usuarioClient.resolverUsuarioOAuth("bloqueado@gmail.com", "Usuario Bloqueado", "GOOGLE", "sub-2"))
-                .thenReturn(new VerificarCredencialesResponseDTO(77L, "bloqueado@gmail.com", "COMPRADOR", "BLOQUEADA"));
+                .thenReturn(new VerificarCredencialesResponseDTO(77L, "bloqueado@gmail.com", "BUYER", "BLOQUEADA"));
 
         assertThrows(
                 CuentaNoActivaException.class,
@@ -177,13 +177,13 @@ class GoogleOAuth2ServiceTest {
                 .thenReturn(new GoogleIdentityClaims("sub-99", "admin.tienda@gmail.com", true, "Admin Tienda"));
         when(usuarioClient.resolverUsuarioOAuth("admin.tienda@gmail.com", "Admin Tienda", "GOOGLE", "sub-99"))
                 .thenReturn(new VerificarCredencialesResponseDTO(
-                        88L, "admin.tienda@gmail.com", "ADMIN_ALMACEN", "ACTIVA"));
-        when(jwtService.generarToken(88L, Set.of(Rol.ADMIN_ALMACEN))).thenReturn("jwt-almacen-88");
+                        88L, "admin.tienda@gmail.com", "STORE_ADMIN", "ACTIVA"));
+        when(jwtService.generarToken(88L, Set.of(Rol.STORE_ADMIN))).thenReturn("jwt-almacen-88");
 
         SesionAutenticada response = service.autenticarConCodigo("auth-code-999", "state-123", null);
 
         assertEquals("jwt-almacen-88", response.accessToken());
-        assertEquals(Set.of(Rol.ADMIN_ALMACEN), Set.of(response.rol()));
+        assertEquals(Set.of(Rol.STORE_ADMIN), Set.of(response.rol()));
         assertFalse(response.requiereOtp());
         verify(valueOperations).getAndDelete("oauth2:state:state-123");
     }
@@ -256,8 +256,8 @@ class GoogleOAuth2ServiceTest {
         when(googleOAuthPort.verificarIdToken("id-dev"))
                 .thenReturn(new GoogleIdentityClaims("sub-dev", "dev@gmail.com", true, "Dev"));
         when(usuarioClient.resolverUsuarioOAuth("dev@gmail.com", "Dev", "GOOGLE", "sub-dev"))
-                .thenReturn(new VerificarCredencialesResponseDTO(5L, "dev@gmail.com", "COMPRADOR", "ACTIVA"));
-        when(jwtService.generarToken(5L, Set.of(Rol.COMPRADOR))).thenReturn("jwt-dev");
+                .thenReturn(new VerificarCredencialesResponseDTO(5L, "dev@gmail.com", "BUYER", "ACTIVA"));
+        when(jwtService.generarToken(5L, Set.of(Rol.BUYER))).thenReturn("jwt-dev");
 
         SesionAutenticada firstAttempt = devService.autenticarConCodigo("code-dev", generated.state(), null);
         assertEquals(43200L, firstAttempt.expiraEnSegundos());
@@ -274,8 +274,8 @@ class GoogleOAuth2ServiceTest {
         GoogleIdentityClaims claims = new GoogleIdentityClaims("sub-7", "ana@gmail.com", true, "Ana");
         when(googleOAuthPort.verificarIdToken("id-ok")).thenReturn(claims);
         when(usuarioClient.resolverUsuarioOAuth("ana@gmail.com", "Ana", "GOOGLE", "sub-7"))
-                .thenReturn(new VerificarCredencialesResponseDTO(7L, "ana@gmail.com", "COMPRADOR", "ACTIVA", true));
-        when(jwtService.generarToken(7L, Set.of(Rol.COMPRADOR))).thenReturn("jwt-7");
+                .thenReturn(new VerificarCredencialesResponseDTO(7L, "ana@gmail.com", "BUYER", "ACTIVA", true));
+        when(jwtService.generarToken(7L, Set.of(Rol.BUYER))).thenReturn("jwt-7");
 
         SesionAutenticada sesion = service.autenticarConIdToken("id-ok");
 

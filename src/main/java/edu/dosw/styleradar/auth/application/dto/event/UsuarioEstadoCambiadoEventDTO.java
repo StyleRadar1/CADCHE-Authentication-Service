@@ -10,8 +10,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import edu.dosw.styleradar.auth.domain.model.EstadoCuenta;
 
 /**
- * Mensaje {@code UsuarioEstadoCambiadoEvent} publicado por ms-usuarios en {@code styleradar.exchange}
- * (routing key {@code usuario.estado.cambiado}). Es un DTO de mensajería: el dominio no conoce Jackson.
+ * Event {@code user.status.changed} published by ms-usuarios on the {@code styleradar.exchange} exchange
+ * (ms-usuarios requirements analysis v2, SR-RF-66): userId, previousStatus, newStatus, changedBy, reason, changedAt
+ * and eventId. The Spanish names of the previous version are still accepted while ms-usuarios migrates.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record UsuarioEstadoCambiadoEventDTO(
@@ -25,13 +26,13 @@ public record UsuarioEstadoCambiadoEventDTO(
 
     @JsonCreator
     public static UsuarioEstadoCambiadoEventDTO desdeJson(
-            @JsonProperty("eventoId") String eventoId,
-            @JsonProperty("usuarioId") Long usuarioId,
-            @JsonProperty("estadoAnterior") String estadoAnterior,
-            @JsonProperty("estadoNuevo") @JsonAlias("nuevoEstado") String estadoNuevo,
-            @JsonProperty("administradorId") Long administradorId,
-            @JsonProperty("motivo") String motivo,
-            @JsonProperty("fechaCambio") Instant fechaCambio) {
+            @JsonProperty("eventId") @JsonAlias("eventoId") String eventoId,
+            @JsonProperty("userId") @JsonAlias("usuarioId") Long usuarioId,
+            @JsonProperty("previousStatus") @JsonAlias("estadoAnterior") String estadoAnterior,
+            @JsonProperty("newStatus") @JsonAlias({"estadoNuevo", "nuevoEstado"}) String estadoNuevo,
+            @JsonProperty("changedBy") @JsonAlias("administradorId") Long administradorId,
+            @JsonProperty("reason") @JsonAlias("motivo") String motivo,
+            @JsonProperty("changedAt") @JsonAlias("fechaCambio") Instant fechaCambio) {
         return new UsuarioEstadoCambiadoEventDTO(
                 eventoId,
                 usuarioId,

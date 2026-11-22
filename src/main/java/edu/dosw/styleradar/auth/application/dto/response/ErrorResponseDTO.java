@@ -19,53 +19,53 @@ import lombok.Value;
  */
 @Value
 @Builder
-@Schema(description = "Error en formato ProblemDetail (RFC 9457) con las extensiones del contrato StyleRadar")
+@Schema(description = "Error in ProblemDetail format (RFC 9457) with the StyleRadar extensions. Only detail/message and the per-field messages are in Spanish")
 public class ErrorResponseDTO {
 
     /** Formato de fecha del contrato: AAAA-MM-DDThh:mm:ss, sin fracciones de segundo. */
     public static final String FORMATO_FECHA = "yyyy-MM-dd'T'HH:mm:ss";
     public static final String MEDIA_TYPE = "application/problem+json";
-    public static final String TIPO_BASE = "https://api.styleradar.com/errores/";
+    public static final String TIPO_BASE = "https://api.styleradar.com/errors/";
 
-    @Schema(description = "URI que identifica el tipo de problema (RFC 9457)", example = "https://api.styleradar.com/errores/otp-intentos-agotados")
+    @Schema(description = "URI identifying the problem type: https://api.styleradar.com/errors/{code in lower case with hyphens}", example = "https://api.styleradar.com/errors/otp-attempts-exhausted")
     String type;
 
-    @Schema(description = "Resumen del problema: nombre del estado HTTP (RFC 9457)", example = "Too Many Requests")
+    @Schema(description = "HTTP status name (RFC 9457)", example = "Too Many Requests")
     String title;
 
-    @Schema(description = "Explicación del problema para esta ocurrencia (RFC 9457)", example = "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.")
+    @Schema(description = "Problem explanation for the user (Spanish)", example = "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.")
     String detail;
 
-    @Schema(description = "Ruta de la solicitud que produjo el problema (RFC 9457)", example = "/api/v1/auth/otp/verify")
+    @Schema(description = "Request path that produced the problem", example = "/api/v1/auth/otp/verify")
     String instance;
 
-    @Schema(description = "Fecha y hora en que ocurrió el error", example = "2026-11-13T10:15:30")
+    @Schema(description = "Date and time of the error (compatibility alias)", example = "2026-11-13T10:15:30")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = FORMATO_FECHA)
     LocalDateTime timestamp;
 
-    @Schema(description = "Código de estado HTTP", example = "429")
+    @Schema(description = "HTTP status code", example = "429")
     int status;
 
-    @Schema(description = "Alias de title (compatibilidad)", example = "Too Many Requests")
+    @Schema(description = "Alias of title (compatibility)", example = "Too Many Requests")
     String error;
 
-    @Schema(description = "Código fijo del catálogo de errores; el front elige el texto a mostrar con él (D3)", example = "OTP_INTENTOS_AGOTADOS")
-    CodigoError codigo;
+    @Schema(description = "Fixed error code; the front end picks the text to show with it", example = "OTP_ATTEMPTS_EXHAUSTED")
+    CodigoError code;
 
-    @Schema(description = "Alias de detail (compatibilidad)", example = "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.")
+    @Schema(description = "Alias of detail (compatibility)", example = "Se agotaron los intentos. Espere 60 segundos y solicite un nuevo código.")
     String message;
 
-    @Schema(description = "Alias de instance (compatibilidad)", example = "/api/v1/auth/otp/verify")
+    @Schema(description = "Alias of instance (compatibility)", example = "/api/v1/auth/otp/verify")
     String path;
 
-    @Schema(description = "Detalle de errores de validación por campo cuando aplica", example = "{\"email\":\"El formato del correo electrónico es inválido\"}")
-    Map<String, String> validationErrors;
+    @Schema(description = "Per-field validation messages (Spanish), only when an input field breaks its rule", example = "{\"email\":\"El formato del correo electrónico es inválido\"}")
+    Map<String, String> errors;
 
-    @Schema(description = "Intentos que quedan para el código OTP (solo en OTP_INCORRECTO y OTP_INTENTOS_AGOTADOS)", example = "0", nullable = true)
-    Integer intentosRestantes;
+    @Schema(description = "Attempts left for the OTP code (OTP_INCORRECT and OTP_ATTEMPTS_EXHAUSTED only)", example = "0", nullable = true)
+    Integer attemptsRemaining;
 
-    @Schema(description = "Segundos de espera antes de reintentar; igual a la cabecera Retry-After (solo en 429)", example = "60", nullable = true)
-    Long esperarSegundos;
+    @Schema(description = "Seconds to wait before retrying; same as the Retry-After header (429 only)", example = "60", nullable = true)
+    Long retryAfterSeconds;
 
     /**
      * Construye el problema con los campos RFC 9457 y sus alias de compatibilidad.
@@ -77,7 +77,7 @@ public class ErrorResponseDTO {
                 .status(status)
                 .detail(detalle)
                 .instance(ruta)
-                .codigo(codigo)
+                .code(codigo)
                 .timestamp(LocalDateTime.now())
                 .error(titulo)
                 .message(detalle)

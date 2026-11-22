@@ -49,7 +49,7 @@ class OtpServiceTest {
 
     private final String email = "usuario@styleradar.com";
     private final Long usuarioId = 42L;
-    private final String rol = "COMPRADOR";
+    private final String rol = "BUYER";
 
     @BeforeEach
     void setUp() {
@@ -77,7 +77,7 @@ class OtpServiceTest {
         verify(valueOperations).set(eq("otp:intentos:" + email), eq("3"), eq(300L), eq(TimeUnit.SECONDS));
         // B4: la verificación en curso (usuario y rol) vive 15 minutos, más que el código (5 minutos)
         verify(valueOperations).set(eq("otp:usuario:" + email), eq("42"), eq(900L), eq(TimeUnit.SECONDS));
-        verify(valueOperations).set(eq("otp:rol:" + email), eq("COMPRADOR"), eq(900L), eq(TimeUnit.SECONDS));
+        verify(valueOperations).set(eq("otp:rol:" + email), eq("BUYER"), eq(900L), eq(TimeUnit.SECONDS));
     }
 
     @Test
@@ -159,7 +159,7 @@ class OtpServiceTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("otp:bloqueo:" + email)).thenReturn(null);
         when(valueOperations.get("otp:usuario:" + email)).thenReturn("42");
-        when(valueOperations.get("otp:rol:" + email)).thenReturn("COMPRADOR");
+        when(valueOperations.get("otp:rol:" + email)).thenReturn("BUYER");
         when(valueOperations.increment("otp:reenvios:" + email)).thenReturn(1L);
         when(valueOperations.get("otp:reenvios:" + email)).thenReturn("1");
 
@@ -185,7 +185,7 @@ class OtpServiceTest {
     void debeReenviarOtpSiSesionActivaExiste() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("otp:usuario:" + email)).thenReturn("42");
-        when(valueOperations.get("otp:rol:" + email)).thenReturn("COMPRADOR");
+        when(valueOperations.get("otp:rol:" + email)).thenReturn("BUYER");
         when(valueOperations.increment("otp:reenvios:" + email)).thenReturn(1L);
 
         String nuevoCodigo = otpService.reenviarOtp(email);
@@ -207,7 +207,7 @@ class OtpServiceTest {
     void debeBloquearReenvioCuandoSeAgotaLimite() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("otp:usuario:" + email)).thenReturn("42");
-        when(valueOperations.get("otp:rol:" + email)).thenReturn("COMPRADOR");
+        when(valueOperations.get("otp:rol:" + email)).thenReturn("BUYER");
         when(valueOperations.increment("otp:reenvios:" + email)).thenReturn(4L);
 
         assertThatThrownBy(() -> otpService.reenviarOtp(email))
@@ -220,7 +220,7 @@ class OtpServiceTest {
     void debeLanzarExcepcionAlReenviarSiNoHaySesion() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("otp:usuario:" + email)).thenReturn(null);
-        when(valueOperations.get("otp:rol:" + email)).thenReturn("COMPRADOR");
+        when(valueOperations.get("otp:rol:" + email)).thenReturn("BUYER");
 
         assertThatThrownBy(() -> otpService.reenviarOtp(email))
                 .isInstanceOf(OtpExpiradoException.class)
@@ -250,11 +250,11 @@ class OtpServiceTest {
     void debeObtenerDatosDesdeRedis() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("otp:usuario:" + email)).thenReturn("42");
-        when(valueOperations.get("otp:rol:" + email)).thenReturn("COMPRADOR");
+        when(valueOperations.get("otp:rol:" + email)).thenReturn("BUYER");
         when(valueOperations.get("otp:intentos:" + email)).thenReturn("2");
 
         assertThat(otpService.obtenerUsuarioId(email)).isEqualTo(42L);
-        assertThat(otpService.obtenerRol(email)).isEqualTo("COMPRADOR");
+        assertThat(otpService.obtenerRol(email)).isEqualTo("BUYER");
         assertThat(otpService.obtenerIntentosRestantes(email)).isEqualTo(2);
     }
 
