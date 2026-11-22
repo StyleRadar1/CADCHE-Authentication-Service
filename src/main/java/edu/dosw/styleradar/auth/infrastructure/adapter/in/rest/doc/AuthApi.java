@@ -198,11 +198,11 @@ public interface AuthApi {
             security = {},
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true, content = @Content(
                     mediaType = JSON, schema = @Schema(implementation = RegistroAuthRequestDTO.class),
-                    examples = @ExampleObject(name = "Registro", value = REGISTRO))))
+                    examples = @ExampleObject(name = "Register", value = REGISTRO))))
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Support user created (dev/test only)", content = @Content(
                     mediaType = JSON, schema = @Schema(implementation = UsuarioAuthResponseDTO.class),
-                    examples = @ExampleObject(name = "UsuarioRegistrado", value = USUARIO_REGISTRADO))),
+                    examples = @ExampleObject(name = "RegisteredUser", value = USUARIO_REGISTRADO))),
             @ApiResponse(responseCode = "400", description = "INVALID_DATA", content = @Content(
                     mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class))),
             @ApiResponse(responseCode = "503", description = "SERVICE_UNAVAILABLE in QA and PROD (fail-closed)", content = @Content(
