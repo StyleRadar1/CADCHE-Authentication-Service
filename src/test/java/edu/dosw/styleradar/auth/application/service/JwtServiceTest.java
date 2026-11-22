@@ -119,4 +119,13 @@ class JwtServiceTest {
 
         assertThat(tiempoRestante).isGreaterThan(86300L).isLessThanOrEqualTo(86400L);
     }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("La huella de la llave JWT es el SHA-256 de los bytes decodificados (12 hex)")
+    void huellaCortaDeLaLlave() {
+        byte[] llave = java.util.Base64.getDecoder().decode("MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=");
+        org.assertj.core.api.Assertions.assertThat(JwtServiceImpl.huellaCorta(llave))
+                .hasSize(12).matches("[0-9A-F]{12}")
+                .isEqualTo(JwtServiceImpl.huellaCorta(llave.clone()));
+    }
 }

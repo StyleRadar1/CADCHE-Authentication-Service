@@ -87,7 +87,19 @@ public final class JwtServiceImpl implements JwtService {
                     "Falla criptográfica (OWASP A04:2025): la clave secreta JWT debe tener al menos 256 bits (32 bytes).");
         }
 
+        log.info("Clave JWT cargada: huella SHA-256 de la llave decodificada = {} (no revela la llave)",
+                huellaCorta(keyBytes));
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    /** Primeros 12 caracteres hexadecimales del SHA-256 de la llave, para comparar entre servicios sin exponerla. */
+    public static String huellaCorta(byte[] keyBytes) {
+        try {
+            return HexFormat.of().withUpperCase()
+                    .formatHex(MessageDigest.getInstance("SHA-256").digest(keyBytes)).substring(0, 12);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("Algoritmo SHA-256 no disponible en la JVM.", ex);
+        }
     }
 
     private static boolean esHuellaDeEjemplo(String rawValue) {
