@@ -104,5 +104,5 @@ styleradar:
       window-seconds: ${RATE_LIMIT_WINDOW_SECONDS:60}
 
   cors:
-    allowed-origins: ${CORS_QA_ALLOWED_ORIGINS:https://qa.styleradar.com,https://*.styleradar.com,https://*.azurewebsites.net}
+    allowed-origins: ${CORS_QA_ALLOWED_ORIGINS:https://qa.styleradar.com,https://*.styleradar.com,https://*.azurewebsites.net,http://localhost:5173,http://localhost:3000,http://127.0.0.1:*}
 
