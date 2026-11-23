@@ -176,7 +176,7 @@ class TrazabilidadRequerimientosAuthTest {
                 responder(ex, 200, json.writeValueAsString(c));
             }
         }));
-        msUsuarios.createContext("/internal/api/v1/users/oauth2", seguro(ex -> {
+        msUsuarios.createContext("/api/v1/internal/users/oauth2", seguro(ex -> {
             JsonNode cuerpo = json.readTree(ex.getRequestBody());
             Map<String, Object> c = CUENTAS.get(cuerpo.path("email").asText());
             responder(ex, c == null ? 404 : 200, c == null ? "{}" : json.writeValueAsString(c));

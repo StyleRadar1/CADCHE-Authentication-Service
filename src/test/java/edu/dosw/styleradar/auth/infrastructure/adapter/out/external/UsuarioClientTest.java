@@ -171,7 +171,7 @@ class UsuarioClientTest {
     @Test
     @DisplayName("Debe resolver usuario OAuth2 cuando ms-usuarios responde 200 OK")
     void resolverUsuarioOAuth_conRespuestaExitosa_debeRetornarUsuario() {
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/oauth2"))
+        server.expect(requestTo(BASE_URL + "/api/v1/internal/users/oauth2"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(
                         """
@@ -198,7 +198,7 @@ class UsuarioClientTest {
     @Test
     @DisplayName("Debe mapear 401/403/5xx/timeout de ms-usuarios correctamente en resolverUsuarioOAuth")
     void resolverUsuarioOAuth_conErrores_debeMapearExcepcionesDeDominio() {
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/oauth2"))
+        server.expect(requestTo(BASE_URL + "/api/v1/internal/users/oauth2"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withStatus(HttpStatus.UNAUTHORIZED));
 
@@ -206,7 +206,7 @@ class UsuarioClientTest {
                 () -> usuarioClient.resolverUsuarioOAuth("u@gmail.com", "Ana", "GOOGLE", "1"));
 
         server.reset();
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/oauth2"))
+        server.expect(requestTo(BASE_URL + "/api/v1/internal/users/oauth2"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withStatus(HttpStatus.FORBIDDEN));
 
@@ -214,7 +214,7 @@ class UsuarioClientTest {
                 () -> usuarioClient.resolverUsuarioOAuth("u@gmail.com", "Ana", "GOOGLE", "1"));
 
         server.reset();
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/oauth2"))
+        server.expect(requestTo(BASE_URL + "/api/v1/internal/users/oauth2"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
 
@@ -222,7 +222,7 @@ class UsuarioClientTest {
                 () -> usuarioClient.resolverUsuarioOAuth("u@gmail.com", "Ana", "GOOGLE", "1"));
 
         server.reset();
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/users/oauth2"))
+        server.expect(requestTo(BASE_URL + "/api/v1/internal/users/oauth2"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(request -> {
                     throw new ResourceAccessException("Timeout");
@@ -240,10 +240,10 @@ class UsuarioClientTest {
         MockEnvironment devEnv = new MockEnvironment();
         devEnv.setActiveProfiles("dev");
         UsuarioClient devClient = new UsuarioClient(
-                devBuilder, BASE_URL, "u", "p", true, devEnv, "/internal/api/v1/users/oauth2",
+                devBuilder, BASE_URL, "u", "p", true, devEnv, "/api/v1/internal/users/oauth2",
                 "/api/v1/internal/users/{id}/email-verification", "/api/v1/internal/users/verify-credentials");
 
-        devServer.expect(ExpectedCount.once(), requestTo(BASE_URL + "/internal/api/v1/users/oauth2"))
+        devServer.expect(ExpectedCount.once(), requestTo(BASE_URL + "/api/v1/internal/users/oauth2"))
                 .andRespond(request -> {
                     throw new ResourceAccessException("Offline dev");
                 });

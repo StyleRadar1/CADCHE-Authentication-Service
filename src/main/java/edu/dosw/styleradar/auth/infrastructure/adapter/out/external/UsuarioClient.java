@@ -28,7 +28,7 @@ public final class UsuarioClient {
 
     static final String DEFAULT_CORREO_VERIFICADO_PATH = "/api/v1/internal/users/{id}/email-verification";
     static final String DEFAULT_CREDENCIALES_PATH = "/api/v1/internal/users/verify-credentials";
-    static final String DEFAULT_OAUTH2_PATH = "/internal/api/v1/users/oauth2";
+    static final String DEFAULT_OAUTH2_PATH = "/api/v1/internal/users/oauth2";
     /** Rutas que ms-usuarios publica hoy (en español); se usan solo si la ruta en inglés responde 404. */
     static final String LEGACY_CREDENCIALES_PATH = "/internal/api/v1/usuarios/verificar-credenciales";
     static final String LEGACY_CORREO_VERIFICADO_PATH = "/api/v1/internal/usuarios/{id}/correo-verificado";
