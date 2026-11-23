@@ -72,10 +72,10 @@ management:
 styleradar:
   usuarios:
     base-url: ${USUARIOS_QA_SERVICE_URL:https://styleradar-usuarios-qa.azurewebsites.net}
-    oauth2-path: ${USUARIOS_OAUTH2_PATH:/internal/api/v1/users/oauth2}
-    correo-verificado-path: ${USUARIOS_CORREO_VERIFICADO_PATH:/internal/api/v1/users/{id}/verify-email}
+    oauth2-path: ${USUARIOS_OAUTH2_PATH:/api/v1/internal/users/oauth2}
+    correo-verificado-path: ${USUARIOS_CORREO_VERIFICADO_PATH:/api/v1/internal/users/{id}/email-verification}
     correo-verificado-legacy-path: ${USUARIOS_CORREO_VERIFICADO_LEGACY_PATH:/api/v1/internal/usuarios/{id}/correo-verificado}
-    credenciales-path: ${USUARIOS_CREDENCIALES_PATH:/internal/api/v1/users/verify-credentials}
+    credenciales-path: ${USUARIOS_CREDENCIALES_PATH:/api/v1/internal/users/verify-credentials}
     credenciales-legacy-path: ${USUARIOS_CREDENCIALES_LEGACY_PATH:/internal/api/v1/usuarios/verificar-credenciales}
     username: ${USUARIOS_INTERNAL_USERNAME:ms-auth}
     password: ${USUARIOS_INTERNAL_PASSWORD:}
