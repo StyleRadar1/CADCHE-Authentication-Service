@@ -175,6 +175,10 @@ public final class UsuarioClient {
 
         String normalizedEmail = SecuritySanitizer.normalizeEmail(email);
         String sanitizedName = nombre != null ? SecuritySanitizer.sanitizeForLog(nombre.trim()) : "";
+        if (sanitizedName.isBlank()) {
+            // ms-usuarios exige name; si Google no lo envía se usa la parte local del correo.
+            sanitizedName = normalizedEmail.substring(0, normalizedEmail.indexOf('@') > 0 ? normalizedEmail.indexOf('@') : normalizedEmail.length());
+        }
         OAuthUsuarioRequestDTO request = new OAuthUsuarioRequestDTO(
                 normalizedEmail, sanitizedName, proveedor, proveedorId);
 

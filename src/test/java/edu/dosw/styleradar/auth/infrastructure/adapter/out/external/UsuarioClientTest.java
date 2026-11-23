@@ -169,6 +169,28 @@ class UsuarioClientTest {
     }
 
     @Test
+    @DisplayName("Google: envía email, name, provider y providerId; sin nombre usa la parte local del correo")
+    void resolverUsuarioOAuth_cuerpoDelContratoYNombreDeRespaldo() {
+        String respuesta = "{\"id\":30,\"email\":\"sinnombre@gmail.com\",\"rol\":\"COMPRADOR\","
+                + "\"estado\":\"ACTIVA\",\"correoVerificado\":true}";
+        server.expect(requestTo(BASE_URL + "/api/v1/internal/users/oauth2"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers.content().json(
+                        "{\"email\":\"ana@gmail.com\",\"name\":\"Ana Perez\",\"provider\":\"GOOGLE\",\"providerId\":\"sub-1\"}", true))
+                .andRespond(withSuccess(respuesta, MediaType.APPLICATION_JSON));
+        server.expect(requestTo(BASE_URL + "/api/v1/internal/users/oauth2"))
+                .andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath("$.name").value("sinnombre"))
+                .andRespond(withSuccess(respuesta, MediaType.APPLICATION_JSON));
+
+        usuarioClient.resolverUsuarioOAuth("ana@gmail.com", "Ana Perez", "GOOGLE", "sub-1");
+        VerificarCredencialesResponseDTO r = usuarioClient.resolverUsuarioOAuth("SinNombre@gmail.com", null, "GOOGLE", "sub-2");
+
+        assertEquals(30L, r.id());
+        assertEquals(Boolean.TRUE, r.correoVerificado());
+        server.verify();
+    }
+
+    @Test
     @DisplayName("Debe resolver usuario OAuth2 cuando ms-usuarios responde 200 OK")
     void resolverUsuarioOAuth_conRespuestaExitosa_debeRetornarUsuario() {
         server.expect(requestTo(BASE_URL + "/api/v1/internal/users/oauth2"))
