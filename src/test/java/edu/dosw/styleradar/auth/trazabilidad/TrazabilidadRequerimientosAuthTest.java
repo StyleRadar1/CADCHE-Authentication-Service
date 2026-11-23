@@ -164,16 +164,15 @@ class TrazabilidadRequerimientosAuthTest {
         }
         msUsuarios = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         ObjectMapper json = new ObjectMapper();
-        msUsuarios.createContext("/internal/api/v1/users/verify-credentials", seguro(ex -> {
+        msUsuarios.createContext("/api/v1/internal/users/verify-credentials", seguro(ex -> {
             JsonNode cuerpo = json.readTree(ex.getRequestBody());
             Map<String, Object> c = CUENTAS.get(cuerpo.path("email").asText());
             if (c != null && "caido@styleradar.com".equals(c.get("email"))) {
                 responder(ex, 500, "{}");
             } else if (c == null || !CLAVE.equals(cuerpo.path("password").asText())) {
                 responder(ex, 401, "{}");
-            } else if (!"ACTIVE".equals(c.get("status"))) {
-                responder(ex, 403, "{}");
             } else {
+                // Igual que ms-usuarios real: una cuenta inactiva o bloqueada responde 200 con su status.
                 responder(ex, 200, json.writeValueAsString(c));
             }
         }));
@@ -182,9 +181,9 @@ class TrazabilidadRequerimientosAuthTest {
             Map<String, Object> c = CUENTAS.get(cuerpo.path("email").asText());
             responder(ex, c == null ? 404 : 200, c == null ? "{}" : json.writeValueAsString(c));
         }));
-        msUsuarios.createContext("/internal/api/v1/users/", seguro(ex -> {
+        msUsuarios.createContext("/api/v1/internal/users/", seguro(ex -> {
             String[] partes = ex.getRequestURI().getPath().split("/");
-            if ("PATCH".equals(ex.getRequestMethod()) && ex.getRequestURI().getPath().endsWith("/verify-email")) {
+            if ("PATCH".equals(ex.getRequestMethod()) && ex.getRequestURI().getPath().endsWith("/email-verification")) {
                 long id = Long.parseLong(partes[partes.length - 2]);
                 CORREOS_VERIFICADOS.add(id);
                 CUENTAS.values().stream().filter(c -> ((Number) c.get("id")).longValue() == id)
