@@ -84,8 +84,9 @@ class JwtAuthenticationFilterTest {
 
         filter.doFilter(request, response, filterChain);
 
+        // SR-RF-112 FA-02 (análisis v6): token vacío o mal formado
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).contains("El token presentado es inválido o expirado");
+        assertThat(response.getContentAsString()).contains("No autorizado: token vacío o malformado");
         verifyNoInteractions(filterChain);
     }
 

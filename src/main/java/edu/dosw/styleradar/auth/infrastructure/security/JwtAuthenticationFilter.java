@@ -80,7 +80,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String safeUri = SecuritySanitizer.sanitizeForLog(request.getRequestURI());
 
         if (token.isEmpty()) {
-            rejectRequest(response, HttpStatus.UNAUTHORIZED, safeUri, "Token inválido o vacío");
+            rejectRequest(response, HttpStatus.UNAUTHORIZED, safeUri, SecurityErrorResponseWriter.MENSAJE_TOKEN_MALFORMADO);
             return;
         }
 
@@ -99,7 +99,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (otpService != null && otpService.esTokenInvalido(token)) {
                 log.warn("Rechazo 401: token JWT en blacklist para usuario ID {} en ruta {}", usuarioId, safeUri);
-                rejectRequest(response, HttpStatus.UNAUTHORIZED, safeUri, "El token presentado es inválido o expirado");
+                rejectRequest(response, HttpStatus.UNAUTHORIZED, safeUri, SecurityErrorResponseWriter.MENSAJE_TOKEN_INVALIDO);
                 return;
             }
 
@@ -125,9 +125,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             rejectRequest(response, HttpStatus.SERVICE_UNAVAILABLE, safeUri,
                     "El servicio de verificación de sesiones no está disponible temporalmente.");
             return;
+        } catch (io.jsonwebtoken.MalformedJwtException exception) {
+            log.warn("Rechazo 401: token con formato JWT inválido en ruta {}", safeUri);
+            rejectRequest(response, HttpStatus.UNAUTHORIZED, safeUri, SecurityErrorResponseWriter.MENSAJE_TOKEN_MALFORMADO);
+            return;
         } catch (JwtException | IllegalArgumentException exception) {
             log.warn("Rechazo 401: token JWT inválido o expirado en ruta {}", safeUri);
-            rejectRequest(response, HttpStatus.UNAUTHORIZED, safeUri, "Token inválido o expirado");
+            rejectRequest(response, HttpStatus.UNAUTHORIZED, safeUri, SecurityErrorResponseWriter.MENSAJE_TOKEN_INVALIDO);
             return;
         }
 

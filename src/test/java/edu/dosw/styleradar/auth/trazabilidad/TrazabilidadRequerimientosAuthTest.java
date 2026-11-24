@@ -1077,4 +1077,219 @@ class TrazabilidadRequerimientosAuthTest {
             logout(ip, token(ip, "verificado@styleradar.com")).andExpect(status().isNoContent());
         }
     }
+
+    // ---------------------------------------------------------------- Análisis v6 (24/11/2026)
+
+    @Nested
+    @DisplayName("Análisis v6: SR-RF-112 Cerrar sesión, SR-RF-113 Renovar sesión y salidas de SR-RF-02 / SR-RF-92")
+    class AnalisisV6 {
+
+        private static final String SECRETO = "VGhpc0lzQVN1ZmZpY2llbnRseUxvbmdTZWNyZXRLZXlGb3JUZXN0czEyMzQ1Ng==";
+
+        private JsonNode json(ResultActions r) throws Exception {
+            return objectMapper.readTree(r.andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        }
+
+        private String token(String ip, String email) throws Exception {
+            return json(login(ip, email, CLAVE).andExpect(status().isOk())).get("accessToken").asText();
+        }
+
+        private ResultActions logoutCon(String ip, String cabecera) throws Exception {
+            var peticion = post("/api/v1/auth/logout").with(r -> {
+                r.setRemoteAddr(ip);
+                return r;
+            });
+            if (cabecera != null) {
+                peticion.header(HttpHeaders.AUTHORIZATION, cabecera);
+            }
+            return mockMvc.perform(peticion);
+        }
+
+        /** ProblemDetail completo de la tabla «Datos de salida en error». */
+        private ResultActions problema(ResultActions r, int http, String titulo, String codigo, String tipo, String ruta,
+                String mensaje) throws Exception {
+            return error(r, http, codigo, mensaje)
+                    .andExpect(jsonPath("$.type").value("https://api.styleradar.com/errors/" + tipo))
+                    .andExpect(jsonPath("$.title").value(titulo))
+                    .andExpect(jsonPath("$.error").value(titulo))
+                    .andExpect(jsonPath("$.detail").value(mensaje))
+                    .andExpect(jsonPath("$.instance").value(ruta))
+                    .andExpect(jsonPath("$.path").value(ruta));
+        }
+
+        private String firmar(Map<String, Object> claims) {
+            javax.crypto.SecretKey clave = io.jsonwebtoken.security.Keys.hmacShaKeyFor(
+                    java.util.Base64.getDecoder().decode(SECRETO));
+            return io.jsonwebtoken.Jwts.builder().claims(claims).issuedAt(new java.util.Date())
+                    .expiration(new java.util.Date(System.currentTimeMillis() + 600_000)).signWith(clave).compact();
+        }
+
+        // ---- SR-RF-112 Cerrar sesión
+
+        @Test
+        @DisplayName("SR-RF-112 flujo básico y RN-01: 204 sin cuerpo; el token revocado ya no sirve")
+        void rf112FlujoBasico() throws Exception {
+            String ip = nuevaIp();
+            String token = token(ip, "verificado@styleradar.com");
+            logoutCon(ip, "Bearer " + token).andExpect(status().isNoContent())
+                    .andExpect(r -> assertThat(r.getResponse().getContentAsString()).isEmpty());
+            problema(logoutCon(ip, "Bearer " + token), 401, "Unauthorized", "INVALID_TOKEN", "invalid-token",
+                    "/api/v1/auth/logout", "El token presentado es inválido o expirado");
+        }
+
+        @Test
+        @DisplayName("SR-RF-112 FA-01: sin token o sin el prefijo Bearer → 401 INVALID_TOKEN")
+        void rf112Fa01() throws Exception {
+            String msg = "No autorizado: se requiere un token Bearer válido";
+            problema(logoutCon(nuevaIp(), null), 401, "Unauthorized", "INVALID_TOKEN", "invalid-token",
+                    "/api/v1/auth/logout", msg);
+            String token = token(nuevaIp(), "verificado@styleradar.com");
+            problema(logoutCon(nuevaIp(), "Token " + token), 401, "Unauthorized", "INVALID_TOKEN", "invalid-token",
+                    "/api/v1/auth/logout", msg);
+        }
+
+        @Test
+        @DisplayName("SR-RF-112 FA-02: token vacío o mal formado → 401 INVALID_TOKEN")
+        void rf112Fa02() throws Exception {
+            String msg = "No autorizado: token vacío o malformado";
+            problema(logoutCon(nuevaIp(), "Bearer "), 401, "Unauthorized", "INVALID_TOKEN", "invalid-token",
+                    "/api/v1/auth/logout", msg);
+            problema(logoutCon(nuevaIp(), "Bearer no-es-un-jwt"), 401, "Unauthorized", "INVALID_TOKEN",
+                    "invalid-token", "/api/v1/auth/logout", msg);
+        }
+
+        @Test
+        @DisplayName("SR-RF-112 FA-03: token inválido o vencido → 401 «El token presentado es inválido o expirado»")
+        void rf112Fa03() throws Exception {
+            String token = token(nuevaIp(), "verificado@styleradar.com");
+            String alterado = token.substring(0, token.length() - 4) + "abcd";
+            problema(logoutCon(nuevaIp(), "Bearer " + alterado), 401, "Unauthorized", "INVALID_TOKEN",
+                    "invalid-token", "/api/v1/auth/logout", "El token presentado es inválido o expirado");
+        }
+
+        // ---- SR-RF-113 Renovar sesión
+
+        @Test
+        @DisplayName("SR-RF-113 flujo básico y salidas: token nuevo, email nulo, emailVerified true, otp en reposo")
+        void rf113FlujoBasico() throws Exception {
+            String ip = nuevaIp();
+            String token = token(ip, "verificado@styleradar.com");
+            JsonNode b = json(llamar(ip, "/refresh", Map.of("refreshToken", token)).andExpect(status().isOk()));
+            assertThat(b.get("accessToken").asText()).isNotBlank().isNotEqualTo(token);
+            assertThat(b.get("tokenType").asText()).isEqualTo("Bearer");
+            assertThat(b.get("expiresIn").asLong()).isEqualTo(43200);
+            assertThat(b.get("userId").asLong()).isEqualTo(12);
+            assertThat(b.get("roles").get(0).asText()).isEqualTo("BUYER");
+            assertThat(b.get("email").isNull()).isTrue();
+            assertThat(b.get("emailVerified").asBoolean()).isTrue();
+            assertThat(b.get("otpRequired").asBoolean()).isFalse();
+            assertThat(b.get("otpExpiresInSeconds").isNull()).isTrue();
+            assertThat(b.get("otpAttemptsRemaining").asInt()).isZero();
+            assertThat(b.get("message").asText()).isEqualTo("Inicio de sesión exitoso");
+        }
+
+        @Test
+        @DisplayName("SR-RF-113 RN-02: rotación; el token anterior queda revocado y no se puede renovar de nuevo")
+        void rf113Rotacion() throws Exception {
+            String ip = nuevaIp();
+            String token = token(ip, "verificado@styleradar.com");
+            llamar(ip, "/refresh", Map.of("refreshToken", token)).andExpect(status().isOk());
+            problema(llamar(ip, "/refresh", Map.of("refreshToken", token)), 401, "Unauthorized", "INVALID_TOKEN",
+                    "invalid-token", "/api/v1/auth/refresh", "El token presentado es inválido, expiró o fue revocado");
+        }
+
+        @Test
+        @DisplayName("SR-RF-113 FA-01 y FA-02: sin token o de más de 2048 caracteres → 400 INVALID_DATA con errors.refreshToken")
+        void rf113Fa01Fa02() throws Exception {
+            problema(llamar(nuevaIp(), "/refresh", Map.of()), 400, "Bad Request", "INVALID_DATA", "invalid-data",
+                    "/api/v1/auth/refresh", INVALID_DATA)
+                    .andExpect(jsonPath("$.errors.refreshToken").value("El token de renovación es obligatorio"));
+            problema(llamar(nuevaIp(), "/refresh", Map.of("refreshToken", "a".repeat(2049))), 400, "Bad Request",
+                    "INVALID_DATA", "invalid-data", "/api/v1/auth/refresh", INVALID_DATA)
+                    .andExpect(jsonPath("$.errors.refreshToken").value("El token excede la longitud máxima permitida"));
+        }
+
+        @Test
+        @DisplayName("SR-RF-113 FA-03 y RN-04: token inválido, revocado por logout o de una cuenta bloqueada después → 401")
+        void rf113Fa03() throws Exception {
+            String msg = "El token presentado es inválido, expiró o fue revocado";
+            problema(llamar(nuevaIp(), "/refresh", Map.of("refreshToken", "x.y.z")), 401, "Unauthorized",
+                    "INVALID_TOKEN", "invalid-token", "/api/v1/auth/refresh", msg);
+            String ip = nuevaIp();
+            String cerrado = token(ip, "verificado@styleradar.com");
+            logoutCon(ip, "Bearer " + cerrado).andExpect(status().isNoContent());
+            problema(llamar(ip, "/refresh", Map.of("refreshToken", cerrado)), 401, "Unauthorized", "INVALID_TOKEN",
+                    "invalid-token", "/api/v1/auth/refresh", msg);
+            String bloqueado = token(nuevaIp(), "verificado@styleradar.com");
+            consumidorEstado.recibir(objectMapper.readValue("{\"eventId\":\"v6-bloq\",\"userId\":12,"
+                    + "\"newStatus\":\"BLOCKED\",\"changedAt\":\"" + Instant.now().plusSeconds(1) + "\"}",
+                    edu.dosw.styleradar.auth.application.dto.event.UsuarioEstadoCambiadoEventDTO.class));
+            problema(llamar(nuevaIp(), "/refresh", Map.of("refreshToken", bloqueado)), 401, "Unauthorized",
+                    "INVALID_TOKEN", "invalid-token", "/api/v1/auth/refresh", msg);
+            redis.delete("usuario:revocado:12");
+        }
+
+        @Test
+        @DisplayName("SR-RF-113 FA-04: token sin identificador o sin rol → 401 sin información de identidad")
+        void rf113Fa04() throws Exception {
+            String msg = "El token presentado no contiene información de identidad válida";
+            String sinRol = firmar(Map.of("sub", "12", "jti", "v6-sin-rol"));
+            problema(llamar(nuevaIp(), "/refresh", Map.of("refreshToken", sinRol)), 401, "Unauthorized",
+                    "INVALID_TOKEN", "invalid-token", "/api/v1/auth/refresh", msg);
+            String sinSub = firmar(Map.of("roles", List.of("BUYER"), "jti", "v6-sin-sub"));
+            problema(llamar(nuevaIp(), "/refresh", Map.of("refreshToken", sinSub)), 401, "Unauthorized",
+                    "INVALID_TOKEN", "invalid-token", "/api/v1/auth/refresh", msg);
+        }
+
+        // ---- SR-RF-02 y SR-RF-92 (salidas precisadas en la v6)
+
+        @Test
+        @DisplayName("SR-RF-02 errores: type por code, title, instance y alias; attemptsRemaining y retryAfterSeconds nulos fuera de su caso")
+        void rf02ProblemDetail() throws Exception {
+            problema(login(nuevaIp(), "verificado@styleradar.com", "Incorrecta1*"), 401, "Unauthorized",
+                    "INVALID_CREDENTIALS", "invalid-credentials", "/api/v1/auth/login",
+                    "El correo o la contraseña son incorrectos")
+                    .andExpect(jsonPath("$.attemptsRemaining").value(nullValue()))
+                    .andExpect(jsonPath("$.retryAfterSeconds").value(nullValue()));
+            problema(login(nuevaIp(), "bloqueado@styleradar.com", CLAVE), 403, "Forbidden", "ACCOUNT_NOT_ACTIVE",
+                    "account-not-active", "/api/v1/auth/login", "La cuenta se encuentra inactiva o bloqueada");
+        }
+
+        @Test
+        @DisplayName("SR-RF-02 FA-13: correo sin verificar → otpExpiresInSeconds 300, otpAttemptsRemaining 3 y message")
+        void rf02Fa13Salida() throws Exception {
+            login(nuevaIp(), "nuevo@styleradar.com", CLAVE).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.accessToken").value(nullValue()))
+                    .andExpect(jsonPath("$.emailVerified").value(false))
+                    .andExpect(jsonPath("$.otpRequired").value(true))
+                    .andExpect(jsonPath("$.otpExpiresInSeconds").value(300))
+                    .andExpect(jsonPath("$.otpAttemptsRemaining").value(3))
+                    .andExpect(jsonPath("$.message").value("Código de verificación OTP enviado a su correo electrónico"));
+        }
+
+        @Test
+        @DisplayName("SR-RF-92 FA-07: código nuevo → email, message, expiresInSeconds 300, attemptsRemaining 3 y resendsRemaining")
+        void rf92ReenvioSalida() throws Exception {
+            String ip = nuevaIp();
+            login(ip, "nuevo@styleradar.com", CLAVE);
+            reenviar(ip, "nuevo@styleradar.com").andExpect(status().isOk())
+                    .andExpect(jsonPath("$.email").value("nuevo@styleradar.com"))
+                    .andExpect(jsonPath("$.message").value("Se envió un código de verificación de 6 dígitos a su correo registrado"))
+                    .andExpect(jsonPath("$.expiresInSeconds").value(300))
+                    .andExpect(jsonPath("$.attemptsRemaining").value(3))
+                    .andExpect(jsonPath("$.resendsRemaining").value(2));
+        }
+
+        @Test
+        @DisplayName("SR-RF-92 FA-04: OTP_INCORRECT trae attemptsRemaining y type …/errors/otp-incorrect")
+        void rf92Fa04Problema() throws Exception {
+            String ip = nuevaIp();
+            login(ip, "nuevo@styleradar.com", CLAVE);
+            String malo = "000000".equals(ultimoCodigo.get("nuevo@styleradar.com")) ? "111111" : "000000";
+            problema(verificar(ip, "nuevo@styleradar.com", malo), 401, "Unauthorized", "OTP_INCORRECT",
+                    "otp-incorrect", "/api/v1/auth/otp/verify", "El código OTP es incorrecto. Intentos restantes: 2")
+                    .andExpect(jsonPath("$.attemptsRemaining").value(2))
+                    .andExpect(jsonPath("$.retryAfterSeconds").value(nullValue()));
+        }
+    }
 }
