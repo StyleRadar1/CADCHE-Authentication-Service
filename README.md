@@ -84,7 +84,7 @@
 | • **SR-RF-02 · Iniciar sesión:** valida correo y contraseña contra `ms-usuarios`, exige cuenta `ACTIVA` (RN-03) y, si el correo ya está verificado, entrega el JWT de una vez (RN-05). Si no, envía un código OTP de 6 dígitos (FA-13). | • NO guarda usuarios, perfiles ni hashes de contraseña (son de `ms-usuarios`). |
 | • **SR-RF-92 · Verificar el correo con OTP:** el código dura `300 s`, admite `3` intentos y se pide **una sola vez por cuenta** (decisión D2). Al tercer fallo anula solo el código y bloquea pedir otro durante `60 s` (D1); la verificación en curso dura `15 min`. Al verificar, marca el correo en `ms-usuarios`. | • NO administra almacenes ni fundaciones (`ms-tiendas`). |
 | • **Google OAuth2 / OIDC:** ID Token RS256 validado contra JWKS o *Authorization Code* con `state` anti-CSRF de un solo uso; no pide OTP y marca el correo como verificado (B8). | • NO publica eventos hacia otros servicios. |
-| • **Sesiones:** renovación con rotación (`/refresh`), cierre con lista negra (`/logout`) y **revocación global** al recibir `user.status.changed` de ms-usuarios (cuenta `INACTIVE`/`BLOCKED`), con idempotencia por `eventId`. | • NO gestiona catálogo, inventario ni pagos. |
+| • **SR-RF-113 · Renovar sesión y SR-RF-112 · Cerrar sesión:** renovación con rotación (`/refresh`; el token anterior queda revocado), cierre con lista negra (`/logout`, `204`) y **revocación global** al recibir `user.status.changed` de ms-usuarios (cuenta `INACTIVE`/`BLOCKED`), con idempotencia por `eventId`. | • NO gestiona catálogo, inventario ni pagos. |
 | • **Contrato de errores v1.2 (ProblemDetail RFC 9457):** cada error trae `type`/`title`/`detail`/`instance`, `code` del catálogo, `errors`, `attemptsRemaining`, `retryAfterSeconds` y la cabecera `Retry-After` en todos los `429`. | • NO expone el registro real (el `/register` es un stub solo para `dev`/`test`; en QA/PROD responde `503`). |
 
 ---
@@ -297,8 +297,8 @@ El front **siempre** llama al API Gateway (`:8080`), que enruta `/api/v1/auth/**
 | `POST` | `/api/v1/auth/login` | `email`, `password` (8 a 30) | `200 LoginResponseDTO` (token directo o `otpRequired=true`) | Público · 15 req/min |
 | `POST` | `/api/v1/auth/otp/verify` | `email`, `otpCode` | `200 LoginResponseDTO` con token | Público |
 | `POST` | `/api/v1/auth/otp/resend` | `email` | `200` `email`, `message`, `expiresInSeconds`, `attemptsRemaining`, `resendsRemaining` | Público |
-| `POST` | `/api/v1/auth/refresh` | `refreshToken` (JWT vigente) | `200 LoginResponseDTO` (token rotado) | Público |
-| `POST` | `/api/v1/auth/logout` | `Authorization: Bearer` | `204` | JWT |
+| `POST` | `/api/v1/auth/refresh` | `refreshToken` (JWT vigente, máx. 2048) | `200 LoginResponseDTO` (SR-RF-113: token rotado, `email` nulo, `emailVerified` true) | Público |
+| `POST` | `/api/v1/auth/logout` | `Authorization: Bearer` | `204` sin cuerpo (SR-RF-112) · `401 INVALID_TOKEN` sin token, mal formado o inválido | JWT |
 | `POST` | `/api/v1/auth/register` | `name`, `email`, `phone`, `password`, `dataPolicyAccepted` | `201` (`id`, `name`, `email`, `phone`, `registeredAt`, `roles`) en `dev`/`test` · `503` en QA/PROD | Público |
 | `POST` | `/api/v1/auth/oauth2/google` | `idToken` | `200 LoginResponseDTO` | Público |
 | `GET` | `/api/v1/auth/oauth2/google/url` | `redirectUri` (opcional) | `200` `authorizationUrl`, `state`, `expiresInSeconds`, `redirectUri` | Público |
@@ -558,10 +558,19 @@ El seguimiento de requerimientos, historias de usuario, evidencias y artefactos 
 | **CA-03** | El flujo navegable desde Swagger UI (`GET /oauth2/google/url` &rarr; Consentimiento Google &rarr; `GET /callback` o `POST /code`) protege contra CSRF con `oauth2:state:{state}` de un solo uso (`getAndDelete`, TTL `300 s`) y restringe redirecciones con `GOOGLE_ALLOWED_REDIRECT_URIS` (anti-Open Redirect). | `GoogleOAuth2ControllerTest`, `GoogleOAuth2SwaggerIntegrationTest` |
 | **CA-04** | Ambos métodos comparten un único ciclo JWT: rotación en `/refresh`, revocación en `/logout` (`blacklist:*`), revocación administrativa desde RabbitMQ (`user.status.changed` -> `usuario:revocado:*`), rate limiting (`429`) y respuestas homogéneas `ErrorResponseDTO` (`503` fail-closed en `qa`/`prod`). | `JwtAuthenticationFilterTest`, `RateLimitingFilterTest`, `OwaspTop10SecurityTest`, `UsuarioEstadoCambiadoConsumerTest` |
 
-### Requerimientos Funcionales y No Funcionales Asignados
+### Requerimientos Funcionales y No Funcionales Asignados (análisis de requerimientos v6)
 
 | Código RF | Nombre del Requerimiento | Actor Principal | Criterio de Aceptación Clave Verificado |
 | :---: | :--- | :--- | :--- |
+| `SR-RF-02` | Iniciar sesión | Usuario comprador, Administrador de almacén, Representante de fundación aliada y Administrador StyleRadar | Valida credenciales contra `ms-usuarios`; cuenta activa (RN-03); si el correo está verificado entrega el JWT de una vez, si no envía un código OTP (FA-13); ingreso con Google sin código; 15 intentos por minuto (`429` con `Retry-After`). |
+| `SR-RF-92` | Verificar el correo con código OTP | Los cuatro actores | Código de 6 dígitos, `300 s` y `3` intentos; tras 3 fallos, espera de `60 s`; máximo 3 códigos nuevos; verificación en curso de `15 min`; se guarda solo una huella del código. |
+| `SR-RF-112` | Cerrar sesión | Los cuatro actores | `204` sin cuerpo; el token queda revocado hasta su vencimiento; `401 INVALID_TOKEN` sin token o sin `Bearer`, con token vacío o mal formado, o con token inválido o vencido. |
+| `SR-RF-113` | Renovar sesión | Los cuatro actores | `200` con un token nuevo que conserva la cuenta y el rol; el anterior queda revocado (rotación); no renueva tokens revocados ni de cuentas bloqueadas después de emitirlos; `refreshToken` de máximo 2048 caracteres. |
+| `SR-RF-AUTH-01` | Revocar sesiones al inactivar o bloquear (fuera del análisis v6) | Sistema (evento de `ms-usuarios`) | Se conserva porque lo usa RN-04 de SR-RF-113: al recibir `user.status.changed` con `INACTIVE` o `BLOCKED` invalida los tokens emitidos antes, con idempotencia por `eventId`. |
+
+Cada flujo alterno tiene su prueba en `TrazabilidadRequerimientosAuthTest` (clase anidada `AnalisisV6` para lo nuevo de la v6).
+
+---: | :--- | :--- | :--- |
 | `SR-RF-01` | Contrato de registro inicial de comprador | `BUYER` | Valida Bean Validation (`nombre`, `email`, password fuerte, `aceptaHabeasData`); opera como stub (`id=12L`, `201`) en `dev`/`test` y bloquea *fail-closed* (`503`) en `qa`/`prod` mientras la entidad reside en `ms-usuarios`. |
 | `SR-RF-02` | Inicio de sesión multi-rol con 2FA OTP y renovación JWT | `BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE`, `STYLERADAR_ADMIN` | Valida credenciales contra `ms-usuarios`, exige segundo factor OTP (`300 s`) y emite `LoginResponseDTO` con JWT `HS256` (`PT24H`/`12H`/`8H`), soportando rotación en `/refresh`. |
 | `SR-RF-03` | Autenticación federada con Google OAuth2 / OpenID Connect | `BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE`, `STYLERADAR_ADMIN` | Soporta ID Token `RS256`/JWKS (`POST /oauth2/google`) y Authorization Code con `state` anti-CSRF (`GET /url`, `GET /callback`, `POST /code`), exigiendo `email_verified=true` y cuenta `ACTIVA` en `ms-usuarios`. |

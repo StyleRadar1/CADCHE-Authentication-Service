@@ -84,8 +84,9 @@ class JwtAuthenticationFilterTest {
 
         filter.doFilter(request, response, filterChain);
 
+        // SR-RF-112 FA-02 (análisis v6): token vacío o mal formado
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).contains("El token presentado es inválido o expirado");
+        assertThat(response.getContentAsString()).contains("No autorizado: token vacío o malformado");
         verifyNoInteractions(filterChain);
     }
 
@@ -200,5 +201,36 @@ class JwtAuthenticationFilterTest {
 
         devFilter.doFilter(request, devResponse, filterChain);
         verify(filterChain).doFilter(request, devResponse);
+    }
+
+    @Test
+    @DisplayName("SR-RF-112 FA-02 (v6): token sin forma de JWT → «No autorizado: token vacío o malformado»")
+    void tokenMalformadoResponde401Propio() throws Exception {
+        when(jwtService.validarToken("no-es-jwt")).thenThrow(new io.jsonwebtoken.MalformedJwtException("formato"));
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth/logout");
+        request.addHeader("Authorization", "Bearer no-es-jwt");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, filterChain);
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentAsString()).contains("No autorizado: token vacío o malformado")
+                .contains("INVALID_TOKEN");
+        verifyNoInteractions(filterChain);
+    }
+
+    @Test
+    @DisplayName("SR-RF-112 FA-03 (v6): firma inválida o token vencido → «El token presentado es inválido o expirado»")
+    void tokenInvalidoResponde401Propio() throws Exception {
+        when(jwtService.validarToken("a.b.c")).thenThrow(new JwtException("firma"));
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth/logout");
+        request.addHeader("Authorization", "Bearer a.b.c");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, filterChain);
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentAsString()).contains("El token presentado es inválido o expirado");
+        verifyNoInteractions(filterChain);
     }
 }

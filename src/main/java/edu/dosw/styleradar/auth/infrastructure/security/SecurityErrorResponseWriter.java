@@ -32,6 +32,17 @@ public final class SecurityErrorResponseWriter {
      */
     public static final String MENSAJE_SESION_REVOCADA = "El token ha sido revocado";
 
+    /** SR-RF-112 FA-01: sin cabecera Authorization o sin el prefijo «Bearer». */
+    public static final String MENSAJE_SIN_BEARER = "No autorizado: se requiere un token Bearer válido";
+    /** SR-RF-112 FA-02: token vacío o que no tiene forma de JWT. */
+    public static final String MENSAJE_TOKEN_MALFORMADO = "No autorizado: token vacío o malformado";
+    /** SR-RF-112 FA-03: token con firma inválida, vencido o revocado. */
+    public static final String MENSAJE_TOKEN_INVALIDO = "El token presentado es inválido o expirado";
+
+    /** Mensajes 401 del análisis que se responden tal cual, sin reemplazarlos por el del catálogo. */
+    private static final java.util.Set<String> MENSAJES_PROPIOS = java.util.Set.of(
+            MENSAJE_SESION_REVOCADA, MENSAJE_SIN_BEARER, MENSAJE_TOKEN_MALFORMADO, MENSAJE_TOKEN_INVALIDO);
+
     private SecurityErrorResponseWriter() {
     }
 
@@ -59,7 +70,7 @@ public final class SecurityErrorResponseWriter {
             response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(esperarSegundos));
         }
 
-        String mensaje = MENSAJE_SESION_REVOCADA.equals(message) ? message : MENSAJES_CONTRATO.getOrDefault(codigo, message);
+        String mensaje = MENSAJES_PROPIOS.contains(message) ? message : MENSAJES_CONTRATO.getOrDefault(codigo, message);
         ErrorResponseDTO body = ErrorResponseDTO.problema(status.value(), status.getReasonPhrase(), codigo, mensaje,
                         SecuritySanitizer.sanitizeForLog(path))
                 .errors(Map.of())

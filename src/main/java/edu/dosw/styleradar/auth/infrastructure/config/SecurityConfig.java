@@ -141,7 +141,7 @@ public class SecurityConfig {
                         log.warn("Acceso no autenticado bloqueado (401) en ruta {}", safePath);
                         SecurityErrorResponseWriter.write(
                                         response, objectMapper, HttpStatus.UNAUTHORIZED, safePath,
-                                        "No autorizado: se requiere un token Bearer válido");
+                                        SecurityErrorResponseWriter.MENSAJE_SIN_BEARER);
                 };
         }
 
