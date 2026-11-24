@@ -26,9 +26,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public final class UsuarioClient {
 
-    static final String DEFAULT_CORREO_VERIFICADO_PATH = "/internal/api/v1/users/{id}/verify-email";
-    static final String DEFAULT_CREDENCIALES_PATH = "/internal/api/v1/users/verify-credentials";
-    static final String DEFAULT_OAUTH2_PATH = "/internal/api/v1/users/oauth2";
+    static final String DEFAULT_CORREO_VERIFICADO_PATH = "/api/v1/internal/users/{id}/email-verification";
+    static final String DEFAULT_CREDENCIALES_PATH = "/api/v1/internal/users/verify-credentials";
+    static final String DEFAULT_OAUTH2_PATH = "/api/v1/internal/users/oauth2";
     /** Rutas que ms-usuarios publica hoy (en español); se usan solo si la ruta en inglés responde 404. */
     static final String LEGACY_CREDENCIALES_PATH = "/internal/api/v1/usuarios/verificar-credenciales";
     static final String LEGACY_CORREO_VERIFICADO_PATH = "/api/v1/internal/usuarios/{id}/correo-verificado";
@@ -140,8 +140,16 @@ public final class UsuarioClient {
             log.warn("Credenciales incorrectas para: {}", SecuritySanitizer.maskEmail(normalizedEmail));
             throw new CredencialesIncorrectasException("El correo o la contraseña son incorrectos");
         } catch (HttpClientErrorException.Forbidden exception) {
-            log.warn("Cuenta no activa para: {}", SecuritySanitizer.maskEmail(normalizedEmail));
-            throw new CuentaNoActivaException("La cuenta se encuentra inactiva o bloqueada");
+            if (esErrorDeCuentaNoActiva(exception)) {
+                log.warn("Cuenta no activa para: {}", SecuritySanitizer.maskEmail(normalizedEmail));
+                throw new CuentaNoActivaException("La cuenta se encuentra inactiva o bloqueada");
+            }
+            // ms-usuarios informa las cuentas inactivas con 200 y su estado; un 403 sin ese motivo es su seguridad
+            // rechazando a ms-auth (ruta bloqueada o credenciales internas sin rol de servicio), no la cuenta.
+            log.error("ms-usuarios rechazó la llamada de servicio (HTTP 403) en {}: revisar la ruta interna y "
+                    + "USUARIOS_INTERNAL_USERNAME/USUARIOS_INTERNAL_PASSWORD", credencialesPath);
+            throw new ServicioExternoNoDisponibleException(
+                    "No fue posible verificar las credenciales con el servicio de usuarios", exception);
         } catch (RestClientResponseException exception) {
             log.error("Fallo al verificar credenciales en ms-usuarios (HTTP {}): {}",
                     exception.getStatusCode().value(), SecuritySanitizer.sanitizeForLog(exception.getMessage()));
@@ -167,6 +175,10 @@ public final class UsuarioClient {
 
         String normalizedEmail = SecuritySanitizer.normalizeEmail(email);
         String sanitizedName = nombre != null ? SecuritySanitizer.sanitizeForLog(nombre.trim()) : "";
+        if (sanitizedName.isBlank()) {
+            // ms-usuarios exige name; si Google no lo envía se usa la parte local del correo.
+            sanitizedName = normalizedEmail.substring(0, normalizedEmail.indexOf('@') > 0 ? normalizedEmail.indexOf('@') : normalizedEmail.length());
+        }
         OAuthUsuarioRequestDTO request = new OAuthUsuarioRequestDTO(
                 normalizedEmail, sanitizedName, proveedor, proveedorId);
 
