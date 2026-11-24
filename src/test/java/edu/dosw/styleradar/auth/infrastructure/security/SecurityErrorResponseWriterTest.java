@@ -45,4 +45,20 @@ class SecurityErrorResponseWriterTest {
         assertThat(cuerpo.get("message").asText())
                 .isEqualTo("El servicio requerido no está disponible temporalmente. Intente nuevamente más tarde.");
     }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("SR-RF-112 (v6): los tres mensajes 401 del análisis se responden tal cual; otros se reemplazan por el catálogo")
+    void mensajesPropiosDeCerrarSesion() throws Exception {
+        for (String propio : java.util.List.of(SecurityErrorResponseWriter.MENSAJE_SIN_BEARER,
+                SecurityErrorResponseWriter.MENSAJE_TOKEN_MALFORMADO, SecurityErrorResponseWriter.MENSAJE_TOKEN_INVALIDO,
+                SecurityErrorResponseWriter.MENSAJE_SESION_REVOCADA)) {
+            org.springframework.mock.web.MockHttpServletResponse r = new org.springframework.mock.web.MockHttpServletResponse();
+            SecurityErrorResponseWriter.write(r, null, org.springframework.http.HttpStatus.UNAUTHORIZED, "/api/v1/auth/logout", propio);
+            org.assertj.core.api.Assertions.assertThat(r.getContentAsString(java.nio.charset.StandardCharsets.UTF_8)).contains(propio);
+        }
+        org.springframework.mock.web.MockHttpServletResponse otro = new org.springframework.mock.web.MockHttpServletResponse();
+        SecurityErrorResponseWriter.write(otro, null, org.springframework.http.HttpStatus.UNAUTHORIZED, "/x", "detalle técnico");
+        org.assertj.core.api.Assertions.assertThat(otro.getContentAsString(java.nio.charset.StandardCharsets.UTF_8))
+                .contains(SecurityErrorResponseWriter.MENSAJE_TOKEN_INVALIDO).doesNotContain("detalle técnico");
+    }
 }
