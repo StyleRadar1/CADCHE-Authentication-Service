@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Login request with a Google OpenID Connect ID token")
+@Schema(name = "GoogleLoginRequest", description = "Login request with a Google OpenID Connect ID token")
 public class GoogleLoginRequestDTO {
 
     @NotBlank(message = "El ID Token de Google es obligatorio")

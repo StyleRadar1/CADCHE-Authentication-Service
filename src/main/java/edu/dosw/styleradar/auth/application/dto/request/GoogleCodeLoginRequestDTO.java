@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Google OAuth2 authorization code + anti-CSRF state login request")
+@Schema(name = "GoogleCodeLoginRequest", description = "Google OAuth2 authorization code + anti-CSRF state login request")
 public class GoogleCodeLoginRequestDTO {
 
     @NotBlank(message = "El código de autorización de Google es obligatorio")
