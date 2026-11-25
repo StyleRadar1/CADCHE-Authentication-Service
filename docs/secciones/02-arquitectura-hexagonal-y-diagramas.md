@@ -55,7 +55,7 @@ flowchart LR
   <sub>Figura 2.1: dominio completo de ms-auth (<a href="../uml/DiagramaClases.drawio">DiagramaClases.drawio</a>), generado desde el código.</sub>
 </div>
 
-* **Modelos (`record`, value objects):** `SesionAutenticada` (con las fábricas `conToken` y `pendienteDeVerificacion`), `IdentidadUsuario` (`estaActiva()` aplica RN-03), `DesafioOtp`, `UsuarioRegistrado` y `GoogleIdentityClaims`.
+* **Modelos (`record`, value objects):** `SesionAutenticada` (con las fábricas `conToken` y `pendienteDeVerificacion`), `IdentidadUsuario` (`estaActiva()` aplica RN-03), `DesafioOtp`, `SolicitudRestablecimiento` y `GoogleIdentityClaims`.
 * **Enumeraciones:** `Rol` (`desde(String)` rechaza roles desconocidos), `EstadoCuenta` (acepta `ACTIVO`/`ACTIVA` y similares) y `CodigoError` (15 códigos del contrato con su estado HTTP).
 * **Excepciones:** `AuthDomainException` transporta el código de error, los intentos restantes y la espera (`code`, `attemptsRemaining` y `retryAfterSeconds` en el JSON); la infraestructura las traduce a HTTP sin que el dominio conozca HTTP.
 
@@ -148,12 +148,12 @@ Flujo principal de `ms-auth`: inicio de sesión con OTP: login, verificación de
 ```text
 auth/
 ├── domain/                                   <-- Núcleo puro (sin frameworks)
-│   ├── model/        SesionAutenticada, IdentidadUsuario, DesafioOtp, UsuarioRegistrado,
+│   ├── model/        SesionAutenticada, IdentidadUsuario, DesafioOtp, SolicitudRestablecimiento,
 │   │                 GoogleIdentityClaims, Rol, EstadoCuenta, CodigoError
 │   ├── exception/    AuthDomainException + 7 excepciones con su CodigoError
 │   └── port/
 │       ├── in/       IniciarSesion, VerificarOtp, ReenviarOtp, RenovarToken, CerrarSesion,
-│       │             RegistrarUsuario, RevocarSesionesUsuario (UseCase)
+│       │             RestablecerContrasena, RevocarSesionesUsuario (UseCase)
 │       └── out/      UsuarioIdentidadPort, GoogleOAuthPort
 ├── application/
 │   ├── usecase/      7 *UseCaseImpl + NotificadorCodigoOtp (compensación si falla el correo)

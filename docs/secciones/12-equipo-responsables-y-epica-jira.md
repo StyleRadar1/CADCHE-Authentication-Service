@@ -65,7 +65,7 @@ El seguimiento de requerimientos, historias de usuario, evidencias y artefactos 
 Cada flujo alterno tiene su prueba en `TrazabilidadRequerimientosAuthTest` (clase anidada `AnalisisV6` para lo nuevo de la v6).
 
 ---: | :--- | :--- | :--- |
-| `SR-RF-01` | Contrato de registro inicial de comprador | `BUYER` | Valida Bean Validation (`nombre`, `email`, password fuerte, `aceptaHabeasData`); opera como stub (`id=12L`, `201`) en `dev`/`test` y bloquea *fail-closed* (`503`) en `qa`/`prod` mientras la entidad reside en `ms-usuarios`. |
+| `SR-RF-01` | Registro inicial de comprador | `BUYER` | Lo implementa ms-usuarios (`POST /api/v1/users`); ms-auth ya no expone una ruta de registro y verifica el correo con OTP en el primer inicio de sesión. |
 | `SR-RF-02` | Inicio de sesión multi-rol con 2FA OTP y renovación JWT | `BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE`, `STYLERADAR_ADMIN` | Valida credenciales contra `ms-usuarios`, exige segundo factor OTP (`300 s`) y emite `LoginResponseDTO` con JWT `HS256` (`PT24H`/`12H`/`8H`), soportando rotación en `/refresh`. |
 | `SR-RF-03` | Autenticación federada con Google OAuth2 / OpenID Connect | `BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE`, `STYLERADAR_ADMIN` | Soporta ID Token `RS256`/JWKS (`POST /oauth2/google`) y Authorization Code con `state` anti-CSRF (`GET /url`, `GET /callback`, `POST /code`), exigiendo `email_verified=true` y cuenta `ACTIVA` en `ms-usuarios`. |
 | `SR-RF-92` | Verificación y reenvío seguro de código OTP de 6 dígitos | `BUYER`, `STORE_ADMIN`, `FOUNDATION_REPRESENTATIVE`, `STYLERADAR_ADMIN` | Almacena hash SHA-256 salteado con `TTL 300 s`, bloquea tras `3` intentos fallidos o `3` reenvíos (`429 Too Many Requests`) y limpia OTP si falla SMTP. |

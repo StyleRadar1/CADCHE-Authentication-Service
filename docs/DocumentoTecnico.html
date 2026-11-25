@@ -292,7 +292,8 @@ svgw('0 0 510 248',
 '<table style="font-size:9.7px;line-height:1.18;table-layout:fixed;width:100%"><tr><th style="width:12%">Mét.</th><th style="width:37%">Ruta (/api/v1/auth)</th><th style="width:20%">Acceso</th><th style="width:31%">HU / Comportamiento</th></tr>'+
 [
   ['POST','/login','Público (RL)','SR-RF-02 · Login 2FA + OTP'],
-  ['POST','/register','Público (RL)','SR-RF-01 · Stub 12L / 503'],
+  ['POST','/password/forgot','Público (RL)','Código para restablecer · 202 sin enumeración'],
+  ['POST','/password/reset','Público (RL)','Nueva contraseña · revoca sesiones'],
   ['POST','/otp/verify','Público (RL)','SR-RF-92 · JWT 401/429 (422*)'],
   ['POST','/otp/resend','Público (RL)','SR-RF-92 · Máx 3 (300 s)'],
   ['POST','/refresh','Público (RL)','SR-RF-02 · Rota + Blacklist'],
@@ -319,7 +320,7 @@ svgw('0 0 510 248',
 (idx<3?'<div style="text-align:center;color:#48119A;font:700 9.5px var(--fm);line-height:1;margin:1px 0">↓</div>':'')+'</div>'}).join('')+'</div>'+
 '<div class="card" style="padding:8px 12px;gap:2px;margin-top:auto;background:#F3ECFF;border:1px solid rgba(72,17,154,.25)">'+
 '<p class="lab" style="font-size:9.6px;color:#48119A;margin:0">HU Implementada (CA-01..CA-04) y Trazabilidad</p>'+
-'<p class="sm" style="font-size:10.6px;line-height:1.33;margin:0;opacity:1"><b>SR-RF-01:</b> /register · <b>SR-RF-02/92:</b> Login 2FA + OTP SHA-256 + Refresh · <b>SR-RF-03:</b> Google OAuth2/OIDC · <b>SR-RNF-01/02:</b> Logout blacklist, AMQP, RateLimit, OWASP 2025.</p></div>'},
+'<p class="sm" style="font-size:10.6px;line-height:1.33;margin:0;opacity:1"><b>Contraseña olvidada:</b> /password/forgot y /reset con OTP · <b>SR-RF-02/92:</b> Login 2FA + OTP SHA-256 + Refresh · <b>SR-RF-03:</b> Google OAuth2/OIDC · <b>SR-RNF-01/02:</b> Logout blacklist, AMQP, RateLimit, OWASP 2025.</p></div>'},
 
 {c:'graf',t:'Datos Redis y SQL',tag:'07',tab:'Datos',h:K('07 · Datos')+H('Catálogo Redis 7','(9 prefijos) y PG diferido')+
 '<table style="font-size:10.4px;line-height:1.26;table-layout:fixed;width:100%"><tr><th style="width:31%">Prefijo Clave Redis</th><th style="width:17%">TTL / Tope</th><th style="width:52%">Contenido y Garantía Criptográfica</th></tr>'+
@@ -342,7 +343,7 @@ svgw('0 0 510 248',
   ['<span class="pill" style="font-size:9.3px;padding:1px 6px;border-color:#94A3B8;color:#475569">DEV</span>','localhost:8100 · Redis :6379<br><span style="font-size:9px;opacity:.75">Fallback RAM / registro stub 12L</span>','Swagger /v3/api-docs Activo<br><span style="font-size:9px;opacity:.75">localhost:8100 + :3000 callback</span>','PT24H<br>15/60s']
 ].map(function(r){return '<tr><td>'+r[0]+'</td><td style="font:400 9.3px var(--fm);word-break:break-word">'+r[1]+'</td><td style="font-size:10px">'+r[2]+'</td><td style="font:700 10px var(--fm);color:#48119A">'+r[3]+'</td></tr>'}).join('')+'</table>'+
 '<div class="g2" style="gap:8px;margin-top:auto;grid-template-columns:minmax(0,1fr) minmax(0,1fr)">'+
-cd('Guardia Criptográfica & Fail-Closed','JwtServiceImpl rechaza clave ejemplo dev en qa/prod por huella SHA-256. POST /register responde 503 fuera de dev/test.','padding:10px 13px;gap:3px')+
+cd('Guardia Criptográfica & Fail-Closed','JwtServiceImpl rechaza clave ejemplo dev en qa/prod por huella SHA-256. El registro de cuentas vive en ms-usuarios; auth no expone /register.','padding:10px 13px;gap:3px')+
 cd('FinOps TCO Azure (Ecosistema)','MVP / QA ~$33.00/mes (Container Apps Free + Redis C0 + PG B1ms) vs Producción ~$226.00/mes escalada.','padding:10px 13px;gap:3px')+
 '</div>'},
 

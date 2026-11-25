@@ -48,11 +48,12 @@ El front **siempre** llama al API Gateway (`:8080`), que enruta `/api/v1/auth/**
 | `POST` | `/api/v1/auth/password/reset` | `email`, `otpCode`, `newPassword` | `200` `message`; revoca todas las sesiones y no entrega token | Público |
 | `POST` | `/api/v1/auth/refresh` | `refreshToken` (JWT vigente, máx. 2048) | `200 LoginResponseDTO` (SR-RF-113: token rotado, `email` nulo, `emailVerified` true) | Público |
 | `POST` | `/api/v1/auth/logout` | `Authorization: Bearer` | `204` sin cuerpo (SR-RF-112) · `401 INVALID_TOKEN` sin token, mal formado o inválido | JWT |
-| `POST` | `/api/v1/auth/register` | `name`, `email`, `phone`, `password`, `dataPolicyAccepted` | `201` (`id`, `name`, `email`, `phone`, `registeredAt`, `roles`) en `dev`/`test` · `503` en QA/PROD | Público |
 | `POST` | `/api/v1/auth/oauth2/google` | `idToken` | `200 LoginResponseDTO` | Público |
 | `GET` | `/api/v1/auth/oauth2/google/url` | `redirectUri` (opcional) | `200` `authorizationUrl`, `state`, `expiresInSeconds`, `redirectUri` | Público |
 | `GET` | `/api/v1/auth/oauth2/google/callback` | `code`, `state` | `200 LoginResponseDTO` | Público |
 | `POST` | `/api/v1/auth/oauth2/google/code` | `code`, `state`, `redirectUri` | `200 LoginResponseDTO` | Público |
+
+> **Registro de cuentas:** ms-auth no registra usuarios. Las cuentas se crean en ms-usuarios con `POST /api/v1/users` (comprador o tienda con `accountType`), que guarda la contraseña con BCrypt y el consentimiento de Habeas Data. El correo se verifica con el código OTP en el primer inicio de sesión.
 
 ### Restablecer contraseña olvidada (todas las cuentas)
 

@@ -7,6 +7,8 @@
 | Dirección | Exchange / routing key | Cola | Origen → destino | Acción en ms-auth |
 | :--- | :--- | :--- | :--- | :--- |
 | **CONSUME** | `styleradar.exchange` / `user.status.changed` | `styleradar.auth.user-status-changed.q` (DLQ `styleradar.auth.dlq`) | `ms-usuarios` → `ms-auth` | `RevocarSesionesUsuarioUseCase`: si `newStatus` es `INACTIVE` o `BLOCKED`, guarda `usuario:revocado:{id}` y todos los tokens emitidos antes quedan inválidos. |
+| **CONSUME** | `styleradar.exchange` / `user.password.changed` | `styleradar.auth.user-account-changed.q` (DLQ `styleradar.auth.dlq`) | `ms-usuarios` → `ms-auth` | `revocarPorCambioDeCuenta`: al cambiar la contraseña (propia o por restablecimiento) revoca todas las sesiones emitidas antes de `changedAt`. Idempotente por `eventId`. |
+| **CONSUME** | `styleradar.exchange` / `styleradar.usuarios.cuenta.eliminada` y `user.deleted` | `styleradar.auth.user-account-changed.q` | `ms-usuarios` → `ms-auth` | Al eliminar la cuenta revoca todas sus sesiones (`userId`, `deletedAt`): un token emitido antes ya no sirve aunque no haya vencido. |
 | **PUBLICA** | `styleradar.exchange` / `user.session.changed` | La crea cada consumidor | `ms-auth` → `ms-estadisticas` | `SesionesActivasService`: +1 al entregar un token (login directo, OTP verificado o Google); -1 al cerrar sesión, al vencer el token o al revocarse la cuenta. Renovar no publica. |
 
 * **Idempotencia:** un `eventId` repetido se descarta (`evento:procesado:{eventId}`, 24 h).
