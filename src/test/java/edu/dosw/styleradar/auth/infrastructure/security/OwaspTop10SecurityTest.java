@@ -160,7 +160,9 @@ class OwaspTop10SecurityTest {
                 .contains("USER appuser:appgroup")
                 .contains("HEALTHCHECK");
 
-        String ci = Files.readString(Path.of(".github/workflows/ci.yml"));
+        String ci = Files.readString(Path.of(".github/workflows/ci.yml"))
+                + Files.readString(Path.of(".github/workflows/ci-qa.yml"))
+                + Files.readString(Path.of(".github/workflows/ci-prod.yml"));
         assertThat(ci)
                 .contains("spotbugs-maven-plugin")
                 .contains("provenance: true")
