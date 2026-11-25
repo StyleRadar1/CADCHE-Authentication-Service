@@ -51,8 +51,6 @@ styleradar:
         redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8100/api/v1/auth/oauth2/google/callback}
         allowed-redirect-uris: ${GOOGLE_ALLOWED_REDIRECT_URIS:http://localhost:8100/api/v1/auth/oauth2/google/callback,http://localhost:8080/api/v1/auth/oauth2/google/callback,http://localhost:3000/auth/google/callback}
     redis-local-fallback-enabled: true
-    registration:
-      stub-enabled: true
 
   cors:
     allowed-origins: ${CORS_DEV_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://127.0.0.1:*,https://*.styleradar.com,https://*.azurewebsites.net}

@@ -37,7 +37,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.dosw.styleradar.auth.application.dto.request.LoginRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.request.ReenviarOtpRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.request.RefreshTokenRequestDTO;
-import edu.dosw.styleradar.auth.application.dto.request.RegistroAuthRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.request.VerificarOtpRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.response.VerificarCredencialesResponseDTO;
 import edu.dosw.styleradar.auth.application.service.EmailService;
@@ -55,7 +54,6 @@ import edu.dosw.styleradar.auth.infrastructure.config.BeanConfig;
 import edu.dosw.styleradar.auth.infrastructure.config.SecurityConfig;
 import edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioIdentidadAdapter;
 import edu.dosw.styleradar.auth.application.mapper.out.AuthResponseMapperImpl;
-import edu.dosw.styleradar.auth.application.usecase.RegistrarUsuarioUseCaseImpl;
 import edu.dosw.styleradar.auth.domain.exception.OtpBloqueadoTemporalmenteException;
 import edu.dosw.styleradar.auth.infrastructure.exception.GlobalExceptionHandler;
 import io.jsonwebtoken.Claims;
@@ -406,18 +404,12 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("Registro de comprador debe retornar 201 Created con usuarioAuthResponseDTO")
-    void registro_conDatosValidos_debeRetornar201() throws Exception {
-        RegistroAuthRequestDTO request = new RegistroAuthRequestDTO(
-                "Carlos Pérez", "carlos@styleradar.com", "+57 300 123 4567", "StyleRadar2026*", true);
-
+    @DisplayName("POST /api/v1/auth/register ya no existe: el registro es de ms-usuarios (POST /api/v1/users)")
+    void registro_yaNoEsRutaPublicaDeAuth() throws Exception {
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name", is("Carlos Pérez")))
-                .andExpect(jsonPath("$.email", is("carlos@styleradar.com")))
-                .andExpect(jsonPath("$.roles[0]", is("BUYER")));
+                        .content("{\"name\":\"Carlos\",\"email\":\"carlos@styleradar.com\"}"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -559,11 +551,6 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code", is("INVALID_TOKEN")));
 
-        RegistrarUsuarioUseCaseImpl registroCerrado =
-                new RegistrarUsuarioUseCaseImpl(false, java.time.Clock.systemUTC());
-        org.junit.jupiter.api.Assertions.assertThrows(
-                ServicioExternoNoDisponibleException.class,
-                () -> registroCerrado.registrar("Ana", "ana@styleradar.com", "+57 300 000 0000"));
     }
 
     @Test

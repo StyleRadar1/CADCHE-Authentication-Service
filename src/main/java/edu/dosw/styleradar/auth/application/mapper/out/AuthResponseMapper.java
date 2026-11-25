@@ -7,11 +7,9 @@ import org.mapstruct.Mapping;
 
 import edu.dosw.styleradar.auth.application.dto.response.LoginResponseDTO;
 import edu.dosw.styleradar.auth.application.dto.response.OtpMensajeResponseDTO;
-import edu.dosw.styleradar.auth.application.dto.response.UsuarioAuthResponseDTO;
 import edu.dosw.styleradar.auth.domain.model.DesafioOtp;
 import edu.dosw.styleradar.auth.domain.model.Rol;
 import edu.dosw.styleradar.auth.domain.model.SesionAutenticada;
-import edu.dosw.styleradar.auth.domain.model.UsuarioRegistrado;
 
 /**
  * Output mapper (MapStruct): domain models to REST DTOs (English field names, Spanish user messages).
@@ -41,11 +39,6 @@ public interface AuthResponseMapper {
     @Mapping(target = "resendsRemaining", source = "reenviosRestantes")
     OtpMensajeResponseDTO toOtpMensajeResponse(DesafioOtp desafio);
 
-    @Mapping(target = "roles", source = "rol")
-    @Mapping(target = "name", source = "nombre")
-    @Mapping(target = "phone", source = "telefono")
-    @Mapping(target = "registeredAt", source = "fechaRegistro")
-    UsuarioAuthResponseDTO toUsuarioAuthResponse(UsuarioRegistrado usuario);
 
     default Set<Rol> rolComoConjunto(Rol rol) {
         return rol == null ? Set.of() : Set.of(rol);

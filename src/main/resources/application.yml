@@ -105,8 +105,6 @@ styleradar:
         jwk-set-uri: ${GOOGLE_JWK_SET_URI:https://www.googleapis.com/oauth2/v3/certs}
         state-ttl-seconds: ${GOOGLE_STATE_TTL_SECONDS:300}
     redis-local-fallback-enabled: false
-    registration:
-      stub-enabled: false
     rate-limit:
       enabled: ${RATE_LIMIT_ENABLED:true}
       max-requests: ${RATE_LIMIT_MAX_REQUESTS:15}

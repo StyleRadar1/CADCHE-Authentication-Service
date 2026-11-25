@@ -26,11 +26,7 @@ final class AuthApiEjemplos {
             + "\"message\":\"Se envió un código de verificación de 6 dígitos a su correo registrado\","
             + "\"expiresInSeconds\":300,\"attemptsRemaining\":3,\"resendsRemaining\":2}";
 
-    static final String REGISTRO = "{\"name\":\"Laura Gómez\",\"email\":\"laura.gomez@styleradar.com\","
-            + "\"phone\":\"+57 300 123 4567\",\"password\":\"StyleRadar2026*\",\"dataPolicyAccepted\":true}";
 
-    static final String USUARIO_REGISTRADO = "{\"id\":12,\"name\":\"Laura Gómez\",\"email\":\"laura.gomez@styleradar.com\","
-            + "\"phone\":\"+57 300 123 4567\",\"registeredAt\":\"2026-11-16T01:30:00Z\",\"roles\":[\"BUYER\"]}";
 
     static final String ERROR_DATOS_INVALIDOS = "{\"type\":\"https://api.styleradar.com/errors/invalid-data\",\"title\":\"Bad Request\",\"status\":400,\"detail\":\"La solicitud contiene datos inválidos\",\"instance\":\"/api/v1/auth/login\",\"timestamp\":\"2026-11-16T10:15:30\",\"error\":\"Bad Request\",\"code\":\"INVALID_DATA\",\"message\":\"La solicitud contiene datos inválidos\",\"path\":\"/api/v1/auth/login\",\"errors\":{\"email\":\"El formato del correo electrónico es inválido\"},\"attemptsRemaining\":null,\"retryAfterSeconds\":null}";
     static final String ERROR_CREDENCIALES = "{\"type\":\"https://api.styleradar.com/errors/invalid-credentials\",\"title\":\"Unauthorized\",\"status\":401,\"detail\":\"El correo o la contraseña son incorrectos\",\"instance\":\"/api/v1/auth/login\",\"timestamp\":\"2026-11-16T10:15:30\",\"error\":\"Unauthorized\",\"code\":\"INVALID_CREDENTIALS\",\"message\":\"El correo o la contraseña son incorrectos\",\"path\":\"/api/v1/auth/login\",\"errors\":{},\"attemptsRemaining\":null,\"retryAfterSeconds\":null}";

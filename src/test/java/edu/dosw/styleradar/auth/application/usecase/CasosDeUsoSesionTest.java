@@ -34,7 +34,6 @@ import edu.dosw.styleradar.auth.domain.model.EstadoCuenta;
 import edu.dosw.styleradar.auth.domain.model.IdentidadUsuario;
 import edu.dosw.styleradar.auth.domain.model.Rol;
 import edu.dosw.styleradar.auth.domain.model.SesionAutenticada;
-import edu.dosw.styleradar.auth.domain.model.UsuarioRegistrado;
 import edu.dosw.styleradar.auth.domain.port.out.UsuarioIdentidadPort;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
@@ -223,18 +222,5 @@ class CasosDeUsoSesionTest {
             useCase.cerrarSesion("vencido");
             verify(otp, never()).invalidarToken("vencido", 0L);
         }
-    }
-
-    @Test
-    @DisplayName("Registro de soporte habilitado devuelve el usuario con la hora del reloj inyectado")
-    void registroDeSoporte_habilitado() {
-        Instant ahora = Instant.parse("2026-11-16T00:00:00Z");
-        UsuarioRegistrado usuario = new RegistrarUsuarioUseCaseImpl(true, Clock.fixed(ahora, ZoneOffset.UTC))
-                .registrar(" Ana ", "Ana@StyleRadar.com", "+57 300");
-
-        assertThat(usuario.nombre()).isEqualTo("Ana");
-        assertThat(usuario.email()).isEqualTo("ana@styleradar.com");
-        assertThat(usuario.fechaRegistro()).isEqualTo(ahora);
-        assertThat(usuario.rol()).isEqualTo(Rol.BUYER);
     }
 }
