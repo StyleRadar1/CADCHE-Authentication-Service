@@ -7,17 +7,20 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.core.env.Profiles;
 
 import edu.dosw.styleradar.auth.application.service.EmailService;
 import edu.dosw.styleradar.auth.application.service.JwtService;
 import edu.dosw.styleradar.auth.application.service.OtpService;
 import edu.dosw.styleradar.auth.application.service.SesionesActivasService;
+import edu.dosw.styleradar.auth.application.service.impl.OtpServiceImpl;
 import edu.dosw.styleradar.auth.application.usecase.CerrarSesionUseCaseImpl;
 import edu.dosw.styleradar.auth.application.usecase.IniciarSesionUseCaseImpl;
 import edu.dosw.styleradar.auth.application.usecase.ReenviarOtpUseCaseImpl;
 import edu.dosw.styleradar.auth.application.usecase.RegistrarUsuarioUseCaseImpl;
 import edu.dosw.styleradar.auth.application.usecase.RenovarTokenUseCaseImpl;
+import edu.dosw.styleradar.auth.application.usecase.RestablecerContrasenaUseCaseImpl;
 import edu.dosw.styleradar.auth.application.usecase.RevocarSesionesUsuarioUseCaseImpl;
 import edu.dosw.styleradar.auth.application.usecase.VerificarOtpUseCaseImpl;
 import edu.dosw.styleradar.auth.domain.port.in.CerrarSesionUseCase;
@@ -25,6 +28,7 @@ import edu.dosw.styleradar.auth.domain.port.in.IniciarSesionUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.ReenviarOtpUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.RegistrarUsuarioUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.RenovarTokenUseCase;
+import edu.dosw.styleradar.auth.domain.port.in.RestablecerContrasenaUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.RevocarSesionesUsuarioUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.VerificarOtpUseCase;
 import edu.dosw.styleradar.auth.domain.port.out.EventoSesionPublisherPort;
@@ -38,6 +42,9 @@ import edu.dosw.styleradar.auth.domain.port.out.UsuarioIdentidadPort;
  */
 @Configuration
 public class BeanConfig {
+
+    /** Prefijo Redis de los códigos de restablecimiento de contraseña. */
+    public static final String PREFIJO_RESTABLECIMIENTO = "reset:";
 
     @Bean
     public Clock clock() {
@@ -88,6 +95,27 @@ public class BeanConfig {
     public RevocarSesionesUsuarioUseCase revocarSesionesUsuarioUseCase(OtpService otpService, Clock clock,
             SesionesActivasService sesiones) {
         return new RevocarSesionesUsuarioUseCaseImpl(otpService, clock, sesiones);
+    }
+
+    /**
+     * Restablecimiento de contraseña: usa un servicio OTP con prefijo propio ({@code reset:}) para que sus
+     * códigos, intentos y bloqueos no se mezclen con los del login. Las dependencias llegan por
+     * {@link ObjectProvider} para no exigirlas en los slices de prueba que no usan este flujo.
+     */
+    @Bean
+    public RestablecerContrasenaUseCase restablecerContrasenaUseCase(
+            ObjectProvider<UsuarioIdentidadPort> usuarios,
+            ObjectProvider<OtpService> otpService,
+            ObjectProvider<EmailService> emailService,
+            ObjectProvider<StringRedisTemplate> redisTemplate,
+            ObjectProvider<SesionesActivasService> sesiones,
+            @Value("${styleradar.security.redis-local-fallback-enabled:false}") boolean localFallbackEnabled,
+            Environment environment,
+            Clock clock) {
+        OtpService codigos = new OtpServiceImpl(redisTemplate.getIfAvailable(), localFallbackEnabled, environment,
+                PREFIJO_RESTABLECIMIENTO);
+        return new RestablecerContrasenaUseCaseImpl(usuarios.getIfAvailable(), codigos, otpService.getIfAvailable(),
+                emailService.getIfAvailable(), sesiones.getIfAvailable(), clock);
     }
 
     /**

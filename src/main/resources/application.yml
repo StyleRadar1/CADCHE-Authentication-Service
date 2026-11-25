@@ -75,6 +75,8 @@ styleradar:
     oauth2-path: ${USUARIOS_OAUTH2_PATH:/api/v1/internal/users/oauth2}
     correo-verificado-path: ${USUARIOS_CORREO_VERIFICADO_PATH:/api/v1/internal/users/{id}/email-verification}
     credenciales-path: ${USUARIOS_CREDENCIALES_PATH:/api/v1/internal/users/verify-credentials}
+    busqueda-correo-path: ${USUARIOS_BUSQUEDA_CORREO_PATH:/api/v1/internal/users/lookup}
+    contrasena-path: ${USUARIOS_CONTRASENA_PATH:/api/v1/internal/users/{id}/password}
     username: ${USUARIOS_INTERNAL_USERNAME:ms-auth}
     password: ${USUARIOS_INTERNAL_PASSWORD:}
     dev-fallback-enabled: false

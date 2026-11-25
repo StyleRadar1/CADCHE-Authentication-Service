@@ -1,6 +1,8 @@
 package edu.dosw.styleradar.auth.infrastructure.adapter.out.external;
 
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,12 +31,16 @@ public final class UsuarioClient {
     static final String DEFAULT_CORREO_VERIFICADO_PATH = "/api/v1/internal/users/{id}/email-verification";
     static final String DEFAULT_CREDENCIALES_PATH = "/api/v1/internal/users/verify-credentials";
     static final String DEFAULT_OAUTH2_PATH = "/api/v1/internal/users/oauth2";
+    static final String DEFAULT_BUSQUEDA_CORREO_PATH = "/api/v1/internal/users/lookup";
+    static final String DEFAULT_CONTRASENA_PATH = "/api/v1/internal/users/{id}/password";
 
     private final RestClient restClient;
     private final String baseUrl;
     private final String oauth2Path;
     private final String correoVerificadoPath;
     private final String credencialesPath;
+    private final String busquedaCorreoPath;
+    private final String contrasenaPath;
     private final boolean devFallbackEnabled;
     private final Environment environment;
 
@@ -66,9 +72,24 @@ public final class UsuarioClient {
                 DEFAULT_OAUTH2_PATH, DEFAULT_CORREO_VERIFICADO_PATH, DEFAULT_CREDENCIALES_PATH);
     }
 
+    public UsuarioClient(
+            RestClient.Builder restClientBuilder,
+            String baseUrl,
+            String username,
+            String password,
+            boolean devFallbackEnabled,
+            Environment environment,
+            String oauth2Path,
+            String correoVerificadoPath,
+            String credencialesPath) {
+        this(restClientBuilder, baseUrl, username, password, devFallbackEnabled, environment,
+                oauth2Path, correoVerificadoPath, credencialesPath, DEFAULT_BUSQUEDA_CORREO_PATH, DEFAULT_CONTRASENA_PATH);
+    }
+
     @SuppressFBWarnings(
             value = "EI_EXPOSE_REP2",
             justification = "Dependencias administradas por Spring e inyectadas por constructor.")
+    @SuppressWarnings("java:S107")
     @Autowired
     public UsuarioClient(
             RestClient.Builder restClientBuilder,
@@ -81,7 +102,11 @@ public final class UsuarioClient {
             @Value("${styleradar.usuarios.correo-verificado-path:" + DEFAULT_CORREO_VERIFICADO_PATH + "}")
             String correoVerificadoPath,
             @Value("${styleradar.usuarios.credenciales-path:" + DEFAULT_CREDENCIALES_PATH + "}")
-            String credencialesPath) {
+            String credencialesPath,
+            @Value("${styleradar.usuarios.busqueda-correo-path:" + DEFAULT_BUSQUEDA_CORREO_PATH + "}")
+            String busquedaCorreoPath,
+            @Value("${styleradar.usuarios.contrasena-path:" + DEFAULT_CONTRASENA_PATH + "}")
+            String contrasenaPath) {
 
         this.baseUrl = SecuritySanitizer.validateExternalServiceUrl(
                 baseUrl, environment, "USUARIOS_SERVICE_URL");
@@ -94,6 +119,12 @@ public final class UsuarioClient {
         this.credencialesPath = (credencialesPath == null || credencialesPath.isBlank())
                 ? DEFAULT_CREDENCIALES_PATH
                 : credencialesPath.trim();
+        this.busquedaCorreoPath = (busquedaCorreoPath == null || busquedaCorreoPath.isBlank())
+                ? DEFAULT_BUSQUEDA_CORREO_PATH
+                : busquedaCorreoPath.trim();
+        this.contrasenaPath = (contrasenaPath == null || contrasenaPath.isBlank())
+                ? DEFAULT_CONTRASENA_PATH
+                : contrasenaPath.trim();
         this.devFallbackEnabled = devFallbackEnabled;
         this.environment = environment;
         this.restClient = restClientBuilder
@@ -208,6 +239,54 @@ public final class UsuarioClient {
         } catch (RestClientException ex) {
             log.error("No fue posible marcar el correo como verificado en ms-usuarios para usuario ID {}: {}",
                     usuarioId, SecuritySanitizer.sanitizeForLog(ex.getMessage()));
+        }
+    }
+
+    /**
+     * Busca la cuenta por correo (contrato U6). {@code 404} significa que no existe y devuelve vacío;
+     * cualquier otro error es fail-closed ({@code 503}). El correo viaja en el cuerpo, no en la URL,
+     * para que no quede en los registros de acceso.
+     */
+    public Optional<VerificarCredencialesResponseDTO> buscarPorCorreo(String email) {
+        String correo = SecuritySanitizer.normalizeEmail(email);
+        try {
+            return Optional.ofNullable(restClient.post()
+                    .uri(busquedaCorreoPath)
+                    .body(Map.of("email", correo))
+                    .retrieve()
+                    .body(VerificarCredencialesResponseDTO.class));
+        } catch (HttpClientErrorException.NotFound ex) {
+            return Optional.empty();
+        } catch (RestClientException ex) {
+            log.error("Fallo consultando la cuenta de {} en ms-usuarios: {}",
+                    SecuritySanitizer.maskEmail(correo), SecuritySanitizer.sanitizeForLog(ex.getMessage()));
+            throw new ServicioExternoNoDisponibleException(
+                    "El servicio de usuarios no está disponible temporalmente", ex);
+        }
+    }
+
+    /**
+     * Reemplaza la contraseña en ms-usuarios (contrato U7). La contraseña viaja solo por el canal interno
+     * con TLS y Basic; nunca se registra en logs. {@code 403}/{@code 404} significan que la cuenta ya no
+     * está activa.
+     */
+    public void cambiarContrasena(Long usuarioId, String nuevaContrasena) {
+        try {
+            restClient.put()
+                    .uri(contrasenaPath, usuarioId)
+                    .body(Map.of("newPassword", nuevaContrasena))
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("Contraseña restablecida en ms-usuarios para usuario ID {}", usuarioId);
+        } catch (HttpClientErrorException.Forbidden | HttpClientErrorException.NotFound ex) {
+            log.warn("ms-usuarios rechazó el cambio de contraseña del usuario ID {} con estado HTTP {}",
+                    usuarioId, ex.getStatusCode().value());
+            throw new CuentaNoActivaException("La cuenta se encuentra inactiva o bloqueada");
+        } catch (RestClientException ex) {
+            log.error("Fallo cambiando la contraseña del usuario ID {} en ms-usuarios: {}",
+                    usuarioId, SecuritySanitizer.sanitizeForLog(ex.getMessage()));
+            throw new ServicioExternoNoDisponibleException(
+                    "El servicio de usuarios no está disponible temporalmente", ex);
         }
     }
 
