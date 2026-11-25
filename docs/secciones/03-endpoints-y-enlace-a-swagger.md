@@ -44,6 +44,8 @@ El front **siempre** llama al API Gateway (`:8080`), que enruta `/api/v1/auth/**
 | `POST` | `/api/v1/auth/login` | `email`, `password` (8 a 30) | `200 LoginResponseDTO` (token directo o `otpRequired=true`) | Público · 15 req/min |
 | `POST` | `/api/v1/auth/otp/verify` | `email`, `otpCode` | `200 LoginResponseDTO` con token | Público |
 | `POST` | `/api/v1/auth/otp/resend` | `email` | `200` `email`, `message`, `expiresInSeconds`, `attemptsRemaining`, `resendsRemaining` | Público |
+| `POST` | `/api/v1/auth/password/forgot` | `email` | `202` `message`, `expiresInSeconds` (misma respuesta exista o no la cuenta) | Público |
+| `POST` | `/api/v1/auth/password/reset` | `email`, `otpCode`, `newPassword` | `200` `message`; revoca todas las sesiones y no entrega token | Público |
 | `POST` | `/api/v1/auth/refresh` | `refreshToken` (JWT vigente, máx. 2048) | `200 LoginResponseDTO` (SR-RF-113: token rotado, `email` nulo, `emailVerified` true) | Público |
 | `POST` | `/api/v1/auth/logout` | `Authorization: Bearer` | `204` sin cuerpo (SR-RF-112) · `401 INVALID_TOKEN` sin token, mal formado o inválido | JWT |
 | `POST` | `/api/v1/auth/register` | `name`, `email`, `phone`, `password`, `dataPolicyAccepted` | `201` (`id`, `name`, `email`, `phone`, `registeredAt`, `roles`) en `dev`/`test` · `503` en QA/PROD | Público |
@@ -51,6 +53,23 @@ El front **siempre** llama al API Gateway (`:8080`), que enruta `/api/v1/auth/**
 | `GET` | `/api/v1/auth/oauth2/google/url` | `redirectUri` (opcional) | `200` `authorizationUrl`, `state`, `expiresInSeconds`, `redirectUri` | Público |
 | `GET` | `/api/v1/auth/oauth2/google/callback` | `code`, `state` | `200 LoginResponseDTO` | Público |
 | `POST` | `/api/v1/auth/oauth2/google/code` | `code`, `state`, `redirectUri` | `200 LoginResponseDTO` | Público |
+
+### Restablecer contraseña olvidada (todas las cuentas)
+
+Sirve para compradores, administradores de almacén, representantes de fundación y administradores StyleRadar, porque todas las cuentas viven en ms-usuarios. Sigue el *OWASP Forgot Password Cheat Sheet*:
+
+1. `POST /api/v1/auth/password/forgot` con `email`. Responde **siempre `202` con el mismo cuerpo**, exista o no la cuenta, para que nadie pueda averiguar qué correos están registrados. Si la cuenta está activa, envía por correo un código de 6 dígitos válido 5 minutos.
+2. `POST /api/v1/auth/password/reset` con `email`, `otpCode` y `newPassword` (8 a 72 caracteres con mayúscula, minúscula, número y símbolo). Responde `200`.
+
+| Regla | Valor |
+| :--- | :--- |
+| Código | 6 dígitos con `SecureRandom`, guardado como hash SHA-256 salteado en Redis con prefijo `reset:` (separado del OTP del login) |
+| Intentos | 3; al tercer fallo `429 OTP_ATTEMPTS_EXHAUSTED` y espera de 60 s |
+| Correos | Máximo 4 códigos por correo cada 15 min, más el límite de 15 solicitudes por minuto por IP |
+| Después del cambio | Se revocan **todas** las sesiones de la cuenta, el código deja de servir, el correo queda verificado y se envía un aviso de "tu contraseña cambió". **No** se inicia sesión automáticamente |
+| Dónde vive la contraseña | Solo en ms-usuarios (BCrypt). ms-auth no la guarda ni la escribe en logs |
+
+**Dependencia con ms-usuarios:** este flujo usa dos rutas internas nuevas con Basic `ms-auth`: `POST /api/v1/internal/users/lookup` (U6: busca la cuenta por correo, `404` si no existe) y `PUT /api/v1/internal/users/{id}/password` (U7: guarda la contraseña nueva con BCrypt, `204`). Mientras ms-usuarios no las publique, `forgot` responde `202` pero no envía ningún correo (un `404` de ruta inexistente se trata como cuenta inexistente) y `reset` no se puede completar.
 
 ### Ejemplos (análisis de requerimientos v2)
 

@@ -19,6 +19,7 @@ Plantilla completa en [`.env.example`](../../.env.example). Los secretos nunca v
 | `USUARIOS_SERVICE_URL` · `USUARIOS_DEV_SERVICE_URL` (dev) · `USUARIOS_QA_SERVICE_URL` (qa) | URL de `ms-usuarios` | `http://localhost:8120` en dev |
 | `USUARIOS_DEV_FALLBACK_ENABLED` | Usuario simulado solo para desarrollo sin ms-usuarios; ignorado fuera de `dev` | `false` |
 | `USUARIOS_INTERNAL_USERNAME` / `USUARIOS_INTERNAL_PASSWORD` | Credenciales Basic internas hacia ms-usuarios | `ms-auth` / — |
+| `USUARIOS_BUSQUEDA_CORREO_PATH` / `USUARIOS_CONTRASENA_PATH` | Rutas internas de ms-usuarios para el restablecimiento de contraseña: buscar la cuenta por correo (U6) y reemplazar la contraseña (U7) | `/api/v1/internal/users/lookup` · `/api/v1/internal/users/{id}/password` |
 | `USUARIOS_CREDENCIALES_PATH` / `USUARIOS_OAUTH2_PATH` / `USUARIOS_CORREO_VERIFICADO_PATH` | Rutas internas de ms-usuarios en inglés (análisis v2) para validar credenciales, cuentas Google y marcar el correo verificado | `/api/v1/internal/users/verify-credentials` · `/api/v1/internal/users/oauth2` · `/api/v1/internal/users/{id}/email-verification` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` / `GOOGLE_ALLOWED_REDIRECT_URIS` | Google OAuth2 (lista blanca anti Open Redirect) | — |
 | `GOOGLE_STATE_TTL_SECONDS` | Vida del `state` anti-CSRF de un solo uso | `300` |

@@ -37,7 +37,7 @@
     <a href="https://styleradar-auth-prod.azurewebsites.net/swagger-ui/index.html"><img src="https://img.shields.io/badge/PROD_CLOUD-Active-16A34A?style=for-the-badge&logo=azure-app-services&logoColor=white" alt="PROD Cloud Active" /></a>
     <a href="https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions/workflows/ci-prod.yml"><img src="https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions/workflows/ci-prod.yml/badge.svg?branch=main" alt="CI Main Status" /></a>
     <a href="https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions/workflows/ci-qa.yml"><img src="https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions/workflows/ci-qa.yml/badge.svg?branch=develop" alt="CI Develop Status" /></a>
-    <a href="docs/secciones/08-pruebas-y-cobertura.md"><img src="https://img.shields.io/badge/JaCoCo_Coverage-95.8%25-16A34A?style=for-the-badge&logo=codecov&logoColor=white" alt="Coverage" /></a>
+    <a href="docs/secciones/08-pruebas-y-cobertura.md"><img src="https://img.shields.io/badge/JaCoCo_Coverage-96.3%25-16A34A?style=for-the-badge&logo=codecov&logoColor=white" alt="Coverage" /></a>
     <a href="https://sonarcloud.io/project/overview?id=StyleRadar1_CADCHE-Authentication-Service"><img src="https://sonarcloud.io/api/project_badges/measure?project=StyleRadar1_CADCHE-Authentication-Service&metric=alert_status" alt="SonarQube Quality Gate" /></a>
   </p>
 
