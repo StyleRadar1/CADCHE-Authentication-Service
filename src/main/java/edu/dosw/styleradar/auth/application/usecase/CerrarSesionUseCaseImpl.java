@@ -15,8 +15,14 @@ public class CerrarSesionUseCaseImpl implements CerrarSesionUseCase {
 
     private final JwtService jwtService;
     private final OtpService otpService;
+    private final edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones;
 
     public CerrarSesionUseCaseImpl(JwtService jwtService, OtpService otpService) {
+        this(jwtService, otpService, null);
+    }
+
+    public CerrarSesionUseCaseImpl(JwtService jwtService, OtpService otpService, edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones) {
+        this.sesiones = sesiones;
         this.jwtService = jwtService;
         this.otpService = otpService;
     }
@@ -37,6 +43,9 @@ public class CerrarSesionUseCaseImpl implements CerrarSesionUseCase {
         if (tiempoRestante > 0) {
             otpService.invalidarToken(token, tiempoRestante);
             log.info("Token revocado en logout con TTL restante de {}s", tiempoRestante);
+        }
+        if (sesiones != null) {
+            sesiones.cerrar(token);
         }
     }
 }

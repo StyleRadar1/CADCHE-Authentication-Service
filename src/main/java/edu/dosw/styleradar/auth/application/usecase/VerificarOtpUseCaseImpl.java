@@ -21,9 +21,16 @@ public class VerificarOtpUseCaseImpl implements VerificarOtpUseCase {
     private final OtpService otpService;
     private final JwtService jwtService;
     private final UsuarioIdentidadPort usuarioIdentidadPort;
+    private final edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones;
 
     public VerificarOtpUseCaseImpl(
             OtpService otpService, JwtService jwtService, UsuarioIdentidadPort usuarioIdentidadPort) {
+        this(otpService, jwtService, usuarioIdentidadPort, null);
+    }
+
+    public VerificarOtpUseCaseImpl(OtpService otpService, JwtService jwtService,
+            UsuarioIdentidadPort usuarioIdentidadPort, edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones) {
+        this.sesiones = sesiones;
         this.otpService = otpService;
         this.jwtService = jwtService;
         this.usuarioIdentidadPort = usuarioIdentidadPort;
@@ -48,6 +55,9 @@ public class VerificarOtpUseCaseImpl implements VerificarOtpUseCase {
         String token = jwtService.generarToken(usuarioId, Set.of(rol));
         otpService.eliminarOtp(correo);
         usuarioIdentidadPort.marcarCorreoVerificado(usuarioId);
+        if (sesiones != null) {
+            sesiones.iniciar(token);
+        }
 
         log.info("Correo verificado y token JWT emitido para usuario ID {}", usuarioId);
         return SesionAutenticada.conToken(token, jwtService.obtenerVigenciaSegundos(), usuarioId, rol, correo);

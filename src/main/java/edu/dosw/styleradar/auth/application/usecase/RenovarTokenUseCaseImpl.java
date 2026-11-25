@@ -23,8 +23,14 @@ public class RenovarTokenUseCaseImpl implements RenovarTokenUseCase {
 
     private final JwtService jwtService;
     private final OtpService otpService;
+    private final edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones;
 
     public RenovarTokenUseCaseImpl(JwtService jwtService, OtpService otpService) {
+        this(jwtService, otpService, null);
+    }
+
+    public RenovarTokenUseCaseImpl(JwtService jwtService, OtpService otpService, edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones) {
+        this.sesiones = sesiones;
         this.jwtService = jwtService;
         this.otpService = otpService;
     }
@@ -58,6 +64,9 @@ public class RenovarTokenUseCaseImpl implements RenovarTokenUseCase {
 
         Rol rol = roles.iterator().next();
         String nuevoToken = jwtService.generarToken(usuarioId, Set.of(rol));
+        if (sesiones != null) {
+            sesiones.renovar(token, nuevoToken);
+        }
         log.info("Token JWT renovado exitosamente con rotación para usuario ID {}", usuarioId);
         return SesionAutenticada.conToken(nuevoToken, jwtService.obtenerVigenciaSegundos(), usuarioId, rol, null);
     }

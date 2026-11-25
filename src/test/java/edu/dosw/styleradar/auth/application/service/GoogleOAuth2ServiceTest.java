@@ -113,6 +113,23 @@ class GoogleOAuth2ServiceTest {
     }
 
     @Test
+    @DisplayName("El inicio de sesión con Google abre la sesión para user.session.changed")
+    void autenticarConIdToken_registraLaSesion() {
+        GoogleIdentityClaims claims = new GoogleIdentityClaims("google-sub-109", "antonia@styleradar.com", true, "Antonia");
+        when(googleOAuthPort.verificarIdToken("id-token-valido")).thenReturn(claims);
+        when(usuarioClient.resolverUsuarioOAuth("antonia@styleradar.com", "Antonia", "GOOGLE", "google-sub-109"))
+                .thenReturn(new VerificarCredencialesResponseDTO(42L, "antonia@styleradar.com", "BUYER", "ACTIVA"));
+        when(jwtService.generarToken(42L, Set.of(Rol.BUYER))).thenReturn("jwt-styleradar-42");
+        edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones =
+                org.mockito.Mockito.mock(edu.dosw.styleradar.auth.application.service.SesionesActivasService.class);
+        service.setSesiones(sesiones);
+
+        service.autenticarConIdToken("id-token-valido");
+
+        verify(sesiones).iniciar("jwt-styleradar-42");
+    }
+
+    @Test
     @DisplayName("Debe autenticar exitosamente con ID Token verificado y emitir JWT Bearer de StyleRadar")
     void autenticarConIdToken_conTokenYCuentaActiva_debeRetornarJwtSinOtp() {
         GoogleIdentityClaims claims = new GoogleIdentityClaims(

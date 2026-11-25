@@ -113,6 +113,10 @@ class TrazabilidadRequerimientosAuthTest {
     private JavaMailSender javaMailSender;
     @MockBean
     private JwtDecoder decodificadorGoogle;
+    @MockBean
+    private edu.dosw.styleradar.auth.domain.port.out.EventoSesionPublisherPort eventosSesion;
+    @Autowired
+    private edu.dosw.styleradar.auth.application.service.SesionesActivasService sesionesActivas;
 
     private final Map<String, String> ultimoCodigo = new ConcurrentHashMap<>();
 
@@ -143,7 +147,7 @@ class TrazabilidadRequerimientosAuthTest {
         cuenta("caido@styleradar.com", 16, "BUYER", "ACTIVE", true);
         cuenta("google@styleradar.com", 17, "FOUNDATION_REPRESENTATIVE", "ACTIVE", false);
         cuenta("googlebloqueado@styleradar.com", 18, "BUYER", "BLOCKED", true);
-        reset(emailService);
+        reset(emailService, eventosSesion);
         ultimoCodigo.clear();
         doAnswer(inv -> {
             ultimoCodigo.put(inv.getArgument(0), inv.getArgument(1));
@@ -1290,6 +1294,94 @@ class TrazabilidadRequerimientosAuthTest {
                     "otp-incorrect", "/api/v1/auth/otp/verify", "El código OTP es incorrecto. Intentos restantes: 2")
                     .andExpect(jsonPath("$.attemptsRemaining").value(2))
                     .andExpect(jsonPath("$.retryAfterSeconds").value(nullValue()));
+        }
+    }
+
+    @Nested
+    @DisplayName("Evento user.session.changed (integración con ms-estadísticas), con Redis real")
+    class EventosSesion {
+
+        private String accessToken(ResultActions r) throws Exception {
+            return objectMapper.readTree(r.andExpect(status().isOk()).andReturn().getResponse()
+                    .getContentAsString(StandardCharsets.UTF_8)).get("accessToken").asText();
+        }
+
+        private ResultActions salir(String token) throws Exception {
+            return mockMvc.perform(post("/api/v1/auth/logout").header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                    .with(r -> {
+                        r.setRemoteAddr(nuevaIp());
+                        return r;
+                    }));
+        }
+
+        private java.util.List<edu.dosw.styleradar.auth.domain.event.SesionCambiadaEvent> publicados(int veces) {
+            org.mockito.ArgumentCaptor<edu.dosw.styleradar.auth.domain.event.SesionCambiadaEvent> c =
+                    org.mockito.ArgumentCaptor.forClass(edu.dosw.styleradar.auth.domain.event.SesionCambiadaEvent.class);
+            org.mockito.Mockito.verify(eventosSesion, org.mockito.Mockito.times(veces)).publicarSesionCambiada(c.capture());
+            return c.getAllValues();
+        }
+
+        @Test
+        @DisplayName("Login +1, renovar no publica y conserva la sesión, logout -1 una sola vez")
+        void loginRenovarLogout() throws Exception {
+            String token = accessToken(login(nuevaIp(), "verificado@styleradar.com", CLAVE));
+            String renovado = accessToken(llamar(nuevaIp(), "/refresh", Map.of("refreshToken", token)));
+            salir(renovado).andExpect(status().isNoContent());
+            salir(renovado).andExpect(status().isUnauthorized());
+
+            var eventos = publicados(2);
+            assertThat(eventos).extracting(e -> e.accion() + ":" + e.delta()).containsExactly("LOGIN:1", "LOGOUT:-1");
+            assertThat(eventos).extracting(e -> e.usuarioId()).containsOnly(12L);
+            assertThat(eventos.get(1).sesionId()).isEqualTo(eventos.get(0).sesionId());
+            assertThat(redis.opsForZSet().size("sesiones:vencimiento")).isZero();
+        }
+
+        @Test
+        @DisplayName("El OTP verificado abre la sesión (+1)")
+        void otpAbreSesion() throws Exception {
+            login(nuevaIp(), "nuevo@styleradar.com", CLAVE).andExpect(status().isOk());
+            llamar(nuevaIp(), "/otp/verify", Map.of("email", "nuevo@styleradar.com",
+                    "otpCode", ultimoCodigo.get("nuevo@styleradar.com"))).andExpect(status().isOk());
+
+            var eventos = publicados(1);
+            assertThat(eventos.get(0).accion().name()).isEqualTo("LOGIN");
+            assertThat(eventos.get(0).usuarioId()).isEqualTo(13L);
+        }
+
+        @Test
+        @DisplayName("Un token vencido se cierra en el barrido con EXPIRED -1 y no se repite")
+        void expiracion() throws Exception {
+            accessToken(login(nuevaIp(), "verificado@styleradar.com", CLAVE));
+            Instant despues = Instant.now().plus(java.time.Duration.ofHours(13));
+
+            assertThat(sesionesActivas.expirarVencidas(despues)).isEqualTo(1);
+            assertThat(sesionesActivas.expirarVencidas(despues)).isZero();
+
+            var eventos = publicados(2);
+            assertThat(eventos).extracting(e -> e.accion() + ":" + e.delta()).containsExactly("LOGIN:1", "EXPIRED:-1");
+        }
+
+        @Test
+        @DisplayName("Bloquear la cuenta cierra todas sus sesiones con REVOKED -1")
+        void revocacion() throws Exception {
+            accessToken(login(nuevaIp(), "verificado@styleradar.com", CLAVE));
+            accessToken(login(nuevaIp(), "verificado@styleradar.com", CLAVE));
+            consumidorEstado.recibir(objectMapper.readValue("{\"eventId\":\"evt-sesiones\",\"userId\":12,"
+                    + "\"previousStatus\":\"ACTIVE\",\"newStatus\":\"BLOCKED\",\"changedBy\":1,\"reason\":\"Prueba\","
+                    + "\"changedAt\":\"" + Instant.now().plusSeconds(1) + "\"}",
+                    edu.dosw.styleradar.auth.application.dto.event.UsuarioEstadoCambiadoEventDTO.class));
+
+            var eventos = publicados(4);
+            assertThat(eventos).extracting(e -> e.accion() + ":" + e.delta())
+                    .containsExactly("LOGIN:1", "LOGIN:1", "REVOKED:-1", "REVOKED:-1");
+            assertThat(eventos.stream().mapToInt(e -> e.delta()).sum()).isZero();
+        }
+
+        @Test
+        @DisplayName("Un login fallido no publica nada")
+        void loginFallido() throws Exception {
+            login(nuevaIp(), "verificado@styleradar.com", "A".repeat(30)).andExpect(status().isUnauthorized());
+            org.mockito.Mockito.verify(eventosSesion, org.mockito.Mockito.never()).publicarSesionCambiada(any());
         }
     }
 }
