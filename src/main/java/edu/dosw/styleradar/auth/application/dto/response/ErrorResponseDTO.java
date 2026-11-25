@@ -19,7 +19,7 @@ import lombok.Value;
  */
 @Value
 @Builder
-@Schema(description = "Error in ProblemDetail format (RFC 9457) with the StyleRadar extensions. Only detail/message and the per-field messages are in Spanish")
+@Schema(name = "ErrorResponse", description = "Error in ProblemDetail format (RFC 9457) with the StyleRadar extensions. Only detail/message and the per-field messages are in Spanish")
 public class ErrorResponseDTO {
 
     /** Formato de fecha del contrato: AAAA-MM-DDThh:mm:ss, sin fracciones de segundo. */

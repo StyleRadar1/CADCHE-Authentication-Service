@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Verification of the 6-digit OTP code sent by email")
+@Schema(name = "VerifyOtpRequest", description = "Verification of the 6-digit OTP code sent by email")
 public class VerificarOtpRequestDTO {
 
     @NotBlank(message = "El correo electrónico es obligatorio")

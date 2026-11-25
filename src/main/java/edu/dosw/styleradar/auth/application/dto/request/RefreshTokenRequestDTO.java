@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Request to refresh the JWT of an active session")
+@Schema(name = "RefreshTokenRequest", description = "Request to refresh the JWT of an active session")
 public class RefreshTokenRequestDTO {
 
     @NotBlank(message = "El token de renovación es obligatorio")

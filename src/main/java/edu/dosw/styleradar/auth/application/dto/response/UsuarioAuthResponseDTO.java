@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Support account returned by the ms-auth registration endpoint (annex, disabled by default)")
+@Schema(name = "RegisteredUserResponse", description = "Support account returned by the ms-auth registration endpoint (annex, disabled by default)")
 public class UsuarioAuthResponseDTO {
 
     @Schema(description = "Account identifier", example = "12")
