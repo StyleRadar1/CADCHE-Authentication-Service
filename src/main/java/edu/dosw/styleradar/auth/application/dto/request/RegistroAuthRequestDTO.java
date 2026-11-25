@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Support registration in ms-auth (annex). Disabled by default; the real buyer registration is POST /api/v1/users in ms-usuarios")
+@Schema(name = "RegisterRequest", description = "Support registration in ms-auth (annex). Disabled by default; the real buyer registration is POST /api/v1/users in ms-usuarios")
 public class RegistroAuthRequestDTO {
 
     @NotBlank(message = "El nombre es obligatorio")
