@@ -41,22 +41,42 @@ public class RevocarSesionesUsuarioUseCaseImpl implements RevocarSesionesUsuario
             log.info("Transición a estado {} para usuario ID {}; no requiere revocación global", estadoNuevo, usuarioId);
             return;
         }
+        if (aplicarRevocacion(eventoId, usuarioId, fechaCambio)) {
+            log.warn("Sesiones globales revocadas para usuario ID {} por cambio a estado {}", usuarioId, estadoNuevo);
+        }
+    }
+
+    @Override
+    public void revocarPorCambioDeCuenta(String eventoId, Long usuarioId, Instant fecha, String motivo) {
+        if (usuarioId == null) {
+            log.warn("Evento de {} sin userId ignorado", SecuritySanitizer.sanitizeForLog(motivo));
+            return;
+        }
+        if (aplicarRevocacion(eventoId, usuarioId, fecha)) {
+            log.warn("Sesiones globales revocadas para usuario ID {} por {}", usuarioId,
+                    SecuritySanitizer.sanitizeForLog(motivo));
+        }
+    }
+
+    /**
+     * Revoca en Redis y en el registro de sesiones. Primero la revocación y después la marca de idempotencia:
+     * si Redis falla al revocar, la excepción provoca el reintento de RabbitMQ y el evento no queda marcado como
+     * procesado (CADCHE-129). Devuelve {@code false} si el evento ya se había procesado.
+     */
+    private boolean aplicarRevocacion(String eventoId, Long usuarioId, Instant fecha) {
         boolean conId = eventoId != null && !eventoId.isBlank();
         String idSeguro = conId ? SecuritySanitizer.sanitizeForLog(eventoId) : null;
         if (conId && otpService.eventoYaProcesado(idSeguro)) {
             log.info("Evento duplicado {} descartado por idempotencia para usuario ID {}", idSeguro, usuarioId);
-            return;
+            return false;
         }
-
-        // Primero la revocación y después la marca de idempotencia: si Redis falla al revocar, la excepción
-        // provoca el reintento de RabbitMQ y el evento no queda marcado como procesado (CADCHE-129).
-        otpService.revocarSesionesUsuario(usuarioId, fechaCambio != null ? fechaCambio : Instant.now(clock));
+        otpService.revocarSesionesUsuario(usuarioId, fecha != null ? fecha : Instant.now(clock));
         if (sesiones != null) {
             sesiones.revocarUsuario(usuarioId);
         }
         if (conId) {
             otpService.registrarEventoProcesado(idSeguro);
         }
-        log.warn("Sesiones globales revocadas para usuario ID {} por cambio a estado {}", usuarioId, estadoNuevo);
+        return true;
     }
 }

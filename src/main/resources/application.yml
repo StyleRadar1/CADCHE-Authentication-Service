@@ -75,9 +75,16 @@ styleradar:
     oauth2-path: ${USUARIOS_OAUTH2_PATH:/api/v1/internal/users/oauth2}
     correo-verificado-path: ${USUARIOS_CORREO_VERIFICADO_PATH:/api/v1/internal/users/{id}/email-verification}
     credenciales-path: ${USUARIOS_CREDENCIALES_PATH:/api/v1/internal/users/verify-credentials}
+    busqueda-correo-path: ${USUARIOS_BUSQUEDA_CORREO_PATH:/api/v1/internal/users/lookup}
+    contrasena-path: ${USUARIOS_CONTRASENA_PATH:/api/v1/internal/users/{id}/password}
     username: ${USUARIOS_INTERNAL_USERNAME:ms-auth}
     password: ${USUARIOS_INTERNAL_PASSWORD:}
     dev-fallback-enabled: false
+
+  tiendas:
+    base-url: ${TIENDAS_API_BASE_URL:${TIENDAS_SERVICE_URL:${TIENDAS_BASE_URL:}}}
+    internal-username: ${TIENDAS_INTERNAL_USERNAME:ms-auth}
+    internal-password: ${TIENDAS_INTERNAL_PASSWORD:${AUTH_INTERNAL_PASSWORD:}}
 
   mail:
     dev-console-fallback-enabled: false
@@ -103,8 +110,6 @@ styleradar:
         jwk-set-uri: ${GOOGLE_JWK_SET_URI:https://www.googleapis.com/oauth2/v3/certs}
         state-ttl-seconds: ${GOOGLE_STATE_TTL_SECONDS:300}
     redis-local-fallback-enabled: false
-    registration:
-      stub-enabled: false
     rate-limit:
       enabled: ${RATE_LIMIT_ENABLED:true}
       max-requests: ${RATE_LIMIT_MAX_REQUESTS:15}

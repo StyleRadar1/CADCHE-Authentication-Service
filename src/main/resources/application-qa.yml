@@ -76,6 +76,11 @@ styleradar:
     password: ${USUARIOS_INTERNAL_PASSWORD:}
     dev-fallback-enabled: ${USUARIOS_DEV_FALLBACK_ENABLED:false}
 
+  tiendas:
+    base-url: ${TIENDAS_API_BASE_URL:${TIENDAS_SERVICE_URL:${TIENDAS_BASE_URL:}}}
+    internal-username: ${TIENDAS_INTERNAL_USERNAME:ms-auth}
+    internal-password: ${TIENDAS_INTERNAL_PASSWORD:${AUTH_INTERNAL_PASSWORD:}}
+
   mail:
     dev-console-fallback-enabled: ${MAIL_DEV_CONSOLE_FALLBACK_ENABLED:false}
 
@@ -96,8 +101,6 @@ styleradar:
         redirect-uri: ${GOOGLE_REDIRECT_URI:https://styleradar-auth-qa.azurewebsites.net/api/v1/auth/oauth2/google/callback}
         allowed-redirect-uris: ${GOOGLE_ALLOWED_REDIRECT_URIS:https://styleradar-auth-qa.azurewebsites.net/api/v1/auth/oauth2/google/callback,https://qa.styleradar.com/auth/google/callback}
     redis-local-fallback-enabled: false
-    registration:
-      stub-enabled: false
     rate-limit:
       enabled: true
       max-requests: ${RATE_LIMIT_MAX_REQUESTS:15}

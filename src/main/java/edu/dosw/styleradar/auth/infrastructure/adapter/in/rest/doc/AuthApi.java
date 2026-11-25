@@ -17,10 +17,8 @@ import static edu.dosw.styleradar.auth.infrastructure.adapter.in.rest.doc.AuthAp
 import static edu.dosw.styleradar.auth.infrastructure.adapter.in.rest.doc.AuthApiEjemplos.LOGIN_FUNDACION;
 import static edu.dosw.styleradar.auth.infrastructure.adapter.in.rest.doc.AuthApiEjemplos.LOGIN_TIENDA;
 import static edu.dosw.styleradar.auth.infrastructure.adapter.in.rest.doc.AuthApiEjemplos.OTP_REENVIADO;
-import static edu.dosw.styleradar.auth.infrastructure.adapter.in.rest.doc.AuthApiEjemplos.REGISTRO;
 import static edu.dosw.styleradar.auth.infrastructure.adapter.in.rest.doc.AuthApiEjemplos.SESION_CON_TOKEN;
 import static edu.dosw.styleradar.auth.infrastructure.adapter.in.rest.doc.AuthApiEjemplos.SESION_PENDIENTE_OTP;
-import static edu.dosw.styleradar.auth.infrastructure.adapter.in.rest.doc.AuthApiEjemplos.USUARIO_REGISTRADO;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,12 +27,10 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import edu.dosw.styleradar.auth.application.dto.request.LoginRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.request.ReenviarOtpRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.request.RefreshTokenRequestDTO;
-import edu.dosw.styleradar.auth.application.dto.request.RegistroAuthRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.request.VerificarOtpRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.response.ErrorResponseDTO;
 import edu.dosw.styleradar.auth.application.dto.response.LoginResponseDTO;
 import edu.dosw.styleradar.auth.application.dto.response.OtpMensajeResponseDTO;
-import edu.dosw.styleradar.auth.application.dto.response.UsuarioAuthResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
@@ -190,23 +186,4 @@ public interface AuthApi {
     })
     ResponseEntity<Void> logout(
             @Parameter(hidden = true) @RequestHeader(value = "Authorization", required = false) String authorizationHeader);
-
-    @Operation(
-            summary = "Support registration (disabled by default)",
-            description = "Support endpoint: returns a simulated BUYER account and stores nothing. The real buyer registration is "
-                    + "POST /api/v1/users in ms-usuarios. In QA and PROD it always answers 503 SERVICE_UNAVAILABLE (fail-closed).",
-            security = {},
-            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true, content = @Content(
-                    mediaType = JSON, schema = @Schema(implementation = RegistroAuthRequestDTO.class),
-                    examples = @ExampleObject(name = "Register", value = REGISTRO))))
-    @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Support user created (dev/test only)", content = @Content(
-                    mediaType = JSON, schema = @Schema(implementation = UsuarioAuthResponseDTO.class),
-                    examples = @ExampleObject(name = "RegisteredUser", value = USUARIO_REGISTRADO))),
-            @ApiResponse(responseCode = "400", description = "INVALID_DATA", content = @Content(
-                    mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class))),
-            @ApiResponse(responseCode = "503", description = "SERVICE_UNAVAILABLE in QA and PROD (fail-closed)", content = @Content(
-                    mediaType = PROBLEMA, schema = @Schema(implementation = ErrorResponseDTO.class)))
-    })
-    ResponseEntity<UsuarioAuthResponseDTO> registrar(@Valid @RequestBody RegistroAuthRequestDTO request);
 }

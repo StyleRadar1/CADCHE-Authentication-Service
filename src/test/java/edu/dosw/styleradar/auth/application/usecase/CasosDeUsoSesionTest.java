@@ -30,11 +30,12 @@ import edu.dosw.styleradar.auth.domain.exception.OtpExpiradoException;
 import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
 import edu.dosw.styleradar.auth.domain.model.CodigoError;
 import edu.dosw.styleradar.auth.domain.model.DesafioOtp;
+import edu.dosw.styleradar.auth.domain.model.EntidadAsociada;
 import edu.dosw.styleradar.auth.domain.model.EstadoCuenta;
 import edu.dosw.styleradar.auth.domain.model.IdentidadUsuario;
 import edu.dosw.styleradar.auth.domain.model.Rol;
 import edu.dosw.styleradar.auth.domain.model.SesionAutenticada;
-import edu.dosw.styleradar.auth.domain.model.UsuarioRegistrado;
+import edu.dosw.styleradar.auth.domain.port.out.EntidadAsociadaPort;
 import edu.dosw.styleradar.auth.domain.port.out.UsuarioIdentidadPort;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
@@ -224,17 +225,44 @@ class CasosDeUsoSesionTest {
             verify(otp, never()).invalidarToken("vencido", 0L);
         }
     }
-
     @Test
-    @DisplayName("Registro de soporte habilitado devuelve el usuario con la hora del reloj inyectado")
-    void registroDeSoporte_habilitado() {
-        Instant ahora = Instant.parse("2026-11-16T00:00:00Z");
-        UsuarioRegistrado usuario = new RegistrarUsuarioUseCaseImpl(true, Clock.fixed(ahora, ZoneOffset.UTC))
-                .registrar(" Ana ", "Ana@StyleRadar.com", "+57 300");
+    @DisplayName("BUG-005: Login, OTP y Refresh incluyen storeId y foundationId cuando EntidadAsociadaPort los resuelve")
+    void flujosSesionIncluyenClaimsDeEntidadAsociada() {
+        EntidadAsociadaPort entidadPort = mock(EntidadAsociadaPort.class);
 
-        assertThat(usuario.nombre()).isEqualTo("Ana");
-        assertThat(usuario.email()).isEqualTo("ana@styleradar.com");
-        assertThat(usuario.fechaRegistro()).isEqualTo(ahora);
-        assertThat(usuario.rol()).isEqualTo(Rol.BUYER);
+        when(usuarios.verificarCredenciales("tienda@styleradar.com", "Clave2026*"))
+                .thenReturn(new IdentidadUsuario(50L, "tienda@styleradar.com", Rol.STORE_ADMIN, EstadoCuenta.ACTIVA, true));
+        when(entidadPort.resolverEntidadAsociada(50L, Set.of(Rol.STORE_ADMIN)))
+                .thenReturn(new EntidadAsociada("900555666-1", null));
+        when(jwt.generarToken(50L, Set.of(Rol.STORE_ADMIN), "900555666-1", null)).thenReturn("jwt-tienda");
+
+        IniciarSesionUseCaseImpl loginUseCase = new IniciarSesionUseCaseImpl(usuarios, otp, email, jwt, null, entidadPort);
+        SesionAutenticada sesionLogin = loginUseCase.iniciarSesion("tienda@styleradar.com", "Clave2026*");
+        assertThat(sesionLogin.accessToken()).isEqualTo("jwt-tienda");
+
+        when(otp.obtenerUsuarioId(CORREO)).thenReturn(60L);
+        when(otp.obtenerRol(CORREO)).thenReturn("FOUNDATION_REPRESENTATIVE");
+        when(entidadPort.resolverEntidadAsociada(60L, Set.of(Rol.FOUNDATION_REPRESENTATIVE)))
+                .thenReturn(new EntidadAsociada(null, 12L));
+        when(jwt.generarToken(60L, Set.of(Rol.FOUNDATION_REPRESENTATIVE), null, 12L)).thenReturn("jwt-fundacion");
+
+        VerificarOtpUseCaseImpl otpUseCase = new VerificarOtpUseCaseImpl(otp, jwt, usuarios, null, entidadPort);
+        SesionAutenticada sesionOtp = otpUseCase.verificar(CORREO, "123456");
+        assertThat(sesionOtp.accessToken()).isEqualTo("jwt-fundacion");
+
+        when(otp.esTokenInvalido("old-t")).thenReturn(false);
+        when(jwt.validarToken("old-t")).thenReturn(Jwts.claims().subject("50")
+                .add("storeId", "900555666-1")
+                .issuedAt(new Date(5000L)).build());
+        when(jwt.obtenerUsuarioId("old-t")).thenReturn(50L);
+        when(jwt.obtenerRoles("old-t")).thenReturn(Set.of(Rol.STORE_ADMIN));
+        when(otp.estaUsuarioRevocado(50L, 5000L)).thenReturn(false);
+        when(jwt.obtenerTiempoRestanteSegundos("old-t")).thenReturn(120L);
+        when(entidadPort.resolverEntidadAsociada(50L, Set.of(Rol.STORE_ADMIN))).thenReturn(EntidadAsociada.VACIA);
+        when(jwt.generarToken(50L, Set.of(Rol.STORE_ADMIN), "900555666-1", null)).thenReturn("new-t");
+
+        RenovarTokenUseCaseImpl refreshUseCase = new RenovarTokenUseCaseImpl(jwt, otp, null, entidadPort);
+        SesionAutenticada sesionRefresh = refreshUseCase.renovar("old-t");
+        assertThat(sesionRefresh.accessToken()).isEqualTo("new-t");
     }
 }

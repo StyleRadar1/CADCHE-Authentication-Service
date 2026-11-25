@@ -45,17 +45,21 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public final class OtpServiceImpl implements OtpService {
 
-    private static final String KEY_OTP = "otp:";
-    private static final String KEY_INTENTOS = "otp:intentos:";
-    private static final String KEY_REENVIOS = "otp:reenvios:";
-    private static final String KEY_USUARIO = "otp:usuario:";
-    private static final String KEY_ROL = "otp:rol:";
-    private static final String KEY_BLOQUEO = "otp:bloqueo:";
+    /** Prefijo de las claves del código OTP de verificación de correo en el login (SR-RF-92). */
+    public static final String PREFIJO_VERIFICACION = "otp:";
     private static final String KEY_BLACKLIST = "blacklist:";
     private static final String KEY_USUARIO_REVOCADO = "usuario:revocado:";
     private static final String KEY_EVENTO_PROCESADO = "evento:procesado:";
     private static final long EVENTO_IDEMPOTENCIA_TTL_SEGUNDOS = TimeUnit.HOURS.toSeconds(24);
     private static final String MENSAJE_REDIS_NO_DISPONIBLE = "Servicio de sesiones OTP no disponible temporalmente";
+
+    private final String keyOtp;
+    private final String keyIntentos;
+    private final String keyReenvios;
+    private final String keyUsuario;
+    private final String keyRol;
+    private final String keyBloqueo;
+    private final String keySolicitudes;
 
     private final StringRedisTemplate redisTemplate;
     private final SecureRandom random = new SecureRandom();
@@ -96,9 +100,31 @@ public final class OtpServiceImpl implements OtpService {
             StringRedisTemplate redisTemplate,
             @Value("${styleradar.security.redis-local-fallback-enabled:false}") boolean localFallbackEnabled,
             Environment environment) {
+        this(redisTemplate, localFallbackEnabled, environment, PREFIJO_VERIFICACION);
+    }
+
+    /**
+     * Crea el servicio con un prefijo de claves propio, para que otro propósito (por ejemplo el
+     * restablecimiento de contraseña) tenga sus códigos, intentos y bloqueos separados del login.
+     */
+    public OtpServiceImpl(
+            StringRedisTemplate redisTemplate,
+            boolean localFallbackEnabled,
+            Environment environment,
+            String prefijo) {
+        if (prefijo == null || prefijo.isBlank() || !prefijo.endsWith(":")) {
+            throw new IllegalArgumentException("El prefijo de claves OTP debe terminar en ':'");
+        }
         this.redisTemplate = redisTemplate;
         this.localFallbackEnabled = localFallbackEnabled;
         this.environment = environment;
+        this.keyOtp = prefijo;
+        this.keyIntentos = prefijo + "intentos:";
+        this.keyReenvios = prefijo + "reenvios:";
+        this.keyUsuario = prefijo + "usuario:";
+        this.keyRol = prefijo + "rol:";
+        this.keyBloqueo = prefijo + "bloqueo:";
+        this.keySolicitudes = prefijo + "solicitudes:";
     }
 
     @Override
@@ -109,12 +135,12 @@ public final class OtpServiceImpl implements OtpService {
         String codigo = nuevoCodigo();
         guardarCodigoVigente(normalizedEmail, codigo);
         if (usuarioId != null) {
-            guardarValor(KEY_USUARIO + normalizedEmail, String.valueOf(usuarioId), sessionTtlSeconds);
+            guardarValor(keyUsuario + normalizedEmail, String.valueOf(usuarioId), sessionTtlSeconds);
         }
         if (rol != null) {
-            guardarValor(KEY_ROL + normalizedEmail, rol, sessionTtlSeconds);
+            guardarValor(keyRol + normalizedEmail, rol, sessionTtlSeconds);
         }
-        eliminarClave(KEY_REENVIOS + normalizedEmail);
+        eliminarClave(keyReenvios + normalizedEmail);
 
         log.info("Código OTP generado para {}", SecuritySanitizer.maskEmail(normalizedEmail));
         return codigo;
@@ -125,7 +151,7 @@ public final class OtpServiceImpl implements OtpService {
         String normalizedEmail = SecuritySanitizer.normalizeEmail(email);
         String maskedEmail = SecuritySanitizer.maskEmail(normalizedEmail);
 
-        String hashGuardado = obtenerValor(KEY_OTP + normalizedEmail);
+        String hashGuardado = obtenerValor(keyOtp + normalizedEmail);
         if (hashGuardado == null) {
             log.warn("Intento de verificación para OTP expirado o inexistente: {}", maskedEmail);
             throw new OtpExpiradoException("El código OTP expiró o no existe. Debe solicitar uno nuevo.");
@@ -136,7 +162,7 @@ public final class OtpServiceImpl implements OtpService {
             return;
         }
 
-        Long restantes = decrementarIntentos(KEY_INTENTOS + normalizedEmail);
+        Long restantes = decrementarIntentos(keyIntentos + normalizedEmail);
         log.warn("Código OTP incorrecto para {}. Intentos restantes: {}", maskedEmail, restantes);
 
         if (restantes == null || restantes <= 0) {
@@ -151,17 +177,29 @@ public final class OtpServiceImpl implements OtpService {
     }
 
     @Override
+    public boolean registrarSolicitud(String email, int maximo, long ventanaSegundos) {
+        String normalizedEmail = SecuritySanitizer.normalizeEmail(email);
+        long solicitudes = incrementarContador(keySolicitudes + normalizedEmail, ventanaSegundos);
+        if (solicitudes > maximo) {
+            log.warn("Límite de solicitudes de código alcanzado ({}/{}) para {}", solicitudes, maximo,
+                    SecuritySanitizer.maskEmail(normalizedEmail));
+            return false;
+        }
+        return true;
+    }
+
+    @Override
     public String reenviarOtp(String email) {
         String normalizedEmail = SecuritySanitizer.normalizeEmail(email);
         String maskedEmail = SecuritySanitizer.maskEmail(normalizedEmail);
         exigirSinBloqueo(normalizedEmail);
 
-        if (obtenerValor(KEY_USUARIO + normalizedEmail) == null || obtenerValor(KEY_ROL + normalizedEmail) == null) {
+        if (obtenerValor(keyUsuario + normalizedEmail) == null || obtenerValor(keyRol + normalizedEmail) == null) {
             log.warn("Solicitud de reenvío OTP sin verificación en curso para {}", maskedEmail);
             throw OtpExpiradoException.sesionInexistente();
         }
 
-        long reenvios = incrementarContador(KEY_REENVIOS + normalizedEmail, sessionTtlSeconds);
+        long reenvios = incrementarContador(keyReenvios + normalizedEmail, sessionTtlSeconds);
         if (reenvios > maxResends) {
             eliminarOtp(normalizedEmail);
             log.warn("Límite de reenvíos OTP excedido ({}/{}) para {}", reenvios, maxResends, maskedEmail);
@@ -176,31 +214,31 @@ public final class OtpServiceImpl implements OtpService {
 
     @Override
     public Long obtenerUsuarioId(String email) {
-        String usuarioId = obtenerValor(KEY_USUARIO + SecuritySanitizer.normalizeEmail(email));
+        String usuarioId = obtenerValor(keyUsuario + SecuritySanitizer.normalizeEmail(email));
         return usuarioId == null ? null : Long.valueOf(usuarioId);
     }
 
     @Override
     public String obtenerRol(String email) {
-        return obtenerValor(KEY_ROL + SecuritySanitizer.normalizeEmail(email));
+        return obtenerValor(keyRol + SecuritySanitizer.normalizeEmail(email));
     }
 
     @Override
     public int obtenerIntentosRestantes(String email) {
-        String valor = obtenerValor(KEY_INTENTOS + SecuritySanitizer.normalizeEmail(email));
+        String valor = obtenerValor(keyIntentos + SecuritySanitizer.normalizeEmail(email));
         return valor == null ? 0 : Integer.parseInt(valor);
     }
 
     @Override
     public int obtenerReenviosRestantes(String email) {
-        String valor = obtenerValor(KEY_REENVIOS + SecuritySanitizer.normalizeEmail(email));
+        String valor = obtenerValor(keyReenvios + SecuritySanitizer.normalizeEmail(email));
         int usados = valor == null ? 0 : Integer.parseInt(valor);
         return Math.max(maxResends - usados, 0);
     }
 
     @Override
     public long obtenerSegundosRestantesBloqueo(String email) {
-        String valor = obtenerValor(KEY_BLOQUEO + SecuritySanitizer.normalizeEmail(email));
+        String valor = obtenerValor(keyBloqueo + SecuritySanitizer.normalizeEmail(email));
         if (valor == null) {
             return 0L;
         }
@@ -227,10 +265,10 @@ public final class OtpServiceImpl implements OtpService {
     public void eliminarOtp(String email) {
         String normalizedEmail = SecuritySanitizer.normalizeEmail(email);
         anularCodigo(normalizedEmail);
-        eliminarClave(KEY_REENVIOS + normalizedEmail);
-        eliminarClave(KEY_USUARIO + normalizedEmail);
-        eliminarClave(KEY_ROL + normalizedEmail);
-        eliminarClave(KEY_BLOQUEO + normalizedEmail);
+        eliminarClave(keyReenvios + normalizedEmail);
+        eliminarClave(keyUsuario + normalizedEmail);
+        eliminarClave(keyRol + normalizedEmail);
+        eliminarClave(keyBloqueo + normalizedEmail);
     }
 
     @Override
@@ -325,7 +363,7 @@ public final class OtpServiceImpl implements OtpService {
 
     private void activarBloqueo(String normalizedEmail) {
         long expiraEn = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(lockoutSeconds);
-        guardarValor(KEY_BLOQUEO + normalizedEmail, String.valueOf(expiraEn), lockoutSeconds);
+        guardarValor(keyBloqueo + normalizedEmail, String.valueOf(expiraEn), lockoutSeconds);
     }
 
     private String nuevoCodigo() {
@@ -333,8 +371,8 @@ public final class OtpServiceImpl implements OtpService {
     }
 
     private void guardarCodigoVigente(String normalizedEmail, String codigo) {
-        guardarValor(KEY_OTP + normalizedEmail, hashearOtp(codigo), ttlSeconds);
-        guardarValor(KEY_INTENTOS + normalizedEmail, String.valueOf(maxAttempts), ttlSeconds);
+        guardarValor(keyOtp + normalizedEmail, hashearOtp(codigo), ttlSeconds);
+        guardarValor(keyIntentos + normalizedEmail, String.valueOf(maxAttempts), ttlSeconds);
     }
 
     /**
@@ -342,8 +380,8 @@ public final class OtpServiceImpl implements OtpService {
      * para poder pedir otro código al terminar la espera (decisión D1).
      */
     private void anularCodigo(String normalizedEmail) {
-        eliminarClave(KEY_OTP + normalizedEmail);
-        eliminarClave(KEY_INTENTOS + normalizedEmail);
+        eliminarClave(keyOtp + normalizedEmail);
+        eliminarClave(keyIntentos + normalizedEmail);
     }
 
     private boolean verificarHashOtp(String valorAlmacenado, String codigoIngresado) {

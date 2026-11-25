@@ -34,6 +34,12 @@ public interface OtpService {
 
     void eliminarOtp(String email);
 
+    /**
+     * Cuenta una solicitud de código para el correo dentro de una ventana fija. Devuelve {@code false}
+     * cuando ya se alcanzó el máximo, para limitar el envío de correos sin autenticación.
+     */
+    boolean registrarSolicitud(String email, int maximo, long ventanaSegundos);
+
     void invalidarToken(String token, long ttlSegundos);
 
     boolean esTokenInvalido(String token);

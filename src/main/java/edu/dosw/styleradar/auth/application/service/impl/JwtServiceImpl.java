@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import edu.dosw.styleradar.auth.application.service.JwtService;
 import edu.dosw.styleradar.auth.domain.model.Rol;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -114,17 +115,29 @@ public final class JwtServiceImpl implements JwtService {
 
     @Override
     public String generarToken(Long usuarioId, Set<Rol> roles) {
+        return generarToken(usuarioId, roles, null, null);
+    }
+
+    @Override
+    public String generarToken(Long usuarioId, Set<Rol> roles, String storeId, Long foundationId) {
         Instant ahora = Instant.now();
         Instant expiracion = ahora.plus(duration);
 
-        return Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(usuarioId))
                 .claim("roles", roles.stream().map(Enum::name).toList())
                 .issuedAt(Date.from(ahora))
-                .expiration(Date.from(expiracion))
-                .signWith(secretKey, Jwts.SIG.HS256)
-                .compact();
+                .expiration(Date.from(expiracion));
+
+        if (storeId != null && !storeId.isBlank()) {
+            builder.claim("storeId", storeId.trim());
+        }
+        if (foundationId != null) {
+            builder.claim("foundationId", foundationId);
+        }
+
+        return builder.signWith(secretKey, Jwts.SIG.HS256).compact();
     }
 
     @Override

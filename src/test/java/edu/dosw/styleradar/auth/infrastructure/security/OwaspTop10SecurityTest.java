@@ -39,7 +39,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import edu.dosw.styleradar.auth.application.dto.request.LoginRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.request.RefreshTokenRequestDTO;
-import edu.dosw.styleradar.auth.application.dto.request.RegistroAuthRequestDTO;
 import edu.dosw.styleradar.auth.application.service.EmailService;
 import edu.dosw.styleradar.auth.application.service.JwtService;
 import edu.dosw.styleradar.auth.application.service.OtpService;
@@ -134,16 +133,8 @@ class OwaspTop10SecurityTest {
         assertThat(prodYml)
                 .contains("enabled: false")
                 .contains("dev-fallback-enabled: false")
-                .contains("stub-enabled: false")
-                .contains("redis-local-fallback-enabled: false");
-
-        MockEnvironment prodEnv = new MockEnvironment();
-        prodEnv.setActiveProfiles("prod");
-        // Aunque alguien active la propiedad del stub, en PROD el registro de soporte sigue cerrado (fail-closed)
-        var registroProd = new edu.dosw.styleradar.auth.infrastructure.config.BeanConfig()
-                .registrarUsuarioUseCase(true, prodEnv, java.time.Clock.systemUTC());
-        assertThatThrownBy(() -> registroProd.registrar("Ana Gómez", "ana@styleradar.com", "+573001112233"))
-                .isInstanceOf(ServicioExternoNoDisponibleException.class);
+                .contains("redis-local-fallback-enabled: false")
+                .doesNotContain("stub-enabled");
     }
 
     @Test
@@ -160,11 +151,14 @@ class OwaspTop10SecurityTest {
                 .contains("USER appuser:appgroup")
                 .contains("HEALTHCHECK");
 
-        String ci = Files.readString(Path.of(".github/workflows/ci.yml"));
+        String ci = Files.readString(Path.of(".github/workflows/ci.yml"))
+                + Files.readString(Path.of(".github/workflows/ci-qa.yml"))
+                + Files.readString(Path.of(".github/workflows/ci-prod.yml"));
         assertThat(ci)
                 .contains("spotbugs-maven-plugin")
-                .contains("provenance: true")
-                .contains("sbom: true");
+                .contains("sbom-cyclone-dx-auth")
+                .contains("target/bom.*")
+                .doesNotContainPattern("uses: [\\w./-]+@v\\d");
     }
 
     @Test
@@ -186,16 +180,13 @@ class OwaspTop10SecurityTest {
     }
 
     @Test
-    @DisplayName("A05:2025 Injection - Rechaza payload débil/XSS en registro, CRLF en email y restringe paquetes RabbitMQ")
+    @DisplayName("A05:2025 Injection - Rechaza payload XSS y vacío en login, CRLF en email y restringe paquetes RabbitMQ")
     void a05_injection_debeValidarEntradasYDeserializacionSegura() throws Exception {
-        RegistroAuthRequestDTO unsafeDto = new RegistroAuthRequestDTO(
-                "<script>alert(1)</script>", "carlos@styleradar.com", "300123", "12345", true);
-
-        mockMvc.perform(post("/api/v1/auth/register")
+        mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(unsafeDto)))
+                        .content("{\"email\":\"<script>alert(1)</script>\",\"password\":\"\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors.name").exists())
+                .andExpect(jsonPath("$.errors.email").exists())
                 .andExpect(jsonPath("$.errors.password").exists());
 
         assertThatThrownBy(() -> SecuritySanitizer.normalizeEmail("attacker@evil.com\r\nBcc:victim@evil.com"))

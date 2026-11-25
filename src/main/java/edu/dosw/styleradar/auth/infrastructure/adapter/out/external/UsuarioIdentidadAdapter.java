@@ -1,5 +1,7 @@
 package edu.dosw.styleradar.auth.infrastructure.adapter.out.external;
 
+import java.util.Optional;
+
 import org.springframework.stereotype.Component;
 
 import edu.dosw.styleradar.auth.application.dto.response.VerificarCredencialesResponseDTO;
@@ -39,6 +41,16 @@ public class UsuarioIdentidadAdapter implements UsuarioIdentidadPort {
     @Override
     public void marcarCorreoVerificado(Long usuarioId) {
         usuarioClient.marcarCorreoVerificado(usuarioId);
+    }
+
+    @Override
+    public Optional<IdentidadUsuario> buscarPorCorreo(String email) {
+        return usuarioClient.buscarPorCorreo(email).map(UsuarioIdentidadAdapter::aDominio);
+    }
+
+    @Override
+    public void cambiarContrasena(Long usuarioId, String nuevaContrasena) {
+        usuarioClient.cambiarContrasena(usuarioId, nuevaContrasena);
     }
 
     private static IdentidadUsuario aDominio(VerificarCredencialesResponseDTO dto) {

@@ -1,6 +1,5 @@
 package edu.dosw.styleradar.auth.infrastructure.adapter.in.rest;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,17 +11,14 @@ import org.springframework.web.bind.annotation.RestController;
 import edu.dosw.styleradar.auth.application.dto.request.LoginRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.request.ReenviarOtpRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.request.RefreshTokenRequestDTO;
-import edu.dosw.styleradar.auth.application.dto.request.RegistroAuthRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.request.VerificarOtpRequestDTO;
 import edu.dosw.styleradar.auth.application.dto.response.LoginResponseDTO;
 import edu.dosw.styleradar.auth.application.dto.response.OtpMensajeResponseDTO;
-import edu.dosw.styleradar.auth.application.dto.response.UsuarioAuthResponseDTO;
 import edu.dosw.styleradar.auth.application.mapper.out.AuthResponseMapper;
 import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException;
 import edu.dosw.styleradar.auth.domain.port.in.CerrarSesionUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.IniciarSesionUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.ReenviarOtpUseCase;
-import edu.dosw.styleradar.auth.domain.port.in.RegistrarUsuarioUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.RenovarTokenUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.VerificarOtpUseCase;
 import edu.dosw.styleradar.auth.infrastructure.adapter.in.rest.doc.AuthApi;
@@ -43,7 +39,6 @@ public class AuthController implements AuthApi {
     private final ReenviarOtpUseCase reenviarOtpUseCase;
     private final RenovarTokenUseCase renovarTokenUseCase;
     private final CerrarSesionUseCase cerrarSesionUseCase;
-    private final RegistrarUsuarioUseCase registrarUsuarioUseCase;
     private final AuthResponseMapper mapper;
 
     @SuppressFBWarnings(
@@ -56,14 +51,12 @@ public class AuthController implements AuthApi {
             ReenviarOtpUseCase reenviarOtpUseCase,
             RenovarTokenUseCase renovarTokenUseCase,
             CerrarSesionUseCase cerrarSesionUseCase,
-            RegistrarUsuarioUseCase registrarUsuarioUseCase,
             AuthResponseMapper mapper) {
         this.iniciarSesionUseCase = iniciarSesionUseCase;
         this.verificarOtpUseCase = verificarOtpUseCase;
         this.reenviarOtpUseCase = reenviarOtpUseCase;
         this.renovarTokenUseCase = renovarTokenUseCase;
         this.cerrarSesionUseCase = cerrarSesionUseCase;
-        this.registrarUsuarioUseCase = registrarUsuarioUseCase;
         this.mapper = mapper;
     }
 
@@ -106,12 +99,5 @@ public class AuthController implements AuthApi {
             SecurityContextHolder.clearContext();
         }
         return ResponseEntity.noContent().build();
-    }
-
-    @Override
-    @PostMapping("/register")
-    public ResponseEntity<UsuarioAuthResponseDTO> registrar(@Valid @RequestBody RegistroAuthRequestDTO request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toUsuarioAuthResponse(
-                registrarUsuarioUseCase.registrar(request.getName(), request.getEmail(), request.getPhone())));
     }
 }

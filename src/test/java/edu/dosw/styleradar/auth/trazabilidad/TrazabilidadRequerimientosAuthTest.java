@@ -96,6 +96,8 @@ class TrazabilidadRequerimientosAuthTest {
     private static HttpServer msUsuarios;
     private static final Map<String, Map<String, Object>> CUENTAS = new ConcurrentHashMap<>();
     private static final List<Long> CORREOS_VERIFICADOS = new CopyOnWriteArrayList<>();
+    /** Contraseña vigente por correo cuando se restableció; las demás cuentas usan {@link #CLAVE}. */
+    private static final Map<String, String> CLAVES = new ConcurrentHashMap<>();
     private static final AtomicInteger IP = new AtomicInteger(1);
 
     @Autowired
@@ -106,6 +108,8 @@ class TrazabilidadRequerimientosAuthTest {
     private StringRedisTemplate redis;
     @Autowired
     private edu.dosw.styleradar.auth.infrastructure.adapter.in.amqp.UsuarioEstadoCambiadoConsumer consumidorEstado;
+    @Autowired
+    private edu.dosw.styleradar.auth.infrastructure.adapter.in.amqp.CuentaUsuarioCambiadaConsumer consumidorCuenta;
 
     @MockBean
     private EmailService emailService;
@@ -140,6 +144,7 @@ class TrazabilidadRequerimientosAuthTest {
         redis.getConnectionFactory().getConnection().serverCommands().flushAll();
         CORREOS_VERIFICADOS.clear();
         CUENTAS.clear();
+        CLAVES.clear();
         cuenta("verificado@styleradar.com", 12, "BUYER", "ACTIVE", true);
         cuenta("nuevo@styleradar.com", 13, "STORE_ADMIN", "ACTIVE", false);
         cuenta("bloqueado@styleradar.com", 14, "BUYER", "BLOCKED", true);
@@ -173,7 +178,8 @@ class TrazabilidadRequerimientosAuthTest {
             Map<String, Object> c = CUENTAS.get(cuerpo.path("email").asText());
             if (c != null && "caido@styleradar.com".equals(c.get("email"))) {
                 responder(ex, 500, "{}");
-            } else if (c == null || !CLAVE.equals(cuerpo.path("password").asText())) {
+            } else if (c == null || !CLAVES.getOrDefault((String) c.get("email"), CLAVE)
+                    .equals(cuerpo.path("password").asText())) {
                 responder(ex, 401, "{}");
             } else {
                 // Igual que ms-usuarios real: una cuenta inactiva o bloqueada responde 200 con su status.
@@ -185,9 +191,21 @@ class TrazabilidadRequerimientosAuthTest {
             Map<String, Object> c = CUENTAS.get(cuerpo.path("email").asText());
             responder(ex, c == null ? 404 : 200, c == null ? "{}" : json.writeValueAsString(c));
         }));
+        msUsuarios.createContext("/api/v1/internal/users/lookup", seguro(ex -> {
+            JsonNode cuerpo = json.readTree(ex.getRequestBody());
+            Map<String, Object> c = CUENTAS.get(cuerpo.path("email").asText());
+            responder(ex, c == null ? 404 : 200, c == null ? "{}" : json.writeValueAsString(c));
+        }));
         msUsuarios.createContext("/api/v1/internal/users/", seguro(ex -> {
             String[] partes = ex.getRequestURI().getPath().split("/");
-            if ("PATCH".equals(ex.getRequestMethod()) && ex.getRequestURI().getPath().endsWith("/email-verification")) {
+            if ("PUT".equals(ex.getRequestMethod()) && ex.getRequestURI().getPath().endsWith("/password")) {
+                long id = Long.parseLong(partes[partes.length - 2]);
+                String nueva = json.readTree(ex.getRequestBody()).path("newPassword").asText();
+                var cuenta = CUENTAS.values().stream()
+                        .filter(c -> ((Number) c.get("id")).longValue() == id).findFirst();
+                cuenta.ifPresent(c -> CLAVES.put((String) c.get("email"), nueva));
+                responder(ex, cuenta.isPresent() ? 204 : 404, cuenta.isPresent() ? null : "{}");
+            } else if ("PATCH".equals(ex.getRequestMethod()) && ex.getRequestURI().getPath().endsWith("/email-verification")) {
                 long id = Long.parseLong(partes[partes.length - 2]);
                 CORREOS_VERIFICADOS.add(id);
                 CUENTAS.values().stream().filter(c -> ((Number) c.get("id")).longValue() == id)
@@ -1042,6 +1060,28 @@ class TrazabilidadRequerimientosAuthTest {
         }
 
         @Test
+        @DisplayName("Contraseña cambiada o cuenta eliminada en ms-usuarios: el token anterior da 401 y el evento repetido no falla")
+        void contrasenaCambiadaYCuentaEliminada() throws Exception {
+            String ip = nuevaIp();
+            String token = token(ip, "verificado@styleradar.com");
+            var cambio = objectMapper.readValue("{\"eventId\":\"evt-clave-12\",\"eventType\":\"user.password.changed\","
+                    + "\"userId\":12,\"changedAt\":\"" + Instant.now().plusSeconds(1) + "\"}",
+                    edu.dosw.styleradar.auth.application.dto.event.CuentaUsuarioCambiadaEventDTO.class);
+            consumidorCuenta.recibir(cambio);
+            consumidorCuenta.recibir(cambio);
+            error(logout(ip, token), 401, "INVALID_TOKEN", "El token ha sido revocado");
+            assertThat(redis.hasKey("evento:procesado:evt-clave-12")).isTrue();
+
+            String otroIp = nuevaIp();
+            String tokenTienda = token(otroIp, "verificado@styleradar.com");
+            redis.delete("usuario:revocado:12");
+            consumidorCuenta.recibir(objectMapper.readValue("{\"userId\":12,\"deletedAt\":\""
+                    + Instant.now().plusSeconds(1) + "\"}",
+                    edu.dosw.styleradar.auth.application.dto.event.CuentaUsuarioCambiadaEventDTO.class));
+            error(logout(otroIp, tokenTienda), 401, "INVALID_TOKEN", "El token ha sido revocado");
+        }
+
+        @Test
         @DisplayName("Criterio 3 y FA-02: ACTIVE no invalida sesiones")
         void activaNoRevoca() throws Exception {
             String ip = nuevaIp();
@@ -1382,6 +1422,159 @@ class TrazabilidadRequerimientosAuthTest {
         void loginFallido() throws Exception {
             login(nuevaIp(), "verificado@styleradar.com", "A".repeat(30)).andExpect(status().isUnauthorized());
             org.mockito.Mockito.verify(eventosSesion, org.mockito.Mockito.never()).publicarSesionCambiada(any());
+        }
+    }
+
+    // ---------------------------------------------------------------- Restablecer contraseña olvidada
+
+    @Nested
+    @DisplayName("Restablecer contraseña olvidada con código OTP (todas las cuentas, Redis 7 real)")
+    class RestablecerContrasena {
+
+        private static final String NUEVA = "NuevaClave2026*";
+        private static final String RESPUESTA_SOLICITUD =
+                "Si el correo está registrado, te enviamos un código para restablecer tu contraseña.";
+
+        private final Map<String, String> codigoReset = new ConcurrentHashMap<>();
+
+        @BeforeEach
+        void capturarCodigos() {
+            doAnswer(inv -> {
+                codigoReset.put(inv.getArgument(0), inv.getArgument(1));
+                return null;
+            }).when(emailService).enviarCodigoRestablecimiento(anyString(), anyString());
+        }
+
+        private ResultActions solicitar(String ip, String email) throws Exception {
+            return mockMvc.perform(post("/api/v1/auth/password/forgot")
+                    .with(r -> {
+                        r.setRemoteAddr(ip);
+                        return r;
+                    })
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(Map.of("email", email))));
+        }
+
+        private ResultActions restablecer(String ip, String email, String codigo, String nueva) throws Exception {
+            return mockMvc.perform(post("/api/v1/auth/password/reset")
+                    .with(r -> {
+                        r.setRemoteAddr(ip);
+                        return r;
+                    })
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(Map.of("email", email, "otpCode", codigo,
+                            "newPassword", nueva))));
+        }
+
+        private String tokenDe(ResultActions r) throws Exception {
+            return objectMapper.readTree(r.andExpect(status().isOk()).andReturn().getResponse()
+                    .getContentAsString(StandardCharsets.UTF_8)).get("accessToken").asText();
+        }
+
+        @Test
+        @DisplayName("Flujo completo: código por correo, contraseña nueva, sesiones anteriores revocadas y aviso")
+        void flujoCompleto() throws Exception {
+            String ip = nuevaIp();
+            String tokenAnterior = tokenDe(login(ip, "verificado@styleradar.com", CLAVE));
+
+            solicitar(ip, "verificado@styleradar.com").andExpect(status().isAccepted())
+                    .andExpect(jsonPath("$.message").value(RESPUESTA_SOLICITUD))
+                    .andExpect(jsonPath("$.expiresInSeconds").value(300));
+            String codigo = codigoReset.get("verificado@styleradar.com");
+            assertThat(codigo).matches("\\d{6}");
+            assertThat(redis.keys("reset:*")).isNotEmpty();
+            assertThat(redis.opsForValue().get("reset:verificado@styleradar.com")).isNotBlank().doesNotContain(codigo);
+
+            restablecer(ip, "verificado@styleradar.com", codigo, NUEVA).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Tu contraseña se actualizó. Inicia sesión con la nueva contraseña."))
+                    .andExpect(jsonPath("$.accessToken").doesNotExist());
+
+            mockMvc.perform(post("/api/v1/auth/logout").header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAnterior))
+                    .andExpect(status().isUnauthorized());
+            login(nuevaIp(), "verificado@styleradar.com", CLAVE).andExpect(status().isUnauthorized());
+            Thread.sleep(1100);
+            login(nuevaIp(), "verificado@styleradar.com", NUEVA).andExpect(status().isOk());
+            org.mockito.Mockito.verify(emailService).enviarAvisoContrasenaCambiada("verificado@styleradar.com");
+            assertThat(redis.hasKey("reset:verificado@styleradar.com")).isFalse();
+            // El código ya se usó: no sirve una segunda vez.
+            error(restablecer(ip, "verificado@styleradar.com", codigo, "OtraClave2026*"), 401, "OTP_EXPIRED",
+                    "El código expiró o no existe. Solicita uno nuevo.");
+        }
+
+        @Test
+        @DisplayName("Sirve para tienda y fundación, y marca el correo como verificado")
+        void tiendaYFundacion() throws Exception {
+            for (String email : new String[] {"nuevo@styleradar.com", "google@styleradar.com"}) {
+                String ip = nuevaIp();
+                solicitar(ip, email).andExpect(status().isAccepted());
+                restablecer(ip, email, codigoReset.get(email), NUEVA).andExpect(status().isOk());
+            }
+            assertThat(CLAVES).containsEntry("nuevo@styleradar.com", NUEVA).containsEntry("google@styleradar.com", NUEVA);
+            assertThat(CORREOS_VERIFICADOS).contains(13L, 17L);
+        }
+
+        @Test
+        @DisplayName("Correo no registrado, cuenta bloqueada o inactiva: misma respuesta 202 y ningún correo")
+        void sinEnumeracion() throws Exception {
+            for (String email : new String[] {"nadie@styleradar.com", "bloqueado@styleradar.com", "inactivo@styleradar.com"}) {
+                solicitar(nuevaIp(), email).andExpect(status().isAccepted())
+                        .andExpect(jsonPath("$.message").value(RESPUESTA_SOLICITUD))
+                        .andExpect(jsonPath("$.expiresInSeconds").value(300));
+            }
+            org.mockito.Mockito.verify(emailService, org.mockito.Mockito.never())
+                    .enviarCodigoRestablecimiento(anyString(), anyString());
+            assertThat(redis.keys("reset:*")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("3 códigos incorrectos → 429 OTP_ATTEMPTS_EXHAUSTED y la contraseña no cambia")
+        void intentosAgotados() throws Exception {
+            String ip = nuevaIp();
+            solicitar(ip, "verificado@styleradar.com").andExpect(status().isAccepted());
+            String codigo = codigoReset.get("verificado@styleradar.com");
+            String malo = "000000".equals(codigo) ? "111111" : "000000";
+            error(restablecer(ip, "verificado@styleradar.com", malo, NUEVA), 401, "OTP_INCORRECT",
+                    "El código OTP es incorrecto. Intentos restantes: 2").andExpect(jsonPath("$.attemptsRemaining").value(2));
+            restablecer(ip, "verificado@styleradar.com", malo, NUEVA);
+            restablecer(ip, "verificado@styleradar.com", malo, NUEVA)
+                    .andExpect(status().isTooManyRequests())
+                    .andExpect(jsonPath("$.code").value("OTP_ATTEMPTS_EXHAUSTED"));
+            assertThat(CLAVES).doesNotContainKey("verificado@styleradar.com");
+        }
+
+        @Test
+        @DisplayName("Sin solicitud previa → 401 OTP_EXPIRED; contraseña débil o código mal formado → 400")
+        void validaciones() throws Exception {
+            String ip = nuevaIp();
+            error(restablecer(ip, "verificado@styleradar.com", "123456", NUEVA), 401, "OTP_EXPIRED",
+                    "El código expiró o no existe. Solicita uno nuevo.");
+            restablecer(ip, "verificado@styleradar.com", "123456", "debil").andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_DATA"));
+            restablecer(ip, "verificado@styleradar.com", "12a456", NUEVA).andExpect(status().isBadRequest());
+            solicitar(ip, "no-es-correo").andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Pedirlo varias veces envía 1 código y 3 reenvíos como máximo (sin bombardeo de correos)")
+        void maximoDeCorreos() throws Exception {
+            for (int i = 0; i < 6; i++) {
+                solicitar(nuevaIp(), "verificado@styleradar.com").andExpect(status().isAccepted());
+            }
+            org.mockito.Mockito.verify(emailService, org.mockito.Mockito.times(4))
+                    .enviarCodigoRestablecimiento(eq("verificado@styleradar.com"), anyString());
+        }
+
+        @Test
+        @DisplayName("El código del login y el de restablecimiento no se mezclan")
+        void codigosIndependientes() throws Exception {
+            String ip = nuevaIp();
+            login(ip, "nuevo@styleradar.com", CLAVE).andExpect(status().isOk());
+            String codigoLogin = ultimoCodigo.get("nuevo@styleradar.com");
+            solicitar(ip, "nuevo@styleradar.com").andExpect(status().isAccepted());
+
+            assertThat(redis.hasKey("otp:nuevo@styleradar.com")).isTrue();
+            assertThat(redis.hasKey("reset:nuevo@styleradar.com")).isTrue();
+            verificar(ip, "nuevo@styleradar.com", codigoLogin).andExpect(status().isOk());
         }
     }
 }
