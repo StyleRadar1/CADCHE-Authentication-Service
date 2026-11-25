@@ -6,12 +6,9 @@ import edu.dosw.styleradar.auth.application.service.EmailService;
 import edu.dosw.styleradar.auth.application.service.JwtService;
 import edu.dosw.styleradar.auth.application.service.OtpService;
 import edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException;
-import edu.dosw.styleradar.auth.domain.model.EntidadAsociada;
 import edu.dosw.styleradar.auth.domain.model.IdentidadUsuario;
-import edu.dosw.styleradar.auth.domain.model.Rol;
 import edu.dosw.styleradar.auth.domain.model.SesionAutenticada;
 import edu.dosw.styleradar.auth.domain.port.in.IniciarSesionUseCase;
-import edu.dosw.styleradar.auth.domain.port.out.EntidadAsociadaPort;
 import edu.dosw.styleradar.auth.domain.port.out.UsuarioIdentidadPort;
 import edu.dosw.styleradar.auth.infrastructure.security.SecuritySanitizer;
 import lombok.extern.slf4j.Slf4j;
@@ -28,14 +25,13 @@ public class IniciarSesionUseCaseImpl implements IniciarSesionUseCase {
     private final JwtService jwtService;
     private final NotificadorCodigoOtp notificador;
     private final edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones;
-    private final EntidadAsociadaPort entidadAsociadaPort;
 
     public IniciarSesionUseCaseImpl(
             UsuarioIdentidadPort usuarioIdentidadPort,
             OtpService otpService,
             EmailService emailService,
             JwtService jwtService) {
-        this(usuarioIdentidadPort, otpService, emailService, jwtService, null, null);
+        this(usuarioIdentidadPort, otpService, emailService, jwtService, null);
     }
 
     public IniciarSesionUseCaseImpl(
@@ -44,21 +40,10 @@ public class IniciarSesionUseCaseImpl implements IniciarSesionUseCase {
             EmailService emailService,
             JwtService jwtService,
             edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones) {
-        this(usuarioIdentidadPort, otpService, emailService, jwtService, sesiones, null);
-    }
-
-    public IniciarSesionUseCaseImpl(
-            UsuarioIdentidadPort usuarioIdentidadPort,
-            OtpService otpService,
-            EmailService emailService,
-            JwtService jwtService,
-            edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones,
-            EntidadAsociadaPort entidadAsociadaPort) {
         this.sesiones = sesiones;
         this.usuarioIdentidadPort = usuarioIdentidadPort;
         this.otpService = otpService;
         this.jwtService = jwtService;
-        this.entidadAsociadaPort = entidadAsociadaPort;
         this.notificador = new NotificadorCodigoOtp(emailService, otpService);
     }
 
@@ -75,13 +60,7 @@ public class IniciarSesionUseCaseImpl implements IniciarSesionUseCase {
 
         long vigenciaToken = jwtService.obtenerVigenciaSegundos();
         if (usuario.correoVerificado()) {
-            Set<Rol> roles = Set.of(usuario.rol());
-            EntidadAsociada entidad = entidadAsociadaPort != null
-                    ? entidadAsociadaPort.resolverEntidadAsociada(usuario.id(), roles)
-                    : EntidadAsociada.VACIA;
-            String token = (entidad == null || entidad.estaVacia())
-                    ? jwtService.generarToken(usuario.id(), roles)
-                    : jwtService.generarToken(usuario.id(), roles, entidad.storeId(), entidad.foundationId());
+            String token = jwtService.generarToken(usuario.id(), Set.of(usuario.rol()));
             if (sesiones != null) {
                 sesiones.iniciar(token);
             }

@@ -24,9 +24,7 @@ import edu.dosw.styleradar.auth.application.service.JwtService;
 import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException;
 import edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException;
 import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
-import edu.dosw.styleradar.auth.domain.model.EntidadAsociada;
 import edu.dosw.styleradar.auth.domain.model.Rol;
-import edu.dosw.styleradar.auth.domain.port.out.EntidadAsociadaPort;
 import edu.dosw.styleradar.auth.domain.port.out.GoogleOAuthPort;
 import edu.dosw.styleradar.auth.domain.model.IdentidadUsuario;
 import edu.dosw.styleradar.auth.domain.model.SesionAutenticada;
@@ -59,7 +57,6 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
     private final boolean localFallbackEnabled;
     private final SecureRandom secureRandom = new SecureRandom();
     private edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones;
-    private EntidadAsociadaPort entidadAsociadaPort;
     private final Map<String, LocalStateEntry> localStateStore = new ConcurrentHashMap<>();
 
     public GoogleOAuth2ServiceImpl(
@@ -196,13 +193,7 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
         }
 
         Rol rol = usuario.rol();
-        Set<Rol> roles = Set.of(rol);
-        EntidadAsociada entidad = entidadAsociadaPort != null
-                ? entidadAsociadaPort.resolverEntidadAsociada(usuario.id(), roles)
-                : EntidadAsociada.VACIA;
-        String jwt = (entidad == null || entidad.estaVacia())
-                ? jwtService.generarToken(usuario.id(), roles)
-                : jwtService.generarToken(usuario.id(), roles, entidad.storeId(), entidad.foundationId());
+        String jwt = jwtService.generarToken(usuario.id(), Set.of(rol));
         if (sesiones != null) {
             sesiones.iniciar(jwt);
         }
@@ -222,13 +213,6 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Bean de Spring inyectado por Spring.")
     public void setSesiones(edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones) {
         this.sesiones = sesiones;
-    }
-
-    /** Enriquecimiento fail-open de claims storeId/foundationId desde ms-tiendas (BUG-005). */
-    @Autowired(required = false)
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Bean de Spring inyectado por Spring.")
-    public void setEntidadAsociadaPort(EntidadAsociadaPort entidadAsociadaPort) {
-        this.entidadAsociadaPort = entidadAsociadaPort;
     }
 
     private String resolverRedirectUriSolicitada(String requestedRedirectUri) {
