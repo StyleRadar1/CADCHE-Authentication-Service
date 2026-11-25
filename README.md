@@ -445,7 +445,6 @@ Plantilla completa en [`.env.example`](.env.example). Los secretos nunca van al 
 | `USUARIOS_SERVICE_URL` (dev) · `USUARIOS_QA_SERVICE_URL` | URL de `ms-usuarios` | `http://ms-usuarios:8120` |
 | `USUARIOS_INTERNAL_USERNAME` / `USUARIOS_INTERNAL_PASSWORD` | Credenciales Basic internas hacia ms-usuarios | `ms-auth` / — |
 | `USUARIOS_CREDENCIALES_PATH` / `USUARIOS_OAUTH2_PATH` / `USUARIOS_CORREO_VERIFICADO_PATH` | Rutas internas de ms-usuarios en inglés (análisis v2) para validar credenciales, cuentas Google y marcar el correo verificado | `/api/v1/internal/users/verify-credentials` · `/api/v1/internal/users/oauth2` · `/api/v1/internal/users/{id}/email-verification` |
-| `USUARIOS_CREDENCIALES_LEGACY_PATH` / `USUARIOS_CORREO_VERIFICADO_LEGACY_PATH` | Rutas actuales de ms-usuarios (en español). Se usan solo si la ruta en inglés responde 404, mientras ms-usuarios migra | `/internal/api/v1/usuarios/verificar-credenciales` · `/api/v1/internal/usuarios/{id}/correo-verificado` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` / `GOOGLE_ALLOWED_REDIRECT_URIS` | Google OAuth2 (lista blanca anti Open Redirect) | — |
 | `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | SMTP para los códigos OTP | `smtp.gmail.com` / `587` |
 | `CORS_DEV_ALLOWED_ORIGINS` · `CORS_QA_ALLOWED_ORIGINS` · `CORS_ALLOWED_ORIGINS` | Orígenes permitidos (dev incluye `localhost:5173` y `:3000`) | Ver YAML |

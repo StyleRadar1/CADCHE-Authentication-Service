@@ -279,33 +279,15 @@ class UsuarioClientTest {
     }
 
     @Test
-    @DisplayName("Si ms-usuarios aún no expone las rutas en inglés (404), usa la ruta anterior y conserva los errores 401/403")
-    void rutasEnIngles_conRespaldoALaRutaAnterior() {
-        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "credencialesLegacyPath",
-                "/internal/api/v1/usuarios/verificar-credenciales");
-        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath",
-                "/api/v1/internal/usuarios/{id}/correo-verificado");
-
+    @DisplayName("Solo usa las rutas internas en inglés: un 404 de ms-usuarios es 503 y no reintenta en rutas en español")
+    void soloRutasEnIngles_sinRespaldoEnEspanol() {
         server.expect(requestTo(BASE_URL + "/api/v1/internal/users/verify-credentials"))
-                .andRespond(withStatus(org.springframework.http.HttpStatus.NOT_FOUND));
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales"))
-                .andRespond(withSuccess("{\"id\":10,\"email\":\"a@b.co\",\"rol\":\"COMPRADOR\",\"estado\":\"ACTIVO\",\"correoVerificado\":true}",
-                        org.springframework.http.MediaType.APPLICATION_JSON));
-
-        server.expect(requestTo(BASE_URL + "/api/v1/internal/users/verify-credentials"))
-                .andRespond(withStatus(org.springframework.http.HttpStatus.NOT_FOUND));
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales"))
-                .andRespond(withStatus(org.springframework.http.HttpStatus.FORBIDDEN));
-
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
         server.expect(requestTo(BASE_URL + "/api/v1/internal/users/10/email-verification"))
-                .andRespond(withStatus(org.springframework.http.HttpStatus.NOT_FOUND));
-        server.expect(requestTo(BASE_URL + "/api/v1/internal/usuarios/10/correo-verificado"))
                 .andExpect(method(HttpMethod.PATCH))
-                .andRespond(withStatus(org.springframework.http.HttpStatus.NO_CONTENT));
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
 
-        var r = usuarioClient.verificarCredenciales("a@b.co", "StyleRadar2026*");
-        org.assertj.core.api.Assertions.assertThat(r.rol()).isEqualTo("COMPRADOR");
-        org.assertj.core.api.Assertions.assertThat(r.correoVerificado()).isTrue();
         assertThrows(ServicioExternoNoDisponibleException.class,
                 () -> usuarioClient.verificarCredenciales("a@b.co", "StyleRadar2026*"));
         usuarioClient.marcarCorreoVerificado(10L);
@@ -325,125 +307,45 @@ class UsuarioClientTest {
     }
 
     @Test
-    @DisplayName("Si ms-usuarios responde 403 denyAll() en ruta en inglés, usa la ruta anterior y respeta 403 real de cuenta inactiva")
-    void rutasEnIngles_con403DeDenyAllEnMsUsuarios_usaRutaAnteriorYConservaCuentaInactiva() {
-        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "credencialesLegacyPath",
-                "/internal/api/v1/usuarios/verificar-credenciales");
-        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath",
-                "/api/v1/internal/usuarios/{id}/correo-verificado");
-
-        // 1) 403 vacío de Spring Security denyAll() -> respalda en ruta legacy -> 200 OK
-        server.expect(requestTo(BASE_URL + "/api/v1/internal/users/verify-credentials"))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withStatus(HttpStatus.FORBIDDEN));
-        server.expect(requestTo(BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales"))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(
-                        "{\"id\":2,\"email\":\"thedrup321@gmail.com\",\"rol\":\"COMPRADOR\",\"estado\":\"ACTIVA\",\"correoVerificado\":false}",
-                        MediaType.APPLICATION_JSON));
-
-        // 2) 403 real con cuerpo JSON de cuenta inactiva -> NO respalda y lanza CuentaNoActivaException directo
-        server.expect(requestTo(BASE_URL + "/api/v1/internal/users/verify-credentials"))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withStatus(HttpStatus.FORBIDDEN)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body("{\"message\":\"La cuenta se encuentra inactiva o bloqueada\"}"));
-
-        // 3) PATCH correo-verificado con 403 denyAll() -> respalda en ruta legacy -> 204 No Content
-        server.expect(requestTo(BASE_URL + "/api/v1/internal/users/10/email-verification"))
-                .andExpect(method(HttpMethod.PATCH))
-                .andRespond(withStatus(HttpStatus.FORBIDDEN));
-        server.expect(requestTo(BASE_URL + "/api/v1/internal/usuarios/10/correo-verificado"))
-                .andExpect(method(HttpMethod.PATCH))
-                .andRespond(withStatus(HttpStatus.NO_CONTENT));
-
-        var ok = usuarioClient.verificarCredenciales("thedrup321@gmail.com", "StyleRadar2026*");
-        assertEquals(2L, ok.id());
-        assertEquals("COMPRADOR", ok.rol());
-
-        assertThrows(CuentaNoActivaException.class,
-                () -> usuarioClient.verificarCredenciales("inactiva@styleradar.com", "StyleRadar2026*"));
-
-        usuarioClient.marcarCorreoVerificado(10L);
-        server.verify();
-    }
-
-    @Test
-    @DisplayName("Debe detectar todas las variantes de 403 de cuenta no activa y respaldar 403 JSON ajeno o 404 en respaldo")
-    void rutasEnIngles_variantes403YRespaldoInexistente() {
-        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "credencialesLegacyPath",
-                "/internal/api/v1/usuarios/verificar-credenciales");
-
-        String rutaIngles = BASE_URL + "/api/v1/internal/users/verify-credentials";
-        String rutaLegacy = BASE_URL + "/internal/api/v1/usuarios/verificar-credenciales";
-
-        // Variantes de cuerpo 403 que indican cuenta inactiva/bloqueada -> NO respaldan
-        for (String body : new String[]{
+    @DisplayName("403 de ms-usuarios: con motivo de cuenta inactiva es ACCOUNT_NOT_ACTIVE; sin motivo es 503")
+    void verificarCredenciales_variantesDe403() {
+        String ruta = BASE_URL + "/api/v1/internal/users/verify-credentials";
+        String[] cuerpos = {
+                "{\"message\":\"La cuenta se encuentra inactiva o bloqueada\"}",
                 "{\"code\":\"ACCOUNT_NOT_ACTIVE\"}",
                 "{\"detail\":\"Cuenta bloqueada por administrador\"}",
                 "{\"detail\":\"User account is inactive\"}",
                 "{\"detail\":\"User account is blocked\"}"
-        }) {
-            server.expect(requestTo(rutaIngles))
-                    .andExpect(method(HttpMethod.POST))
-                    .andRespond(withStatus(HttpStatus.FORBIDDEN)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .body(body));
+        };
+        for (String body : cuerpos) {
+            server.expect(requestTo(ruta)).andExpect(method(HttpMethod.POST))
+                    .andRespond(withStatus(HttpStatus.FORBIDDEN).contentType(MediaType.APPLICATION_JSON).body(body));
         }
-
-        // 403 con JSON genérico (sin palabras de cuenta inactiva) -> SÍ respalda en ruta legacy
-        server.expect(requestTo(rutaIngles))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withStatus(HttpStatus.FORBIDDEN)
-                        .contentType(MediaType.APPLICATION_JSON)
+        server.expect(requestTo(ruta)).andExpect(method(HttpMethod.POST))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN).contentType(MediaType.APPLICATION_JSON)
                         .body("{\"error\":\"Forbidden\",\"message\":\"Access Denied\"}"));
-        server.expect(requestTo(rutaLegacy))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(
-                        "{\"id\":3,\"email\":\"ok@styleradar.com\",\"rol\":\"COMPRADOR\",\"estado\":\"ACTIVA\",\"correoVerificado\":true}",
-                        MediaType.APPLICATION_JSON));
+        server.expect(requestTo(ruta)).andExpect(method(HttpMethod.POST)).andRespond(withStatus(HttpStatus.FORBIDDEN));
 
-        // 403 en ruta inglés y 404 en ruta legacy -> relanza falloRuta (403 sin motivo de cuenta -> 503)
-        server.expect(requestTo(rutaIngles))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withStatus(HttpStatus.FORBIDDEN));
-        server.expect(requestTo(rutaLegacy))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withStatus(HttpStatus.NOT_FOUND));
-
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < cuerpos.length; i++) {
             assertThrows(CuentaNoActivaException.class,
                     () -> usuarioClient.verificarCredenciales("bloqueada@styleradar.com", "StyleRadar2026*"));
         }
-
-        var ok = usuarioClient.verificarCredenciales("ok@styleradar.com", "StyleRadar2026*");
-        assertEquals(3L, ok.id());
-
         assertThrows(ServicioExternoNoDisponibleException.class,
-                () -> usuarioClient.verificarCredenciales("sinrespaldo@styleradar.com", "StyleRadar2026*"));
-
+                () -> usuarioClient.verificarCredenciales("ajeno@styleradar.com", "StyleRadar2026*"));
+        assertThrows(ServicioExternoNoDisponibleException.class,
+                () -> usuarioClient.verificarCredenciales("vacio@styleradar.com", "StyleRadar2026*"));
         server.verify();
     }
 
     @Test
-    @DisplayName("Si la ruta legacy es vacía o igual a la principal, no reintenta y tolera 404/403 en marcarCorreoVerificado")
-    void marcarCorreoVerificado_sinRespaldoConfigurado_tolera404Y403() {
-        String rutaIngles = BASE_URL + "/api/v1/internal/users/10/email-verification";
+    @DisplayName("marcarCorreoVerificado tolera 404 y 403 de ms-usuarios sin interrumpir la sesión")
+    void marcarCorreoVerificado_tolera404Y403() {
+        String ruta = BASE_URL + "/api/v1/internal/users/10/email-verification";
+        server.expect(requestTo(ruta)).andExpect(method(HttpMethod.PATCH)).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        server.expect(requestTo(ruta)).andExpect(method(HttpMethod.PATCH)).andRespond(withStatus(HttpStatus.FORBIDDEN));
 
-        server.expect(requestTo(rutaIngles)).andExpect(method(HttpMethod.PATCH)).andRespond(withStatus(HttpStatus.NOT_FOUND));
-        server.expect(requestTo(rutaIngles)).andExpect(method(HttpMethod.PATCH)).andRespond(withStatus(HttpStatus.FORBIDDEN));
-        server.expect(requestTo(rutaIngles)).andExpect(method(HttpMethod.PATCH)).andRespond(withStatus(HttpStatus.NOT_FOUND));
-
-        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath", null);
         usuarioClient.marcarCorreoVerificado(10L);
-
-        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath", "   ");
         usuarioClient.marcarCorreoVerificado(10L);
-
-        org.springframework.test.util.ReflectionTestUtils.setField(usuarioClient, "correoVerificadoLegacyPath",
-                UsuarioClient.DEFAULT_CORREO_VERIFICADO_PATH);
-        usuarioClient.marcarCorreoVerificado(10L);
-
         server.verify();
     }
 }
