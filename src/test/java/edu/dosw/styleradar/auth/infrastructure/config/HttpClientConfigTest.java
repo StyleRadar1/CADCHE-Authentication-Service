@@ -27,7 +27,7 @@ class HttpClientConfigTest {
     @BeforeEach
     void iniciar() throws Exception {
         servidor = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        servidor.createContext("/internal/api/v1/usuarios/13/verificar-correo", intercambio -> {
+        servidor.createContext("/api/v1/internal/users/13/email-verification", intercambio -> {
             metodoRecibido.set(intercambio.getRequestMethod());
             intercambio.sendResponseHeaders(204, -1);
             intercambio.close();
@@ -48,7 +48,7 @@ class HttpClientConfigTest {
         RestClient cliente = builder.baseUrl("http://127.0.0.1:" + servidor.getAddress().getPort()).build();
 
         var respuesta = cliente.patch()
-                .uri("/internal/api/v1/usuarios/{id}/verificar-correo", 13)
+                .uri("/api/v1/internal/users/{id}/email-verification", 13)
                 .retrieve()
                 .toBodilessEntity();
 

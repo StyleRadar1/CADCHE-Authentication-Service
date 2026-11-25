@@ -56,6 +56,7 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
     private final long stateTtlSeconds;
     private final boolean localFallbackEnabled;
     private final SecureRandom secureRandom = new SecureRandom();
+    private edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones;
     private final Map<String, LocalStateEntry> localStateStore = new ConcurrentHashMap<>();
 
     public GoogleOAuth2ServiceImpl(
@@ -193,6 +194,9 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
 
         Rol rol = usuario.rol();
         String jwt = jwtService.generarToken(usuario.id(), Set.of(rol));
+        if (sesiones != null) {
+            sesiones.iniciar(jwt);
+        }
         if (!usuario.correoVerificado()) {
             usuarioIdentidadPort.marcarCorreoVerificado(usuario.id());
         }
@@ -202,6 +206,13 @@ public final class GoogleOAuth2ServiceImpl implements GoogleOAuth2Service {
                 SecuritySanitizer.maskEmail(normalizedEmail));
 
         return SesionAutenticada.conToken(jwt, jwtService.obtenerVigenciaSegundos(), usuario.id(), rol, normalizedEmail);
+    }
+
+    /** Registro de sesiones para user.session.changed; opcional para que las pruebas construyan el servicio sin él. */
+    @Autowired(required = false)
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Bean de Spring inyectado por Spring.")
+    public void setSesiones(edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones) {
+        this.sesiones = sesiones;
     }
 
     private String resolverRedirectUriSolicitada(String requestedRedirectUri) {

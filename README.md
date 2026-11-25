@@ -347,7 +347,7 @@ Catálogo de `code`: `INVALID_DATA`, `INVALID_CREDENTIALS`, `ACCOUNT_NOT_ACTIVE`
 | Dirección | Exchange / routing key | Cola | Origen → destino | Acción en ms-auth |
 | :--- | :--- | :--- | :--- | :--- |
 | **CONSUME** | `styleradar.exchange` / `user.status.changed` | `styleradar.auth.user-status-changed.q` (DLQ `styleradar.auth.dlq`) | `ms-usuarios` → `ms-auth` | `RevocarSesionesUsuarioUseCase`: si `newStatus` es `INACTIVE` o `BLOCKED`, guarda `usuario:revocado:{id}` y todos los tokens emitidos antes quedan inválidos. |
-| **PUBLICA** | — | — | — | ms-auth no publica eventos. |
+| **PUBLICA** | `styleradar.exchange` / `user.session.changed` | La crea cada consumidor | `ms-auth` → `ms-estadisticas` | `SesionesActivasService`: +1 al entregar un token (login directo, OTP verificado o Google); -1 al cerrar sesión, al vencer el token o al revocarse la cuenta. Renovar no publica. |
 
 * **Idempotencia:** un `eventId` repetido se descarta (`evento:procesado:{eventId}`, 24 h).
 * **Resiliencia:** 3 reintentos con *backoff* exponencial y luego DLQ. Si Redis no responde, el consumidor falla para que el mensaje se reintente y nunca se pierda una revocación.
@@ -357,6 +357,15 @@ Catálogo de `code`: `INVALID_DATA`, `INVALID_CREDENTIALS`, `ACCOUNT_NOT_ACTIVE`
 { "eventId": "evt-123", "userId": 42, "previousStatus": "ACTIVE", "newStatus": "BLOCKED",
   "changedBy": 1, "reason": "Fraude", "changedAt": "2026-11-13T10:15:30Z" }
 ```
+
+**`user.session.changed`.** ms-auth guarda en Redis las sesiones abiertas (`sesion:{jti}`, `sesiones:vencimiento` y `sesiones:usuario:{id}`) para saber cuándo termina cada una. Un barrido cada minuto (`ExpiracionSesionesScheduler`) cierra las de tokens vencidos, así que el -1 de una expiración llega hasta un minuto después. Quitar el `jti` del sorted set es atómico, de modo que cada sesión produce un solo -1 aunque haya varias instancias. El envío va en un hilo aparte: un broker lento nunca demora el login, y sin `RABBITMQ_PASSWORD` no se publica.
+
+```json
+{ "eventId": "6f1c...", "eventType": "USER_SESSION_CHANGED", "userId": 12, "sessionId": "b7e4...",
+  "action": "LOGIN", "delta": 1, "occurredAt": "2026-11-25T15:04:05Z" }
+```
+
+`action` toma `LOGIN` (+1), `LOGOUT`, `EXPIRED` o `REVOKED` (-1). `sessionId` se conserva al renovar el token.
 
 ---
 
@@ -436,7 +445,6 @@ Plantilla completa en [`.env.example`](.env.example). Los secretos nunca van al 
 | `USUARIOS_SERVICE_URL` (dev) · `USUARIOS_QA_SERVICE_URL` | URL de `ms-usuarios` | `http://ms-usuarios:8120` |
 | `USUARIOS_INTERNAL_USERNAME` / `USUARIOS_INTERNAL_PASSWORD` | Credenciales Basic internas hacia ms-usuarios | `ms-auth` / — |
 | `USUARIOS_CREDENCIALES_PATH` / `USUARIOS_OAUTH2_PATH` / `USUARIOS_CORREO_VERIFICADO_PATH` | Rutas internas de ms-usuarios en inglés (análisis v2) para validar credenciales, cuentas Google y marcar el correo verificado | `/api/v1/internal/users/verify-credentials` · `/api/v1/internal/users/oauth2` · `/api/v1/internal/users/{id}/email-verification` |
-| `USUARIOS_CREDENCIALES_LEGACY_PATH` / `USUARIOS_CORREO_VERIFICADO_LEGACY_PATH` | Rutas actuales de ms-usuarios (en español). Se usan solo si la ruta en inglés responde 404, mientras ms-usuarios migra | `/internal/api/v1/usuarios/verificar-credenciales` · `/api/v1/internal/usuarios/{id}/correo-verificado` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` / `GOOGLE_ALLOWED_REDIRECT_URIS` | Google OAuth2 (lista blanca anti Open Redirect) | — |
 | `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | SMTP para los códigos OTP | `smtp.gmail.com` / `587` |
 | `CORS_DEV_ALLOWED_ORIGINS` · `CORS_QA_ALLOWED_ORIGINS` · `CORS_ALLOWED_ORIGINS` | Orígenes permitidos (dev incluye `localhost:5173` y `:3000`) | Ver YAML |
@@ -854,7 +862,7 @@ Cada equipo tiene un bloque exclusivo por centena con saltos de 20 entre microse
    **Java 21 LTS, Spring Boot 3.2.12, Spring Security 6, JJWT `0.12.6` (`HS256`), Spring Security OAuth2 JOSE (`NimbusJwtDecoder RS256/JWKS`), SpringDoc OpenAPI `2.3.0`, JaCoCo `0.8.12`, SpotBugs `4.8.6.6` y CycloneDX.** `Java 21` aporta `Records` inmutables; `JJWT` firma tokens internos con clave Base64 >= 256 bits, `NimbusJwtDecoder` valida tokens OIDC de Google contra sus claves JWKS públicas y la arquitectura hexagonal minimalista desacopla el puerto `GoogleOAuthPort` de los adaptadores externos (`GoogleOAuthAdapter`, `UsuarioClient`).
 
 4. **Broker de Mensajería:**
-   **RabbitMQ 3.12+ con protocolo AMQP 0-9-1 (`TopicExchange("styleradar.exchange")`).** En el corte actual, `ms-auth` actúa exclusivamente como **consumidor** sobre la cola durable `styleradar.auth.user-status-changed.q` (`routing key`: `user.status.changed`) mediante `UsuarioEstadoCambiadoConsumer`, registrando `usuario:revocado:{id}` en Redis cuando `ms-usuarios` bloquea o inactiva una cuenta (y propagando `DataAccessException` para no perder eventos). El envío OTP se realiza síncronamente vía SMTP (`EmailServiceImpl`) sin productores AMQP activos.
+   **RabbitMQ 3.12+ con protocolo AMQP 0-9-1 (`TopicExchange("styleradar.exchange")`).** `ms-auth` consume la cola durable `styleradar.auth.user-status-changed.q` (`routing key`: `user.status.changed`) mediante `UsuarioEstadoCambiadoConsumer`, registrando `usuario:revocado:{id}` en Redis cuando `ms-usuarios` bloquea o inactiva una cuenta (y propagando `DataAccessException` para no perder eventos). Además publica `user.session.changed` (`RabbitMQSesionEventPublisherAdapter`) para que ms-estadísticas lleve el conteo de sesiones activas. El envío OTP se realiza síncronamente vía SMTP (`EmailServiceImpl`).
 
 ---
 

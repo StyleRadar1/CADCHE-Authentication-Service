@@ -19,8 +19,14 @@ public class RevocarSesionesUsuarioUseCaseImpl implements RevocarSesionesUsuario
 
     private final OtpService otpService;
     private final Clock clock;
+    private final edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones;
 
     public RevocarSesionesUsuarioUseCaseImpl(OtpService otpService, Clock clock) {
+        this(otpService, clock, null);
+    }
+
+    public RevocarSesionesUsuarioUseCaseImpl(OtpService otpService, Clock clock, edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones) {
+        this.sesiones = sesiones;
         this.otpService = otpService;
         this.clock = clock;
     }
@@ -45,6 +51,9 @@ public class RevocarSesionesUsuarioUseCaseImpl implements RevocarSesionesUsuario
         // Primero la revocación y después la marca de idempotencia: si Redis falla al revocar, la excepción
         // provoca el reintento de RabbitMQ y el evento no queda marcado como procesado (CADCHE-129).
         otpService.revocarSesionesUsuario(usuarioId, fechaCambio != null ? fechaCambio : Instant.now(clock));
+        if (sesiones != null) {
+            sesiones.revocarUsuario(usuarioId);
+        }
         if (conId) {
             otpService.registrarEventoProcesado(idSeguro);
         }
