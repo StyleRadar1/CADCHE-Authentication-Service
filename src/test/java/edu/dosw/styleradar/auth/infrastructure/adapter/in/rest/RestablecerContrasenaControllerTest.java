@@ -85,6 +85,8 @@ class RestablecerContrasenaControllerTest {
     void contrasenaDebilOCodigoMalFormadoSon400SinLlamarAlCasoDeUso() throws Exception {
         for (String cuerpo : new String[] {
                 "{\"email\":\"buyer@styleradar.com\",\"otpCode\":\"482915\",\"newPassword\":\"solominusculas1\"}",
+                // Igual que ms-usuarios (CredentialComplexityPolicy): el espacio no cuenta como símbolo.
+                "{\"email\":\"buyer@styleradar.com\",\"otpCode\":\"482915\",\"newPassword\":\"Abcdefg1 \"}",
                 "{\"email\":\"buyer@styleradar.com\",\"otpCode\":\"48291\",\"newPassword\":\"NuevaClave2026*\"}",
                 "{\"email\":\"no-es-correo\",\"otpCode\":\"482915\",\"newPassword\":\"NuevaClave2026*\"}"}) {
             mockMvc.perform(post("/api/v1/auth/password/reset").contentType(MediaType.APPLICATION_JSON).content(cuerpo))

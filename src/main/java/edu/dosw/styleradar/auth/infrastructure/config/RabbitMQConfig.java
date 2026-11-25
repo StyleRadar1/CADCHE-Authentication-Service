@@ -26,6 +26,12 @@ public class RabbitMQConfig {
     public static final String QUEUE = "styleradar.auth.user-status-changed.q";
     public static final String DLQ = "styleradar.auth.dlq";
     public static final String ROUTING_KEY = "user.status.changed";
+    /** Cola de eventos que revocan todas las sesiones: contraseña cambiada y cuenta eliminada. */
+    public static final String QUEUE_CUENTA = "styleradar.auth.user-account-changed.q";
+    public static final String ROUTING_KEY_CONTRASENA = "user.password.changed";
+    /** Routing key actual de ms-usuarios para la cuenta eliminada; también se escucha {@code user.deleted}. */
+    public static final String ROUTING_KEY_CUENTA_ELIMINADA = "styleradar.usuarios.cuenta.eliminada";
+    public static final String ROUTING_KEY_USUARIO_ELIMINADO = "user.deleted";
 
     @org.springframework.beans.factory.annotation.Value("${spring.rabbitmq.password:}")
     private String rabbitPassword = "";
@@ -38,6 +44,8 @@ public class RabbitMQConfig {
     public void registrarEstadoConsumidor() {
         if (consumidorActivo()) {
             log.info("RabbitMQ: consumidor activo en la cola {} (exchange {}, routing key {})", QUEUE, EXCHANGE, ROUTING_KEY);
+            log.info("RabbitMQ: consumidor activo en la cola {} (routing keys {}, {} y {})", QUEUE_CUENTA,
+                    ROUTING_KEY_CONTRASENA, ROUTING_KEY_CUENTA_ELIMINADA, ROUTING_KEY_USUARIO_ELIMINADO);
         } else {
             log.warn("RabbitMQ: consumidor DESACTIVADO porque falta RABBITMQ_PASSWORD; la cola {} no se declara y "
                     + "ms-auth no recibe {} de {}", QUEUE, ROUTING_KEY, EXCHANGE);
@@ -83,6 +91,29 @@ public class RabbitMQConfig {
                 EXCHANGE,
                 ROUTING_KEY,
                 null);
+    }
+
+    @Bean
+    Queue cuentaUsuarioQueue() {
+        return QueueBuilder.durable(QUEUE_CUENTA)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", DLQ)
+                .build();
+    }
+
+    @Bean
+    Binding contrasenaCambiadaBinding() {
+        return new Binding(QUEUE_CUENTA, Binding.DestinationType.QUEUE, EXCHANGE, ROUTING_KEY_CONTRASENA, null);
+    }
+
+    @Bean
+    Binding cuentaEliminadaBinding() {
+        return new Binding(QUEUE_CUENTA, Binding.DestinationType.QUEUE, EXCHANGE, ROUTING_KEY_CUENTA_ELIMINADA, null);
+    }
+
+    @Bean
+    Binding usuarioEliminadoBinding() {
+        return new Binding(QUEUE_CUENTA, Binding.DestinationType.QUEUE, EXCHANGE, ROUTING_KEY_USUARIO_ELIMINADO, null);
     }
 
     @Bean

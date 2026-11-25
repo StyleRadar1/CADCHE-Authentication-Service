@@ -108,6 +108,8 @@ class TrazabilidadRequerimientosAuthTest {
     private StringRedisTemplate redis;
     @Autowired
     private edu.dosw.styleradar.auth.infrastructure.adapter.in.amqp.UsuarioEstadoCambiadoConsumer consumidorEstado;
+    @Autowired
+    private edu.dosw.styleradar.auth.infrastructure.adapter.in.amqp.CuentaUsuarioCambiadaConsumer consumidorCuenta;
 
     @MockBean
     private EmailService emailService;
@@ -1055,6 +1057,28 @@ class TrazabilidadRequerimientosAuthTest {
                 error(logout(ip, token), 401, "INVALID_TOKEN", "El token ha sido revocado");
                 redis.delete("usuario:revocado:12");
             }
+        }
+
+        @Test
+        @DisplayName("Contraseña cambiada o cuenta eliminada en ms-usuarios: el token anterior da 401 y el evento repetido no falla")
+        void contrasenaCambiadaYCuentaEliminada() throws Exception {
+            String ip = nuevaIp();
+            String token = token(ip, "verificado@styleradar.com");
+            var cambio = objectMapper.readValue("{\"eventId\":\"evt-clave-12\",\"eventType\":\"user.password.changed\","
+                    + "\"userId\":12,\"changedAt\":\"" + Instant.now().plusSeconds(1) + "\"}",
+                    edu.dosw.styleradar.auth.application.dto.event.CuentaUsuarioCambiadaEventDTO.class);
+            consumidorCuenta.recibir(cambio);
+            consumidorCuenta.recibir(cambio);
+            error(logout(ip, token), 401, "INVALID_TOKEN", "El token ha sido revocado");
+            assertThat(redis.hasKey("evento:procesado:evt-clave-12")).isTrue();
+
+            String otroIp = nuevaIp();
+            String tokenTienda = token(otroIp, "verificado@styleradar.com");
+            redis.delete("usuario:revocado:12");
+            consumidorCuenta.recibir(objectMapper.readValue("{\"userId\":12,\"deletedAt\":\""
+                    + Instant.now().plusSeconds(1) + "\"}",
+                    edu.dosw.styleradar.auth.application.dto.event.CuentaUsuarioCambiadaEventDTO.class));
+            error(logout(otroIp, tokenTienda), 401, "INVALID_TOKEN", "El token ha sido revocado");
         }
 
         @Test

@@ -35,8 +35,8 @@ public class RestablecerContrasenaRequestDTO {
     @NotBlank(message = "La contraseña nueva es obligatoria")
     @Size(min = 8, max = 72, message = "La contraseña debe tener entre 8 y 72 caracteres")
     @Pattern(
-            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,72}$",
-            message = "La contraseña debe incluir al menos una mayúscula, una minúscula, un número y un carácter especial"
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d\\s]).{8,72}$",
+            message = "La contraseña debe incluir al menos una mayúscula, una minúscula, un número y un carácter especial (el espacio no cuenta)"
     )
     @Schema(description = "New password: 8 to 72 characters with upper case, lower case, digit and symbol. "
             + "Sent to ms-usuarios, which stores it with BCrypt; never stored by ms-auth",
