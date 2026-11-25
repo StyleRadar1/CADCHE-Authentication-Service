@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    actor U as Usuario (Front React)
+    participant GW as API Gateway :8080
+    participant A as ms-auth :8100<br/>AuthController
+    participant UC as IniciarSesion / VerificarOtp<br/>(casos de uso)
+    participant MU as ms-usuarios :8120
+    participant R as Redis 7
+    participant M as SMTP (Gmail)
+    participant MQ as RabbitMQ<br/>styleradar.exchange
+
+    U->>GW: POST /api/v1/auth/login {email, password}
+    GW->>A: reenvía (X-Forwarded-For)
+    A->>R: RateLimitingFilter: INCR ratelimit:{ruta}:{ip} (15 req/min)
+    A->>UC: iniciarSesion(email, password)
+    UC->>MU: POST /api/v1/internal/users/verify-credentials (Basic)
+    MU-->>UC: {id, role, status, emailVerified}
+    alt cuenta no ACTIVA
+        UC-->>U: 403 ACCOUNT_NOT_ACTIVE (ProblemDetail)
+    else correo ya verificado
+        UC->>R: sesion:{jti} · sesiones:vencimiento · sesiones:usuario:{id}
+        UC-)MQ: user.session.changed (LOGIN, delta +1)
+        UC-->>U: 200 {accessToken (JWT HS256), expiresIn, roles}
+    else correo sin verificar
+        UC->>R: otp:{email} = SHA-256 salteado (TTL 300 s) · otp:intentos:{email}
+        UC->>M: envía el código OTP
+        UC-->>U: 200 {otpRequired: true, otpExpiresInSeconds, otpAttemptsRemaining}
+        U->>GW: POST /api/v1/auth/otp/verify {email, otpCode}
+        GW->>A: reenvía
+        A->>UC: verificar(email, otpCode)
+        UC->>R: compara hash y descuenta intento (3 fallos → bloqueo 60 s)
+        UC->>MU: PATCH /api/v1/internal/users/{id}/email-verification
+        UC->>R: borra otp:{email} y registra la sesión
+        UC-)MQ: user.session.changed (LOGIN, delta +1)
+        UC-->>U: 200 {accessToken JWT, expiresIn}
+    end
+    Note over UC,MQ: Logout, expiración (barrido cada 60 s) y revocación publican<br/>user.session.changed con delta -1 (LOGOUT · EXPIRED · REVOKED)

@@ -48,7 +48,7 @@ flowchart LR
 
 **Justificación del diagrama de capas.** Muestra en una sola vista la regla de dependencia de la arquitectura hexagonal: todo lo externo (Gateway, RabbitMQ, ms-usuarios, Google, Redis y SMTP) entra o sale por un adaptador, y el núcleo solo conoce puertos. Sirve para revisar de un vistazo que ningún controlador llame directamente a Redis o a un cliente HTTP, y que el consumidor AMQP use el mismo puerto de entrada que la API REST.
 
-### 3.1 Diagrama de Clases
+### 2.1 Diagrama de Clases
 
 <div align="center">
   <img src="../uml/DiagramaClases.png" alt="Diagrama de Clases ms-auth" width="100%" />
@@ -61,7 +61,7 @@ flowchart LR
 
 **Justificación del diagrama de clases.** Se genera desde el código fuente, así que refleja las clases que realmente existen. Documenta el modelo del dominio, que es donde viven las reglas del análisis de requerimientos: el estado de la cuenta (RN-03), los roles válidos, el desafío OTP y el catálogo de errores del contrato con el front. Al no depender de Spring, el diagrama también prueba que el dominio no tiene dependencias de infraestructura.
 
-### 3.2 Diagrama de Base de Datos
+### 2.2 Diagrama de Base de Datos
 
 <div align="center">
   <img src="../uml/DiagramaBaseDatos.png" alt="Modelo de datos ms-auth" width="100%" />
@@ -91,7 +91,7 @@ flowchart LR
 
 Si Redis no responde, ms-auth falla cerrado con `503 SERVICE_UNAVAILABLE`. El respaldo en memoria solo existe en el perfil `dev` con la propiedad explícita.
 
-### 3.3 Diagrama de Componentes Específico
+### 2.3 Diagrama de Componentes Específico
 
 <div align="center">
   <img src="../uml/DiagramaComponentesEspecifico.png" alt="Componentes ms-auth" width="100%" />
@@ -100,7 +100,7 @@ Si Redis no responde, ms-auth falla cerrado con `503 SERVICE_UNAVAILABLE`. El re
 
 **Justificación del diagrama de componentes específico.** Baja un nivel respecto al diagrama de capas: muestra cada controlador, filtro, consumidor, caso de uso, servicio y adaptador real de ms-auth, y las interfaces por las que se conectan (provistas y requeridas). Se usa para ubicar dónde se implementa cada historia y para comprobar que cada puerto de salida tiene exactamente un adaptador.
 
-### 3.4 Diagrama de Componentes General (ecosistema StyleRadar)
+### 2.4 Diagrama de Componentes General (ecosistema StyleRadar)
 
 <div align="center">
   <img src="../uml/DiagramaComponentesGeneral.webp" alt="Diagrama de componentes general de StyleRadar" width="100%" />
@@ -115,7 +115,7 @@ Si Redis no responde, ms-auth falla cerrado con `503 SERVICE_UNAVAILABLE`. El re
 * **RabbitMQ:** ms-auth consume el cambio de estado de cuenta que publica ms-usuarios para revocar sesiones.
 * El resto de microservicios valida el JWT que emite ms-auth con el mismo secreto; ninguno lo llama por cada petición.
 
-### 3.5 Diagrama de Despliegue
+### 2.5 Diagrama de Despliegue
 
 <div align="center">
   <img src="../uml/DiagramaDespliegue.webp" alt="Diagrama de despliegue de StyleRadar" width="100%" />
@@ -133,6 +133,15 @@ Si Redis no responde, ms-auth falla cerrado con `503 SERVICE_UNAVAILABLE`. El re
 1. El nodo PostgreSQL incluye una base `Auth`. ms-auth no la usa (ver el ADR de la sección 3.2); se recomienda quitarla para no reservar un recurso sin uso.
 2. ms-auth hoy se despliega en **Azure App Service** (`styleradar-auth-qa` y `styleradar-auth-prod`), no en Container Apps. El diagrama representa la arquitectura objetivo.
 3. `Donations` y `Virtual Try-on` aparecen con el mismo puerto `8520`; uno de los dos debe cambiar.
+
+### 2.6 Diagrama de Secuencia
+
+Flujo principal de `ms-auth`: inicio de sesión con OTP: login, verificación del código, aviso a ms-usuarios, registro de la sesión en Redis y evento `user.session.changed`. Fuente editable en Mermaid: [`DiagramaSecuencia.mmd`](../uml/secuencia/DiagramaSecuencia.mmd).
+
+<div align="center">
+  <img src="../uml/secuencia/DiagramaSecuencia.png" alt="Diagrama de secuencia ms-auth" width="90%" />
+  <p><sub><b>Figura 2.6:</b> diagrama de secuencia de `ms-auth` con la plantilla StyleRadar (logo, título y colores).</sub></p>
+</div>
 
 ### Estructura de Paquetes en `src/main/java/edu/dosw/styleradar/auth/`
 

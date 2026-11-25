@@ -7,7 +7,7 @@
 * **Identificador de Servicio:** `ms-auth` (`CADCHE-Authentication-Service`)
 * **Paquete Arquitectónico:** `Paquete 1: Identidad` · Equipo `CADche`
 * **Puerto de Escucha Oficial:** `8100` (bloque `8100` del equipo: ms-auth `8100`, ms-usuarios `8120`, ms-tiendas `8140`)
-* **Almacenamiento Asignado:** `Redis 7`. **ms-auth no tiene base de datos relacional** (decisión de arquitectura, ver [§3.2](02-arquitectura-hexagonal-y-diagramas.md#32-diagrama-de-base-de-datos)): las cuentas, contraseñas y el estado `emailVerified` pertenecen a `ms-usuarios` (patrón *Database-per-Service*) y todo el estado propio de ms-auth es efímero y con TTL (códigos OTP, bloqueos, lista negra de JWT, estado OAuth2 y rate limiting).
+* **Almacenamiento Asignado:** `Redis 7`. **ms-auth no tiene base de datos relacional** (decisión de arquitectura, ver [§2.2](02-arquitectura-hexagonal-y-diagramas.md#22-diagrama-de-base-de-datos)): las cuentas, contraseñas y el estado `emailVerified` pertenecen a `ms-usuarios` (patrón *Database-per-Service*) y todo el estado propio de ms-auth es efímero y con TTL (códigos OTP, bloqueos, lista negra de JWT, estado OAuth2 y rate limiting).
 * **Bounded Context:** `Autenticación, Identidad Federada y Control de Acceso (IAM)`
 
 ### Responsabilidades del Dominio

@@ -14,10 +14,10 @@
 | Mapeo | MapStruct + Lombok | `1.5.5 / 1.18.42` | Mapper de salida generado en compilación. |
 | Documentación | springdoc-openapi | `2.3.0` | Swagger UI y OpenAPI 3. |
 | Pruebas | JUnit 5, Mockito, Testcontainers | `5.10 / 5.7 / 1.19.8` | Unitarias, WebMvc e integración con **Redis 7 real**. |
-| Calidad | JaCoCo, SpotBugs, SonarCloud, CycloneDX | `0.8.12 / 4.8.6 / – / 2.9.3` | Cobertura ≥ 85 %, análisis estático y SBOM. |
+| Calidad | JaCoCo, SpotBugs, SonarCloud, CycloneDX | `0.8.12 / 4.8.6 / – / 2.9.3` | Cobertura ≥ 85 % de líneas y ≥ 80 % de ramas, análisis estático y SBOM. |
 | Contenedor | Eclipse Temurin JRE Alpine | `21` | Imagen OCI no-root con `HEALTHCHECK`. |
 
-> **PostgreSQL 16** es el motor del stack para los servicios con datos relacionales (por ejemplo `ms-usuarios` y `ms-tiendas`). Este servicio no lo usa por la decisión de [§3.2](02-arquitectura-hexagonal-y-diagramas.md#32-diagrama-de-base-de-datos).
+> **PostgreSQL 16** es el motor del stack para los servicios con datos relacionales (por ejemplo `ms-usuarios` y `ms-tiendas`). Este servicio no lo usa por la decisión de [§2.2](02-arquitectura-hexagonal-y-diagramas.md#22-diagrama-de-base-de-datos).
 
 ### Análisis De Tecnologías Del Servicio (Plantilla Maestra Oficial)
 
@@ -140,7 +140,7 @@ $$\text{Puntaje Total} = \sum_{i=1}^{5} (\text{Calificación}_{i} \times \text{P
 | C5: Costo & TCO (20 %) | 5 | 4 | 3 | 2 |
 | **Total Ponderado** | **4.95 / 5.00 (Seleccionado)** | **4.15 / 5.00** | **3.75 / 5.00** | **4.10 / 5.00** |
 
-* **Decisión ADR-003 (revisada en el Sprint 2):** PostgreSQL 16 es el motor relacional del stack, pero `ms-auth` **no** lo usa: su estado es efímero y vive en Redis 7, y las cuentas son de `ms-usuarios` (Database-per-Service). Ver §3.2.
+* **Decisión ADR-003 (revisada en el Sprint 2):** PostgreSQL 16 es el motor relacional del stack, pero `ms-auth` **no** lo usa: su estado es efímero y vive en Redis 7, y las cuentas son de `ms-usuarios` (Database-per-Service). Ver §2.2.
 * **Por qué PostgreSQL (en los servicios con datos relacionales, como ms-usuarios):** Garantiza transacciones ACID estrictas para el registro de usuarios, almacenamiento de contraseñas hasheadas, roles y auditoría de accesos; excelente control de concurrencia multiversión (MVCC) y cumplimiento de estándares SQL sin riesgo de vendor lock-in.
 * **Por qué no los otros:** MySQL tiene capacidades analíticas y de indexación inferiores; MongoDB no garantiza atomicidad transaccional estricta ni integridad referencial requerida para identidades y permisos; Aurora genera vendor lock-in y costos incompatibles con el presupuesto académico.
 

@@ -27,8 +27,8 @@
     <a href="https://styleradar-auth-qa.azurewebsites.net/swagger-ui/index.html">
       <img src="https://img.shields.io/badge/QA-Active-5600EF?style=for-the-badge&logo=azure-app-services&logoColor=white" alt="QA Deployment" />
     </a>
-    <a href="https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions/workflows/ci.yml">
-      <img src="https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions/workflows/ci.yml/badge.svg?branch=develop" alt="CI/CD" />
+    <a href="https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions/workflows/ci-qa.yml">
+      <img src="https://github.com/StyleRadar1/CADCHE-Authentication-Service/actions/workflows/ci-qa.yml/badge.svg?branch=develop" alt="CI/CD QA" />
     </a>
     <a href="https://sonarcloud.io/project/overview?id=StyleRadar1_CADCHE-Authentication-Service">
       <img src="https://sonarcloud.io/api/project_badges/measure?project=StyleRadar1_CADCHE-Authentication-Service&metric=alert_status" alt="Quality Gate" />
