@@ -12,14 +12,14 @@ services:
       REDIS_HOST: auth-redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
+      RABBITMQ_HOST: ${RABBITMQ_HOST:-auth-rabbitmq}
       RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:-MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       USUARIOS_SERVICE_URL: ${USUARIOS_SERVICE_URL:-http://ms-usuarios:8120}
-      USUARIOS_OAUTH2_PATH: ${USUARIOS_OAUTH2_PATH:-/internal/api/v1/usuarios/oauth2}
+      USUARIOS_OAUTH2_PATH: ${USUARIOS_OAUTH2_PATH:-/api/v1/internal/users/oauth2}
       USUARIOS_INTERNAL_USERNAME: ${USUARIOS_INTERNAL_USERNAME:-ms-auth}
       USUARIOS_INTERNAL_PASSWORD: ${USUARIOS_INTERNAL_PASSWORD:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
@@ -33,6 +33,8 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     depends_on:
       auth-redis:
+        condition: service_healthy
+      auth-rabbitmq:
         condition: service_healthy
     networks:
       - auth-network
@@ -49,6 +51,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - auth-network
+
+  auth-rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: auth-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "5673:5672"     # AMQP (5673 en el host para no chocar con el RabbitMQ de ms-tiendas)
+      - "15673:15672"   # Consola de administración
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
     networks:
       - auth-network
 
