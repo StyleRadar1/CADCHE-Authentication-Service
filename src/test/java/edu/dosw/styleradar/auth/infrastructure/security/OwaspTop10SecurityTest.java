@@ -165,8 +165,9 @@ class OwaspTop10SecurityTest {
                 + Files.readString(Path.of(".github/workflows/ci-prod.yml"));
         assertThat(ci)
                 .contains("spotbugs-maven-plugin")
-                .contains("provenance: true")
-                .contains("sbom: true");
+                .contains("sbom-cyclone-dx-auth")
+                .contains("target/bom.*")
+                .doesNotContainPattern("uses: [\\w./-]+@v\\d");
     }
 
     @Test
