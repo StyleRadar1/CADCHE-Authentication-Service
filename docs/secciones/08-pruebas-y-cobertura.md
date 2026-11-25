@@ -17,7 +17,7 @@
 | Cobertura de instrucciones (JaCoCo) | **96.6 %** | ≥ 85 % |
 | SpotBugs | 0 hallazgos | 0 |
 
-La regla vive en `pom.xml` (`jacoco-maven-plugin`, objetivo `check` en la fase `verify`) con los mismos umbrales del repo base: 85 % de líneas y 80 % de ramas, más 85 % de instrucciones. Los tres pipelines ejecutan `./mvnw verify`, así que una caída de cobertura detiene el PR o el despliegue.
+La regla vive en `pom.xml` (`jacoco-maven-plugin`, objetivo `check` en la fase `verify`) con los mismos umbrales del repo base: 85 % de líneas y 80 % de ramas, más 85 % de instrucciones. Los tres pipelines ejecutan `./mvnw verify`, así que una caída de cobertura detiene el PR o el despliegue. En GitHub Actions no hay Docker para Testcontainers, así que allí corren 251 pruebas y la cobertura es menor (95.5 % de líneas y 82.1 % de ramas), y aun así cumple ambos umbrales.
 
 ### Pirámide de pruebas (espejo de `src/main`)
 
