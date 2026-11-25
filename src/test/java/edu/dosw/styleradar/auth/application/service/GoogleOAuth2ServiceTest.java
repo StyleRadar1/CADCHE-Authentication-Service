@@ -33,9 +33,11 @@ import edu.dosw.styleradar.auth.application.service.impl.GoogleOAuth2ServiceImpl
 import edu.dosw.styleradar.auth.domain.exception.CredencialesIncorrectasException;
 import edu.dosw.styleradar.auth.domain.exception.CuentaNoActivaException;
 import edu.dosw.styleradar.auth.domain.exception.ServicioExternoNoDisponibleException;
+import edu.dosw.styleradar.auth.domain.model.EntidadAsociada;
 import edu.dosw.styleradar.auth.domain.model.GoogleIdentityClaims;
 import edu.dosw.styleradar.auth.domain.model.Rol;
 import edu.dosw.styleradar.auth.domain.model.SesionAutenticada;
+import edu.dosw.styleradar.auth.domain.port.out.EntidadAsociadaPort;
 import edu.dosw.styleradar.auth.domain.port.out.GoogleOAuthPort;
 import edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioClient;
 import edu.dosw.styleradar.auth.infrastructure.adapter.out.external.UsuarioIdentidadAdapter;
@@ -299,5 +301,24 @@ class GoogleOAuth2ServiceTest {
         assertEquals("jwt-7", sesion.accessToken());
         assertFalse(sesion.requiereOtp());
         verify(usuarioClient, never()).marcarCorreoVerificado(anyLong());
+    }
+
+    @Test
+    @DisplayName("BUG-005: OAuth2 Google incluye storeId si EntidadAsociadaPort lo resuelve para STORE_ADMIN")
+    void autenticarConIdToken_conEntidadAsociada_emiteClaimsEnJwt() {
+        EntidadAsociadaPort entidadPort = mock(EntidadAsociadaPort.class);
+        service.setEntidadAsociadaPort(entidadPort);
+
+        GoogleIdentityClaims claims = new GoogleIdentityClaims("sub-store", "store@gmail.com", true, "Tienda");
+        when(googleOAuthPort.verificarIdToken("id-store")).thenReturn(claims);
+        when(usuarioClient.resolverUsuarioOAuth("store@gmail.com", "Tienda", "GOOGLE", "sub-store"))
+                .thenReturn(new VerificarCredencialesResponseDTO(33L, "store@gmail.com", "STORE_ADMIN", "ACTIVA", true));
+        when(entidadPort.resolverEntidadAsociada(33L, Set.of(Rol.STORE_ADMIN)))
+                .thenReturn(new EntidadAsociada("900888777-1", null));
+        when(jwtService.generarToken(33L, Set.of(Rol.STORE_ADMIN), "900888777-1", null)).thenReturn("jwt-store-oauth");
+
+        SesionAutenticada sesion = service.autenticarConIdToken("id-store");
+
+        assertEquals("jwt-store-oauth", sesion.accessToken());
     }
 }

@@ -9,6 +9,8 @@ public interface JwtService {
 
     String generarToken(Long usuarioId, Set<Rol> roles);
 
+    String generarToken(Long usuarioId, Set<Rol> roles, String storeId, Long foundationId);
+
     Claims validarToken(String token);
 
     Long obtenerUsuarioId(String token);
