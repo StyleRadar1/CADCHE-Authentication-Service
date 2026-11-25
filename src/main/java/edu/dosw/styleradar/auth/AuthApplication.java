@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 
 @EnableRabbit
+@org.springframework.scheduling.annotation.EnableScheduling
 @SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
 public class AuthApplication {
 

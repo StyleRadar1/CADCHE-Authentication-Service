@@ -24,12 +24,23 @@ public class IniciarSesionUseCaseImpl implements IniciarSesionUseCase {
     private final OtpService otpService;
     private final JwtService jwtService;
     private final NotificadorCodigoOtp notificador;
+    private final edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones;
 
     public IniciarSesionUseCaseImpl(
             UsuarioIdentidadPort usuarioIdentidadPort,
             OtpService otpService,
             EmailService emailService,
             JwtService jwtService) {
+        this(usuarioIdentidadPort, otpService, emailService, jwtService, null);
+    }
+
+    public IniciarSesionUseCaseImpl(
+            UsuarioIdentidadPort usuarioIdentidadPort,
+            OtpService otpService,
+            EmailService emailService,
+            JwtService jwtService,
+            edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones) {
+        this.sesiones = sesiones;
         this.usuarioIdentidadPort = usuarioIdentidadPort;
         this.otpService = otpService;
         this.jwtService = jwtService;
@@ -50,6 +61,9 @@ public class IniciarSesionUseCaseImpl implements IniciarSesionUseCase {
         long vigenciaToken = jwtService.obtenerVigenciaSegundos();
         if (usuario.correoVerificado()) {
             String token = jwtService.generarToken(usuario.id(), Set.of(usuario.rol()));
+            if (sesiones != null) {
+                sesiones.iniciar(token);
+            }
             log.info("Inicio de sesión directo sin OTP (correo verificado) para usuario ID {}", usuario.id());
             return SesionAutenticada.conToken(token, vigenciaToken, usuario.id(), usuario.rol(), correo);
         }

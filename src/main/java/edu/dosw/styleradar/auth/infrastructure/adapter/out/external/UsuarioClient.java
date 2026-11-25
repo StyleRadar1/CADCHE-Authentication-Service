@@ -29,21 +29,12 @@ public final class UsuarioClient {
     static final String DEFAULT_CORREO_VERIFICADO_PATH = "/api/v1/internal/users/{id}/email-verification";
     static final String DEFAULT_CREDENCIALES_PATH = "/api/v1/internal/users/verify-credentials";
     static final String DEFAULT_OAUTH2_PATH = "/api/v1/internal/users/oauth2";
-    /** Rutas que ms-usuarios publica hoy (en español); se usan solo si la ruta en inglés responde 404. */
-    static final String LEGACY_CREDENCIALES_PATH = "/internal/api/v1/usuarios/verificar-credenciales";
-    static final String LEGACY_CORREO_VERIFICADO_PATH = "/api/v1/internal/usuarios/{id}/correo-verificado";
 
     private final RestClient restClient;
     private final String baseUrl;
     private final String oauth2Path;
     private final String correoVerificadoPath;
     private final String credencialesPath;
-
-    @Value("${styleradar.usuarios.credenciales-legacy-path:" + LEGACY_CREDENCIALES_PATH + "}")
-    private String credencialesLegacyPath;
-
-    @Value("${styleradar.usuarios.correo-verificado-legacy-path:" + LEGACY_CORREO_VERIFICADO_PATH + "}")
-    private String correoVerificadoLegacyPath;
     private final boolean devFallbackEnabled;
     private final Environment environment;
 
@@ -120,22 +111,7 @@ public final class UsuarioClient {
                 new VerificarCredencialesRequestDTO(normalizedEmail, password);
 
         try {
-            try {
-                return postCredenciales(credencialesPath, request);
-            } catch (HttpClientErrorException.NotFound | HttpClientErrorException.Forbidden falloRuta) {
-                if (!hayRespaldo(credencialesLegacyPath, credencialesPath)
-                        || (falloRuta instanceof HttpClientErrorException.Forbidden prohibido
-                                && esErrorDeCuentaNoActiva(prohibido))) {
-                    throw falloRuta;
-                }
-                log.warn("ms-usuarios respondió {} en {}; se usa la ruta anterior {}",
-                        falloRuta.getStatusCode().value(), credencialesPath, credencialesLegacyPath);
-                try {
-                    return postCredenciales(credencialesLegacyPath, request);
-                } catch (HttpClientErrorException.NotFound respaldoNoExiste) {
-                    throw falloRuta;
-                }
-            }
+            return postCredenciales(credencialesPath, request);
         } catch (HttpClientErrorException.Unauthorized exception) {
             log.warn("Credenciales incorrectas para: {}", SecuritySanitizer.maskEmail(normalizedEmail));
             throw new CredencialesIncorrectasException("El correo o la contraseña son incorrectos");
@@ -227,16 +203,7 @@ public final class UsuarioClient {
             return;
         }
         try {
-            try {
-                patchCorreoVerificado(correoVerificadoPath, usuarioId);
-            } catch (HttpClientErrorException.NotFound | HttpClientErrorException.Forbidden noDisponible) {
-                if (!hayRespaldo(correoVerificadoLegacyPath, correoVerificadoPath)) {
-                    throw noDisponible;
-                }
-                log.warn("ms-usuarios respondió {} en {}; se usa la ruta anterior {}",
-                        noDisponible.getStatusCode().value(), correoVerificadoPath, correoVerificadoLegacyPath);
-                patchCorreoVerificado(correoVerificadoLegacyPath, usuarioId);
-            }
+            patchCorreoVerificado(correoVerificadoPath, usuarioId);
             log.info("Notificación enviada a ms-usuarios: correo verificado para usuario ID {}", usuarioId);
         } catch (RestClientException ex) {
             log.error("No fue posible marcar el correo como verificado en ms-usuarios para usuario ID {}: {}",
@@ -257,10 +224,6 @@ public final class UsuarioClient {
                 .uri(ruta, usuarioId)
                 .retrieve()
                 .toBodilessEntity();
-    }
-
-    private static boolean hayRespaldo(String respaldo, String principal) {
-        return respaldo != null && !respaldo.isBlank() && !respaldo.trim().equals(principal);
     }
 
     private static boolean esErrorDeCuentaNoActiva(HttpClientErrorException.Forbidden ex) {

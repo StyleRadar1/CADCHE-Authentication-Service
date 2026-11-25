@@ -2,6 +2,7 @@ package edu.dosw.styleradar.auth.infrastructure.config;
 
 import java.time.Clock;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,6 +12,7 @@ import org.springframework.core.env.Profiles;
 import edu.dosw.styleradar.auth.application.service.EmailService;
 import edu.dosw.styleradar.auth.application.service.JwtService;
 import edu.dosw.styleradar.auth.application.service.OtpService;
+import edu.dosw.styleradar.auth.application.service.SesionesActivasService;
 import edu.dosw.styleradar.auth.application.usecase.CerrarSesionUseCaseImpl;
 import edu.dosw.styleradar.auth.application.usecase.IniciarSesionUseCaseImpl;
 import edu.dosw.styleradar.auth.application.usecase.ReenviarOtpUseCaseImpl;
@@ -25,6 +27,8 @@ import edu.dosw.styleradar.auth.domain.port.in.RegistrarUsuarioUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.RenovarTokenUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.RevocarSesionesUsuarioUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.VerificarOtpUseCase;
+import edu.dosw.styleradar.auth.domain.port.out.EventoSesionPublisherPort;
+import edu.dosw.styleradar.auth.domain.port.out.RegistroSesionesPort;
 import edu.dosw.styleradar.auth.domain.port.out.UsuarioIdentidadPort;
 
 /**
@@ -41,18 +45,26 @@ public class BeanConfig {
     }
 
     @Bean
+    public SesionesActivasService sesionesActivasService(JwtService jwtService,
+            ObjectProvider<RegistroSesionesPort> registro, ObjectProvider<EventoSesionPublisherPort> eventos,
+            Clock clock) {
+        return new SesionesActivasService(jwtService, registro.getIfAvailable(), eventos.getIfAvailable(), clock);
+    }
+
+    @Bean
     public IniciarSesionUseCase iniciarSesionUseCase(
             UsuarioIdentidadPort usuarioIdentidadPort,
             OtpService otpService,
             EmailService emailService,
-            JwtService jwtService) {
-        return new IniciarSesionUseCaseImpl(usuarioIdentidadPort, otpService, emailService, jwtService);
+            JwtService jwtService,
+            SesionesActivasService sesiones) {
+        return new IniciarSesionUseCaseImpl(usuarioIdentidadPort, otpService, emailService, jwtService, sesiones);
     }
 
     @Bean
-    public VerificarOtpUseCase verificarOtpUseCase(
-            OtpService otpService, JwtService jwtService, UsuarioIdentidadPort usuarioIdentidadPort) {
-        return new VerificarOtpUseCaseImpl(otpService, jwtService, usuarioIdentidadPort);
+    public VerificarOtpUseCase verificarOtpUseCase(OtpService otpService, JwtService jwtService,
+            UsuarioIdentidadPort usuarioIdentidadPort, SesionesActivasService sesiones) {
+        return new VerificarOtpUseCaseImpl(otpService, jwtService, usuarioIdentidadPort, sesiones);
     }
 
     @Bean
@@ -61,18 +73,21 @@ public class BeanConfig {
     }
 
     @Bean
-    public RenovarTokenUseCase renovarTokenUseCase(JwtService jwtService, OtpService otpService) {
-        return new RenovarTokenUseCaseImpl(jwtService, otpService);
+    public RenovarTokenUseCase renovarTokenUseCase(JwtService jwtService, OtpService otpService,
+            SesionesActivasService sesiones) {
+        return new RenovarTokenUseCaseImpl(jwtService, otpService, sesiones);
     }
 
     @Bean
-    public CerrarSesionUseCase cerrarSesionUseCase(JwtService jwtService, OtpService otpService) {
-        return new CerrarSesionUseCaseImpl(jwtService, otpService);
+    public CerrarSesionUseCase cerrarSesionUseCase(JwtService jwtService, OtpService otpService,
+            SesionesActivasService sesiones) {
+        return new CerrarSesionUseCaseImpl(jwtService, otpService, sesiones);
     }
 
     @Bean
-    public RevocarSesionesUsuarioUseCase revocarSesionesUsuarioUseCase(OtpService otpService, Clock clock) {
-        return new RevocarSesionesUsuarioUseCaseImpl(otpService, clock);
+    public RevocarSesionesUsuarioUseCase revocarSesionesUsuarioUseCase(OtpService otpService, Clock clock,
+            SesionesActivasService sesiones) {
+        return new RevocarSesionesUsuarioUseCaseImpl(otpService, clock, sesiones);
     }
 
     /**
