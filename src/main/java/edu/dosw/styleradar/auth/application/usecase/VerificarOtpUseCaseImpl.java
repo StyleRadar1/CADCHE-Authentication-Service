@@ -5,9 +5,11 @@ import java.util.Set;
 import edu.dosw.styleradar.auth.application.service.JwtService;
 import edu.dosw.styleradar.auth.application.service.OtpService;
 import edu.dosw.styleradar.auth.domain.exception.OtpExpiradoException;
+import edu.dosw.styleradar.auth.domain.model.EntidadAsociada;
 import edu.dosw.styleradar.auth.domain.model.Rol;
 import edu.dosw.styleradar.auth.domain.model.SesionAutenticada;
 import edu.dosw.styleradar.auth.domain.port.in.VerificarOtpUseCase;
+import edu.dosw.styleradar.auth.domain.port.out.EntidadAsociadaPort;
 import edu.dosw.styleradar.auth.domain.port.out.UsuarioIdentidadPort;
 import edu.dosw.styleradar.auth.infrastructure.security.SecuritySanitizer;
 import lombok.extern.slf4j.Slf4j;
@@ -22,18 +24,27 @@ public class VerificarOtpUseCaseImpl implements VerificarOtpUseCase {
     private final JwtService jwtService;
     private final UsuarioIdentidadPort usuarioIdentidadPort;
     private final edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones;
+    private final EntidadAsociadaPort entidadAsociadaPort;
 
     public VerificarOtpUseCaseImpl(
             OtpService otpService, JwtService jwtService, UsuarioIdentidadPort usuarioIdentidadPort) {
-        this(otpService, jwtService, usuarioIdentidadPort, null);
+        this(otpService, jwtService, usuarioIdentidadPort, null, null);
     }
 
     public VerificarOtpUseCaseImpl(OtpService otpService, JwtService jwtService,
             UsuarioIdentidadPort usuarioIdentidadPort, edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones) {
+        this(otpService, jwtService, usuarioIdentidadPort, sesiones, null);
+    }
+
+    public VerificarOtpUseCaseImpl(OtpService otpService, JwtService jwtService,
+            UsuarioIdentidadPort usuarioIdentidadPort,
+            edu.dosw.styleradar.auth.application.service.SesionesActivasService sesiones,
+            EntidadAsociadaPort entidadAsociadaPort) {
         this.sesiones = sesiones;
         this.otpService = otpService;
         this.jwtService = jwtService;
         this.usuarioIdentidadPort = usuarioIdentidadPort;
+        this.entidadAsociadaPort = entidadAsociadaPort;
     }
 
     @Override
@@ -52,7 +63,13 @@ public class VerificarOtpUseCaseImpl implements VerificarOtpUseCase {
         otpService.verificarOtp(correo, codigoOtp);
 
         Rol rol = Rol.desde(nombreRol);
-        String token = jwtService.generarToken(usuarioId, Set.of(rol));
+        Set<Rol> roles = Set.of(rol);
+        EntidadAsociada entidad = entidadAsociadaPort != null
+                ? entidadAsociadaPort.resolverEntidadAsociada(usuarioId, roles)
+                : EntidadAsociada.VACIA;
+        String token = (entidad == null || entidad.estaVacia())
+                ? jwtService.generarToken(usuarioId, roles)
+                : jwtService.generarToken(usuarioId, roles, entidad.storeId(), entidad.foundationId());
         otpService.eliminarOtp(correo);
         usuarioIdentidadPort.marcarCorreoVerificado(usuarioId);
         if (sesiones != null) {

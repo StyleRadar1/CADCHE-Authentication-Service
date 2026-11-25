@@ -79,6 +79,11 @@ styleradar:
     password: ${USUARIOS_INTERNAL_PASSWORD:}
     dev-fallback-enabled: false
 
+  tiendas:
+    base-url: ${TIENDAS_API_BASE_URL:${TIENDAS_SERVICE_URL:${TIENDAS_BASE_URL:}}}
+    internal-username: ${TIENDAS_INTERNAL_USERNAME:ms-auth}
+    internal-password: ${TIENDAS_INTERNAL_PASSWORD:${AUTH_INTERNAL_PASSWORD:}}
+
   mail:
     dev-console-fallback-enabled: false
 
