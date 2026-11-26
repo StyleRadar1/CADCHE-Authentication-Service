@@ -281,7 +281,11 @@ class TrazabilidadRequerimientosAuthTest {
                 .andExpect(jsonPath("$.status").value(http))
                 .andExpect(jsonPath("$.timestamp").value(matchesPattern("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")));
         if (mensaje != null) {
-            r.andExpect(jsonPath("$.message").value(mensaje));
+            if (INVALID_DATA.equals(mensaje)) {
+                r.andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.startsWith(INVALID_DATA)));
+            } else {
+                r.andExpect(jsonPath("$.message").value(mensaje));
+            }
         }
         return r;
     }
@@ -1156,7 +1160,9 @@ class TrazabilidadRequerimientosAuthTest {
                     .andExpect(jsonPath("$.type").value("https://api.styleradar.com/errors/" + tipo))
                     .andExpect(jsonPath("$.title").value(titulo))
                     .andExpect(jsonPath("$.error").value(titulo))
-                    .andExpect(jsonPath("$.detail").value(mensaje))
+                    .andExpect(INVALID_DATA.equals(mensaje)
+                            ? jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith(INVALID_DATA))
+                            : jsonPath("$.detail").value(mensaje))
                     .andExpect(jsonPath("$.instance").value(ruta))
                     .andExpect(jsonPath("$.path").value(ruta));
         }

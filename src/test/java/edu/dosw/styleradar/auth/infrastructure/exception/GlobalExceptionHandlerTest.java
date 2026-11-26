@@ -90,5 +90,49 @@ class GlobalExceptionHandlerTest {
                 .doesNotContain("JWT")
                 .contains("error interno");
     }
+
+    @Test
+    @DisplayName("Incluye mensajes específicos de validación en detail y message, y sanitiza errores HTTP y typeMismatch")
+    void debeIncluirDetalleClaroEnErroresDeValidacionYHttp() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth/password/reset");
+
+        org.springframework.validation.BeanPropertyBindingResult binding =
+                new org.springframework.validation.BeanPropertyBindingResult(new Object(), "reset");
+        binding.addError(new org.springframework.validation.FieldError(
+                "reset", "newPassword", null, false, new String[] {"Pattern"}, null,
+                "La contraseña debe incluir al menos una mayúscula, una minúscula, un número y un carácter especial."));
+        binding.addError(new org.springframework.validation.FieldError(
+                "reset", "otpCode", "abc", true, new String[] {"typeMismatch"}, null,
+                "Failed to convert property value of type 'java.lang.String'"));
+
+        ResponseEntity<ErrorResponseDTO> rVal = handler.handleBindingValidation(
+                new org.springframework.validation.BindException(binding), request);
+        assertThat(rVal.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(rVal.getBody().getCode()).isEqualTo(CodigoError.INVALID_DATA);
+        assertThat(rVal.getBody().getDetail())
+                .startsWith("La solicitud contiene datos inválidos: ")
+                .contains("un carácter especial")
+                .contains("El valor ingresado para 'otpCode' no tiene un formato válido")
+                .doesNotContain("java.lang.String");
+        assertThat(rVal.getBody().getMessage()).isEqualTo(rVal.getBody().getDetail());
+        assertThat(rVal.getBody().getErrors()).containsKey("newPassword").containsKey("otpCode");
+
+        assertThat(GlobalExceptionHandler.resumirErroresValidacion(java.util.Map.of()))
+                .isEqualTo("La solicitud contiene datos inválidos");
+
+        ResponseEntity<ErrorResponseDTO> rJson = handler.handleInvalidHttpRequest(
+                new org.springframework.http.converter.HttpMessageNotReadableException("bad json", (org.springframework.http.HttpInputMessage) null),
+                request);
+        assertThat(rJson.getBody().getDetail()).contains("JSON está mal formado");
+
+        ResponseEntity<ErrorResponseDTO> rMedia = handler.handleInvalidHttpRequest(
+                new org.springframework.web.HttpMediaTypeNotSupportedException("text/plain"), request);
+        assertThat(rMedia.getBody().getDetail()).contains("application/json");
+
+        ResponseEntity<ErrorResponseDTO> rMismatch = handler.handleInvalidHttpRequest(
+                new org.springframework.web.method.annotation.MethodArgumentTypeMismatchException("x", Long.class, "id", null, null),
+                request);
+        assertThat(rMismatch.getBody().getDetail()).contains("tipo o formato inválido");
+    }
 }
 

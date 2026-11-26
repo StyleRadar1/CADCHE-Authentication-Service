@@ -58,7 +58,7 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<ErrorResponseDTO> handleInvalidHttpRequest(
             Exception exception, HttpServletRequest request) {
-        return build(CodigoError.INVALID_DATA, "La solicitud contiene parámetros inválidos",
+        return build(CodigoError.INVALID_DATA, describirErrorHttpInvalido(exception),
                 request, Map.of(), null, null);
     }
 
@@ -113,8 +113,47 @@ public class GlobalExceptionHandler {
         Map<String, String> validationErrors = new LinkedHashMap<>();
         exception.getBindingResult().getFieldErrors().stream()
                 .sorted(Comparator.comparingInt(GlobalExceptionHandler::prioridadValidacion))
-                .forEach(error -> validationErrors.putIfAbsent(error.getField(), error.getDefaultMessage()));
-        return build(CodigoError.INVALID_DATA, INVALID_DATA, request, validationErrors, null, null);
+                .forEach(error -> validationErrors.putIfAbsent(
+                        error.getField(), mensajeDeCampoSeguro(error.getField(), error)));
+        return build(CodigoError.INVALID_DATA, resumirErroresValidacion(validationErrors),
+                request, validationErrors, null, null);
+    }
+
+    static String resumirErroresValidacion(Map<String, String> validationErrors) {
+        if (validationErrors == null || validationErrors.isEmpty()) {
+            return INVALID_DATA;
+        }
+        String detalle = validationErrors.values().stream()
+                .filter(msg -> msg != null && !msg.isBlank())
+                .map(msg -> msg.trim().endsWith(".") ? msg.trim().substring(0, msg.trim().length() - 1) : msg.trim())
+                .distinct()
+                .reduce((a, b) -> a + ". " + b)
+                .orElse("");
+        return detalle.isEmpty() ? INVALID_DATA : INVALID_DATA + ": " + detalle;
+    }
+
+    private static String mensajeDeCampoSeguro(String campo, FieldError error) {
+        String mensaje = error.getDefaultMessage();
+        if ("typeMismatch".equals(error.getCode())
+                || mensaje == null
+                || mensaje.isBlank()
+                || mensaje.startsWith("Failed to convert")) {
+            return "El valor ingresado para '" + campo + "' no tiene un formato válido";
+        }
+        return mensaje;
+    }
+
+    private static String describirErrorHttpInvalido(Exception exception) {
+        if (exception instanceof HttpMessageNotReadableException) {
+            return "El cuerpo de la solicitud JSON está mal formado o contiene valores con formato inválido";
+        }
+        if (exception instanceof HttpMediaTypeNotSupportedException) {
+            return "El tipo de contenido no es compatible con este endpoint; use application/json";
+        }
+        if (exception instanceof MethodArgumentTypeMismatchException) {
+            return "Uno de los parámetros de la solicitud tiene un tipo o formato inválido";
+        }
+        return "La solicitud contiene parámetros inválidos";
     }
 
     /**
