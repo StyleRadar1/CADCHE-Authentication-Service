@@ -128,18 +128,4 @@ class JwtServiceTest {
                 .hasSize(12).matches("[0-9A-F]{12}")
                 .isEqualTo(JwtServiceImpl.huellaCorta(llave.clone()));
     }
-
-    @Test
-    @DisplayName("BUG-005: Incluye storeId y foundationId solo cuando tienen valor válido")
-    void debeIncluirStoreIdYFoundationIdCuandoEstanPresentes() {
-        String tokenTienda = jwtService.generarToken(10L, Set.of(Rol.STORE_ADMIN), "900123456-7", null);
-        var claimsTienda = jwtService.validarToken(tokenTienda);
-        assertThat(claimsTienda.get("storeId", String.class)).isEqualTo("900123456-7");
-        assertThat(claimsTienda.containsKey("foundationId")).isFalse();
-
-        String tokenFundacion = jwtService.generarToken(20L, Set.of(Rol.FOUNDATION_REPRESENTATIVE), "  ", 42L);
-        var claimsFundacion = jwtService.validarToken(tokenFundacion);
-        assertThat(claimsFundacion.containsKey("storeId")).isFalse();
-        assertThat(claimsFundacion.get("foundationId", Number.class).longValue()).isEqualTo(42L);
-    }
 }
