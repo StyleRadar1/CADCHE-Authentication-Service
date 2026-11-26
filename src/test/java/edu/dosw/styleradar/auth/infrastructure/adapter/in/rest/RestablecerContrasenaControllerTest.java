@@ -93,6 +93,13 @@ class RestablecerContrasenaControllerTest {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("INVALID_DATA"));
         }
+        mockMvc.perform(post("/api/v1/auth/password/reset").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"buyer@styleradar.com\",\"otpCode\":\"482915\",\"newPassword\":\"fkzwdupLPn3FhE9\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_DATA"))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("carácter especial")))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("carácter especial")))
+                .andExpect(jsonPath("$.errors.newPassword").value(org.hamcrest.Matchers.containsString("carácter especial")));
         verify(useCase, never()).restablecer(anyString(), anyString(), anyString());
     }
 
