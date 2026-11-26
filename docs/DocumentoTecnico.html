@@ -232,7 +232,7 @@ var D=[
 '<div class="card" style="background:#48119A;color:#FBF7F0;border:0;padding:10px 14px;gap:3px"><p class="lab" style="color:#E8DCCB;margin:0">Propósito del Bounded Context (IAM)</p><p style="font-size:12.6px;line-height:1.34;font-weight:500;margin:0">Autenticación dual sin tablas locales: 2FA clásico OTP SHA-256 vía SMTP + Google OAuth2 / OIDC (ID Token y Auth Code funcional en Swagger), emitiendo JWT HS256 con rotación, blacklist y revocación AMQP.</p></div>'+
 '<div class="g2" style="gap:8px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)">'+
 cd('Equipo CADche Responsable','Julian Camilo Giral (@jcobos548)<br>Juan Diego Gaitan (@mamagege)<br>Juan Diego Valderrama · CADche','padding:9px 13px;gap:2px')+
-cd('Puerto Oficial y Artefacto','Puerto 8100 · Paquete 1: Identidad<br>51 fuentes Java 21 · 15 DTOs · 16 suites<br>Spring Boot 3.2.12 · JaCoCo 90.66%','padding:9px 13px;gap:2px')+
+cd('Puerto Oficial y Artefacto','Puerto 8100 · Paquete 1: Identidad<br>51 fuentes Java 21 · 15 DTOs · 16 suites<br>Spring Boot 4.2.0 · JaCoCo 90.66%','padding:9px 13px;gap:2px')+
 cd('Dependencias Técnicas Activas','Redis 7 (:6379 / TLS :6380)<br>Google OIDC (JWKS) · SMTP :587<br>ms-usuarios :8120 · AMQP · PG16 dif.','padding:9px 13px;gap:2px')+
 cd('Clientes que lo Consumen','API Gateway (:8080) · Frontend Web<br>Todos los MS P1–P5 (Bearer HS256)<br>Swagger QA Activo (Off en PROD)','padding:9px 13px;gap:2px')+
 '</div><div style="display:flex;gap:10px;align-items:center"><span class="lab">Estado de Despliegue</span><span class="pill">'+cy(['QA ACTIVO · PROD DESPLEGADO','EN DESARROLLO','EN PRUEBAS'])+'</span></div></div>'},
@@ -333,7 +333,7 @@ svgw('0 0 510 248',
   ['oauth2:state:{state}','300 s (1-uso)','Token anti-CSRF 32B SecureRandom consumido vía getAndDelete'],
   ['ratelimit:{path}:{ip}','60 s (15/10)','Ventana distribuida en Redis por endpoint e IP (→ 429)']
 ].map(function(r){return '<tr><td style="font:700 9.4px var(--fm);color:#6EE7B7;word-break:break-word">'+r[0]+'</td><td style="font-size:10px">'+r[1]+'</td><td style="font-size:10.2px">'+r[2]+'</td></tr>'}).join('')+'</table>'+
-'<div class="card dk" style="padding:10px 14px;gap:3px;margin-top:auto"><p class="lab" style="font-size:10px;color:#C4B5FD;margin:0">PostgreSQL 16 (styleradar_auth) Diferido y Respaldo en dev</p><p class="sm" style="font-size:11px;line-height:1.36;margin:0">Flyway 10.20.1 / PostgreSQL 42.7.4 parametrizado en YAML (FLYWAY_ENABLED=false, carpeta db/migration/.gitkeep). En dev/test SQL está excluido; cuentas y contraseñas residen en ms-usuarios (:8120). RAM ConcurrentHashMap solo en dev.</p></div>'},
+'<div class="card dk" style="padding:10px 14px;gap:3px;margin-top:auto"><p class="lab" style="font-size:10px;color:#C4B5FD;margin:0">PostgreSQL 16 (styleradar_auth) Diferido y Respaldo en dev</p><p class="sm" style="font-size:11px;line-height:1.36;margin:0">Flyway 12.11.0 / PostgreSQL 42.7.4 parametrizado en YAML (FLYWAY_ENABLED=false, carpeta db/migration/.gitkeep). En dev/test SQL está excluido; cuentas y contraseñas residen en ms-usuarios (:8120). RAM ConcurrentHashMap solo en dev.</p></div>'},
 
 {c:'cream',t:'Aislamiento ambientes',tag:'08',tab:'Ambientes',h:K('08 · Ambientes')+H('Perfiles cloud','QA vs PROD vs Local')+
 '<table style="font-size:10.3px;line-height:1.28;table-layout:fixed;width:100%"><tr><th style="width:14%">Perfil</th><th style="width:41%">App Service / Redis / Usuarios</th><th style="width:31%">Seguridad &amp; Swagger</th><th style="width:14%">JWT / RL</th></tr>'+

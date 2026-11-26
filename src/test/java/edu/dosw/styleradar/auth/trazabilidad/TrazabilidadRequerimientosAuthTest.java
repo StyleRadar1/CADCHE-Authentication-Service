@@ -33,9 +33,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -111,13 +111,13 @@ class TrazabilidadRequerimientosAuthTest {
     @Autowired
     private edu.dosw.styleradar.auth.infrastructure.adapter.in.amqp.CuentaUsuarioCambiadaConsumer consumidorCuenta;
 
-    @MockBean
+    @MockitoBean
     private EmailService emailService;
-    @MockBean
+    @MockitoBean
     private JavaMailSender javaMailSender;
-    @MockBean
+    @MockitoBean
     private JwtDecoder decodificadorGoogle;
-    @MockBean
+    @MockitoBean
     private edu.dosw.styleradar.auth.domain.port.out.EventoSesionPublisherPort eventosSesion;
     @Autowired
     private edu.dosw.styleradar.auth.application.service.SesionesActivasService sesionesActivas;

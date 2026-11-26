@@ -43,7 +43,7 @@
 
   <p align="center">
     <a href="docs/secciones/05-tecnologias-y-dependencias.md"><img src="https://img.shields.io/badge/JAVA-21__LTS-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 21" /></a>
-    <a href="docs/secciones/05-tecnologias-y-dependencias.md"><img src="https://img.shields.io/badge/SPRING__BOOT-3.2.12-12063A?style=for-the-badge&logo=springboot&logoColor=white" alt="Spring Boot" /></a>
+    <a href="docs/secciones/05-tecnologias-y-dependencias.md"><img src="https://img.shields.io/badge/SPRING__BOOT-4.2.0-12063A?style=for-the-badge&logo=springboot&logoColor=white" alt="Spring Boot" /></a>
     <a href="docs/secciones/06-como-ejecutar-local-y-docker.md"><img src="https://img.shields.io/badge/DOCKER-OCI__CONTAINER-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /></a>
     <a href="docs/secciones/05-tecnologias-y-dependencias.md"><img src="https://img.shields.io/badge/REDIS-7-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis 7" /></a>
     <a href="docs/secciones/05-tecnologias-y-dependencias.md"><img src="https://img.shields.io/badge/RABBITMQ-3.13-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white" alt="RabbitMQ 3.13" /></a>

@@ -161,7 +161,7 @@ public class RabbitMQConfig {
         factory.setMissingQueuesFatal(false);
         factory.setAutoStartup(consumidorActivo());
         factory.setAdviceChain(RetryInterceptorBuilder.stateless()
-                .maxAttempts(3)
+                .maxRetries(2) // 3 intentos en total: el original y 2 reintentos
                 .backOffOptions(1000L, 2.0, 10000L)
                 .recoverer(new RejectAndDontRequeueRecoverer())
                 .build());
