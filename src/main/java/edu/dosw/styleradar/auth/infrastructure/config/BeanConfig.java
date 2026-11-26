@@ -28,7 +28,6 @@ import edu.dosw.styleradar.auth.domain.port.in.RenovarTokenUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.RestablecerContrasenaUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.RevocarSesionesUsuarioUseCase;
 import edu.dosw.styleradar.auth.domain.port.in.VerificarOtpUseCase;
-import edu.dosw.styleradar.auth.domain.port.out.EntidadAsociadaPort;
 import edu.dosw.styleradar.auth.domain.port.out.EventoSesionPublisherPort;
 import edu.dosw.styleradar.auth.domain.port.out.RegistroSesionesPort;
 import edu.dosw.styleradar.auth.domain.port.out.UsuarioIdentidadPort;
@@ -62,18 +61,14 @@ public class BeanConfig {
             OtpService otpService,
             EmailService emailService,
             JwtService jwtService,
-            SesionesActivasService sesiones,
-            ObjectProvider<EntidadAsociadaPort> entidadAsociada) {
-        return new IniciarSesionUseCaseImpl(
-                usuarioIdentidadPort, otpService, emailService, jwtService, sesiones, entidadAsociada.getIfAvailable());
+            SesionesActivasService sesiones) {
+        return new IniciarSesionUseCaseImpl(usuarioIdentidadPort, otpService, emailService, jwtService, sesiones);
     }
 
     @Bean
     public VerificarOtpUseCase verificarOtpUseCase(OtpService otpService, JwtService jwtService,
-            UsuarioIdentidadPort usuarioIdentidadPort, SesionesActivasService sesiones,
-            ObjectProvider<EntidadAsociadaPort> entidadAsociada) {
-        return new VerificarOtpUseCaseImpl(
-                otpService, jwtService, usuarioIdentidadPort, sesiones, entidadAsociada.getIfAvailable());
+            UsuarioIdentidadPort usuarioIdentidadPort, SesionesActivasService sesiones) {
+        return new VerificarOtpUseCaseImpl(otpService, jwtService, usuarioIdentidadPort, sesiones);
     }
 
     @Bean
@@ -83,8 +78,8 @@ public class BeanConfig {
 
     @Bean
     public RenovarTokenUseCase renovarTokenUseCase(JwtService jwtService, OtpService otpService,
-            SesionesActivasService sesiones, ObjectProvider<EntidadAsociadaPort> entidadAsociada) {
-        return new RenovarTokenUseCaseImpl(jwtService, otpService, sesiones, entidadAsociada.getIfAvailable());
+            SesionesActivasService sesiones) {
+        return new RenovarTokenUseCaseImpl(jwtService, otpService, sesiones);
     }
 
     @Bean
