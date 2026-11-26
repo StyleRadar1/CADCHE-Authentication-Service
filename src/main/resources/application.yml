@@ -9,6 +9,10 @@ server:
     include-exception: false
 
 spring:
+  # Spring Boot 4: la API sigue usando Jackson 2 (com.fasterxml) para el JSON, igual que con Boot 3.
+  http:
+    converters:
+      preferred-json-mapper: jackson2
   application:
     name: ms-auth
   profiles:
